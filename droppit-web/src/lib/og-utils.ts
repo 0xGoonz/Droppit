@@ -1,0 +1,116 @@
+import { formatEther } from "viem";
+import { DEFAULT_CHAIN_LABEL } from "@/lib/chains";
+import { BRAND } from "@/lib/brand";
+
+export const OG_TOKENS = {
+    width: 1200,
+    height: 630,
+    safeX: 56,
+    safeY: 44,
+    artSize: 320,
+    radius: 24,
+    titleSize: 62,
+    subtitleSize: 24,
+    bodySize: 22,
+    badgeSize: 20,
+} as const;
+
+export const OG_BRAND = {
+    background: BRAND.palette.bg0,
+    panel: BRAND.palette.bg1,
+    blue: BRAND.palette.brand500,
+    cyan: BRAND.palette.cyan400,
+    violet: BRAND.palette.violet500,
+    pink: BRAND.palette.pink500,
+    text0: BRAND.palette.text0,
+    text1: BRAND.palette.text1,
+    text2: "#94a3b8",
+} as const;
+
+export function ogFontFamily(): string {
+    return "\"Plus Jakarta Sans\", \"Space Grotesk\", Inter, system-ui, sans-serif";
+}
+
+export function ogBackdrop(accentGlow: string): string {
+    return `radial-gradient(circle at 12% 0%, ${accentGlow}, transparent 48%), radial-gradient(circle at 88% 0%, rgba(34,211,238,0.14), transparent 40%), ${OG_BRAND.background}`;
+}
+
+export function getChainLabel(): string {
+    return DEFAULT_CHAIN_LABEL;
+}
+
+export function truncateText(input: string, maxChars: number): string {
+    if (input.length <= maxChars) return input;
+    return `${input.slice(0, Math.max(1, maxChars - 3))}...`;
+}
+
+export function truncateMiddle(input: string, start = 6, end = 4): string {
+    if (input.length <= start + end + 3) return input;
+    return `${input.slice(0, start)}...${input.slice(-end)}`;
+}
+
+export function normalizeIpfsToHttp(raw: string | null | undefined): string | null {
+    if (!raw || typeof raw !== "string") return null;
+    if (raw.startsWith("ipfs://")) {
+        return raw.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/");
+    }
+    return raw;
+}
+
+export function formatMintPriceWei(raw: string | null | undefined): string {
+    if (!raw || raw === "0") return "Free";
+    try {
+        const formatted = formatEther(BigInt(raw));
+        const [whole, frac = ""] = formatted.split(".");
+        const trimmed = frac.slice(0, 4).replace(/0+$/g, "");
+        return `${whole}${trimmed ? `.${trimmed}` : ""} ETH`;
+    } catch {
+        return "Price unavailable";
+    }
+}
+
+export function formatStatusLabel(rawStatus: string | null | undefined): string {
+    if (!rawStatus) return "UNKNOWN";
+    return rawStatus.replace(/_/g, " ").toUpperCase();
+}
+
+export function statusBadgeColors(rawStatus: string | null | undefined): { bg: string; fg: string; border: string } {
+    const status = (rawStatus || "").toUpperCase();
+    if (status === "LIVE" || status === "PUBLISHED") {
+        return { bg: "rgba(22,163,74,0.18)", fg: "#86efac", border: "rgba(34,197,94,0.35)" };
+    }
+    if (status === "DRAFT") {
+        return { bg: "rgba(250,204,21,0.15)", fg: "#fde68a", border: "rgba(250,204,21,0.30)" };
+    }
+    return { bg: "rgba(148,163,184,0.15)", fg: "#cbd5e1", border: "rgba(148,163,184,0.30)" };
+}
+
+export function creatorAttribution(
+    creatorAddress: string | null | undefined,
+    creatorFid: number | null | undefined,
+    creatorHandle?: string | null
+): string {
+    if (creatorHandle) return `@${creatorHandle}`;
+    if (creatorAddress) return truncateMiddle(creatorAddress, 8, 6);
+    if (creatorFid) return `FID ${creatorFid}`;
+    return "Unknown creator";
+}
+
+export function deterministicAccent(seed: string): { from: string; to: string; glow: string } {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i += 1) {
+        hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+    }
+    const hueA = hash % 360;
+    const hueB = (hueA + 42) % 360;
+    return {
+        from: `hsl(${hueA}, 74%, 52%)`,
+        to: `hsl(${hueB}, 72%, 46%)`,
+        glow: `hsla(${hueA}, 82%, 60%, 0.25)`,
+    };
+}
+
+export function fallbackTitle(raw: string | null | undefined, defaultTitle: string): string {
+    if (!raw || !raw.trim()) return defaultTitle;
+    return raw.trim();
+}

@@ -1,0 +1,39 @@
+{
+  "name": "droppit-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:schema": "npx tsx scripts/check-schema-conformance.ts"
+  },
+  "dependencies": {
+    "@coinbase/agentkit": "^0.10.4",
+    "@coinbase/agentkit-langchain": "^0.3.0",
+    "@coinbase/onchainkit": "^1.1.2",
+    "@langchain/google-genai": "^2.1.21",
+    "@supabase/supabase-js": "^2.98.0",
+    "next": "16.1.6",
+    "neynar-next": "^0.3.3",
+    "pinata": "^2.5.5",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "viem": "^2.46.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.0.18"
+  }
+}
