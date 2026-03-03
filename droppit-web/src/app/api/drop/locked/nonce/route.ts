@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "wallet and dropContract are required." }, { status: 400, headers: NO_CACHE_HEADERS });
         }
 
-        const limited = await checkRateLimit(request, "unlockReveal", "[Locked Nonce]", {
+        const limited = await checkRateLimit(request, "nonce", "[Locked Nonce]", {
             identityParts: ["wallet", wallet, "drop", dropContract]
         });
         if (limited) return limited;

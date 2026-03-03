@@ -134,11 +134,11 @@ describe('parseDeployIntent', () => {
 
     // ── Malformed Price Strings ──────────────────────────────
 
-    it('fails when mintPrice stringifies to decimal (not valid wei)', async () => {
+    it('succeeds when mintPrice is a decimal (parsed into valid wei string)', async () => {
         setLlmResponse({ isReady: true, title: 'Cool Drop', editionSize: 100, mintPrice: 0.05 });
         const result = await parseDeployIntent('@droppit 0.05 ETH');
-        expect(result.success).toBe(false);
-        expect(result.error).toContain('mintPrice');
+        expect(result.success).toBe(true);
+        expect(result.mintPrice).toBe('50000000000000000');
     });
 
     // ── Valid Intents ────────────────────────────────────────
