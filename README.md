@@ -97,7 +97,7 @@ droppit/
 | **Web3** | viem, Wagmi, Coinbase OnchainKit (Smart Wallet + Passkeys) |
 | **AI Agent** | CDP AgentKit, LangChain, Google Gemini 2.5 Flash |
 | **Farcaster** | Neynar (webhooks + HMAC verification), custom Frame builder |
-| **Database** | Supabase (PostgreSQL) — 6 tables, schema-checked in CI |
+| **Database** | Supabase (PostgreSQL) — 7 tables, schema-checked in CI |
 | **Storage** | Pinata (IPFS pinning for artwork + metadata) |
 | **Security** | AES-256-GCM locked content encryption, challenge nonces, commitment validation |
 | **Network** | Base (Mainnet + Sepolia) |
@@ -119,7 +119,7 @@ droppit/
 │  1. Resolve plaintext (body override > staged draft)    │
 │  2. Validate salt (0x + 64 hex chars)                   │
 │  3. Recompute commitment = keccak256(salt ‖ plaintext)  │
-│  4. Reject if commitment ≠ onchain commitment           │
+│  4. Reject if recomputed commitment ≠ submitted value   │
 │  5. Encrypt with AES-256-GCM → write to locked_content  │
 │  6. Clear locked_content_draft → null                   │
 └─────────────────────────────────────────────────────────┘
@@ -142,7 +142,7 @@ droppit/
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) 18+
+- [Node.js](https://nodejs.org/) 20.9+
 - [Foundry](https://book.getfoundry.sh/) (for smart contracts)
 - A [Supabase](https://supabase.com/) project
 - API keys: Pinata, Gemini, CDP, Neynar, Coinbase OnchainKit
@@ -281,18 +281,18 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
 | Route | Method | Description |
 |-------|--------|-------------|
 | `/api/drops` | POST | Create draft drop |
-| `/api/drops/[id]` | GET | Fetch draft details |
+| `/api/drops/[id]` | GET | Lifecycle-aware fetch (DRAFT hydration or LIVE/PUBLISHED non-editable payload) |
 | `/api/drops/[id]/publish` | POST | Publish: encrypt + transition DRAFT → LIVE |
-| `/api/drops/by-address/[addr]` | GET | Lookup drop by contract address |
+| `/api/drops/by-address/[address]` | GET | Lookup drop by contract address |
 | `/api/frame/deploy/[castHash]` | POST | Deploy frame for webhook-originated drafts |
-| `/api/frame/draft/[id]/deploy` | POST | Deploy frame for direct drafts |
-| `/api/frame/drop/[addr]` | GET | Collector mint frame metadata |
-| `/api/frame/drop/[addr]/mint` | POST | Frame mint transaction data |
+| `/api/frame/draft/[draftId]/deploy` | POST | Deploy frame for direct drafts |
+| `/api/frame/drop/[contractAddress]` | GET | Collector mint frame metadata |
+| `/api/frame/drop/[contractAddress]/mint` | POST | Frame mint transaction data |
 | `/api/drop/locked` | POST | Decrypt + return locked content (ownership-gated) |
 | `/api/drop/locked/nonce` | POST | Issue challenge nonce for unlock |
 | `/api/webhooks/neynar` | POST | Ingest Farcaster casts (HMAC-verified) |
 | `/api/agent/parse-deploy-intent` | POST | Parse cast text into structured drop intent |
-| `/api/og/drop/[id]` | GET | Dynamic OG image generation |
+| `/api/og/drop/[dropIdOrAddress]` | GET | Dynamic OG image generation |
 | `/api/attribution/view` | POST | Record page view attribution |
 | `/api/attribution/mint` | POST | Record mint attribution |
 
