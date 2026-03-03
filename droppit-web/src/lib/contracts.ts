@@ -24,7 +24,7 @@ export const CHAIN_CONTRACTS: Record<number, ChainContractConfig> = {
     },
 };
 
-export const PROTOCOL_FEE_PER_MINT_WEI = 100000000000000n;
+export const PROTOCOL_FEE_PER_MINT_WEI = BigInt("100000000000000");
 export const PROTOCOL_FEE_PER_MINT_ETH = formatEther(PROTOCOL_FEE_PER_MINT_WEI);
 export const PROTOCOL_FEE_PER_MINT_LABEL = `${PROTOCOL_FEE_PER_MINT_ETH} ETH`;
 

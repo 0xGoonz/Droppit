@@ -849,7 +849,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         }`}>
                                         {metadataFrozenLabel}
                                     </span>
-                                    <span className="text-[10px] text-gray-500">{metadataFrozenHint}</span>
+                                    <span className="text-[10px] text-gray-500 max-w-[220px] leading-tight text-right mt-0.5">{metadataFrozenHint}</span>
                                 </div>
                             </div>
 
@@ -860,9 +860,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         href={`${explorerUrl}/address/${contractAddress}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="hover:text-blue-400 text-blue-500 underline decoration-blue-500/30 break-all"
+                                        className="hover:text-blue-400 text-blue-500 underline decoration-blue-500/30"
                                     >
-                                        {contractAddress}
+                                        {shortAddress(contractAddress)}
                                     </a>
                                     <button
                                         type="button"
@@ -884,9 +884,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                             href={`${explorerUrl}/address/${factoryAddress}#code`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="hover:text-gray-300 underline decoration-white/20 text-gray-400 break-all"
+                                            className="hover:text-gray-300 underline decoration-white/20 text-gray-400"
                                         >
-                                            {factoryAddress}
+                                            {shortAddress(factoryAddress)}
                                         </a>
                                         <button
                                             type="button"
@@ -911,9 +911,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                             href={`${explorerUrl}/address/${implementationAddress}#code`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="hover:text-gray-300 underline decoration-white/20 text-gray-400 break-all"
+                                            className="hover:text-gray-300 underline decoration-white/20 text-gray-400"
                                         >
-                                            {implementationAddress}
+                                            {shortAddress(implementationAddress)}
                                         </a>
                                         <button
                                             type="button"

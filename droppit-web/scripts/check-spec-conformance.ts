@@ -48,9 +48,9 @@ checkFileContents(
 // 2. Protocol fee default constant
 checkFileContents(
     'lib/contracts.ts',
-    /PROTOCOL_FEE_PER_MINT_WEI\s*=\s*100000000000000n;/,
+    /PROTOCOL_FEE_PER_MINT_WEI\s*=\s*BigInt\(['"]100000000000000['"]\);/,
     'Protocol Fee Constant (0.0001 ETH)',
-    'Protocol fee is not exactly 100000000000000n in src/lib/contracts.ts'
+    'Protocol fee is not exactly BigInt("100000000000000") in src/lib/contracts.ts'
 );
 
 // 3. Frame chain ID
