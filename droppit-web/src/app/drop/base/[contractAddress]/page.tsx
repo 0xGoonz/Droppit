@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { formatEther } from "viem";
+import { formatEther, isAddress } from "viem";
 import { useReadContracts, useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, useEnsName } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import {
@@ -20,7 +20,7 @@ import {
 } from '@coinbase/onchainkit/identity';
 import { createClient } from "@supabase/supabase-js";
 import { useChainPreference } from "@/providers/OnchainKitProvider";
-import { hasChainContractConfig } from "@/lib/contracts";
+import { PROTOCOL_FEE_PER_MINT_WEI, hasChainContractConfig } from "@/lib/contracts";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import {
     type ReferralPayload,
@@ -84,6 +84,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     const [quantity, setQuantity] = useState<number>(1);
     const [isGifting, setIsGifting] = useState<boolean>(false);
     const [recipient, setRecipient] = useState<string>("");
+    const [recipientError, setRecipientError] = useState<string | null>(null);
 
     // Write Hooks
     const { data: hash, writeContractAsync, isPending } = useWriteContract();
@@ -112,7 +113,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     const creatorAddress = (data?.[3].result as string) || "";
     const hasCreatorAddress = creatorAddress.startsWith("0x") && creatorAddress.length === 42;
     const tokenUri = (data?.[4].result as string) || "";
-    const rawProtocolFee = (data?.[5].result as bigint) || BigInt(0);
+    const rawProtocolFee = (data?.[5].result as bigint) || PROTOCOL_FEE_PER_MINT_WEI;
     const factoryAddress = (data?.[6].result as string) || null;
 
     // Fetch implementation from the resolved factory
@@ -384,6 +385,21 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         if (!userAddress) return alert("Please connect your wallet first.");
         if (!isMintEnabledForSelectedChain) return alert(`Minting is disabled: ${selectedChain.name} contract configuration is missing.`);
 
+        setRecipientError(null);
+        let normalizedRecipient: `0x${string}` | null = null;
+        if (isGifting) {
+            const trimmedRecipient = recipient.trim();
+            if (!trimmedRecipient) {
+                setRecipientError("Recipient address is required for gifting.");
+                return;
+            }
+            if (!isAddress(trimmedRecipient)) {
+                setRecipientError("Enter a valid EVM address (0x...).");
+                return;
+            }
+            normalizedRecipient = trimmedRecipient as `0x${string}`;
+        }
+
         try {
             // Force Network Switch if on the wrong chain
             if (chainId !== selectedChain.id) {
@@ -399,16 +415,13 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
             // Calculate total exact payment (mintPrice + protocolFeePerMint) * quantity
             const totalValueRequired = (rawPrice + rawProtocolFee) * BigInt(quantity);
 
-            if (isGifting && recipient) {
-                if (!recipient.startsWith('0x') || recipient.length !== 42) {
-                    throw new Error("Invalid recipient address.");
-                }
+            if (isGifting && normalizedRecipient) {
                 await writeContractAsync({
                     chainId: selectedChain.id,
                     address: contractAddress as `0x${string}`,
                     abi: dropAbi,
                     functionName: 'mintTo',
-                    args: [recipient as `0x${string}`, BigInt(quantity)],
+                    args: [normalizedRecipient, BigInt(quantity)],
                     value: totalValueRequired
                 });
             } else {
@@ -598,19 +611,46 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                     <input
                                         type="checkbox"
                                         checked={isGifting}
-                                        onChange={(e) => setIsGifting(e.target.checked)}
+                                        onChange={(e) => {
+                                            const nextValue = e.target.checked;
+                                            setIsGifting(nextValue);
+                                            if (!nextValue) setRecipientError(null);
+                                        }}
                                         className="w-5 h-5 rounded border-white/20 bg-black/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-black"
                                     />
                                     <span className="text-gray-300 font-medium">Mint as Gift</span>
                                 </label>
                                 {isGifting && (
-                                    <input
-                                        type="text"
-                                        placeholder="Recipient Address (0x...)"
-                                        value={recipient}
-                                        onChange={(e) => setRecipient(e.target.value)}
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-                                    />
+                                    <div className="space-y-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Recipient Address (0x...)"
+                                            value={recipient}
+                                            onChange={(e) => {
+                                                const nextRecipient = e.target.value;
+                                                setRecipient(nextRecipient);
+                                                if (!recipientError) return;
+                                                const normalized = nextRecipient.trim();
+                                                if (!normalized) {
+                                                    setRecipientError("Recipient address is required for gifting.");
+                                                    return;
+                                                }
+                                                if (!isAddress(normalized)) {
+                                                    setRecipientError("Enter a valid EVM address (0x...).");
+                                                    return;
+                                                }
+                                                setRecipientError(null);
+                                            }}
+                                            onBlur={() => setRecipient((prev) => prev.trim())}
+                                            className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-colors ${recipientError
+                                                ? "border-red-500/70 focus:border-red-400"
+                                                : "border-white/10 focus:border-blue-500"
+                                                }`}
+                                        />
+                                        {recipientError && (
+                                            <p className="text-xs text-red-300">{recipientError}</p>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>

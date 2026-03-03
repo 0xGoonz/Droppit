@@ -20,6 +20,7 @@ function getFrameHtmlResponse(opts: FrameOptions): string {
 }
 import { createPublicClient, http, encodeFunctionData, isAddress } from 'viem';
 import { base } from 'viem/chains';
+import { getAlchemyRpcUrl } from '@/lib/chains';
 
 // ── Environment-aware chain config ──────────────────────────────
 // Matches the same NEXT_PUBLIC_ENVIRONMENT switch used across the app
@@ -27,6 +28,7 @@ import { base } from 'viem/chains';
 // Frame MVP is pinned to Base mainnet.
 const activeChain = base;
 const FRAME_MVP_CHAIN_ID = "eip155:8453";
+const rpcUrl = getAlchemyRpcUrl('base-mainnet');
 
 // Minimum ABI for minting and reading price
 const DROP_ABI = [
@@ -46,7 +48,7 @@ const DROP_ABI = [
 
 const publicClient = createPublicClient({
     chain: activeChain,
-    transport: http()
+    transport: http(rpcUrl)
 });
 
 export async function POST(

@@ -20,6 +20,12 @@ export function getAlchemyNetworkId(): AlchemyNetworkId {
     return isProductionEnvironment() ? "base-mainnet" : "base-sepolia";
 }
 
+export function getAlchemyRpcUrl(networkId: AlchemyNetworkId = getAlchemyNetworkId()): string | undefined {
+    const apiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+    if (!apiKey) return undefined;
+    return `https://${networkId}.g.alchemy.com/v2/${apiKey}`;
+}
+
 export function getCdpNetworkId(): AlchemyNetworkId {
     // CDP network IDs align with the same Base network labels we use for Alchemy.
     return getAlchemyNetworkId();

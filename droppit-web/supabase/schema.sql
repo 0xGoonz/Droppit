@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS public.drops (
     -- Locked content
     locked_content TEXT,               -- Encrypted JSON payload (written at publish time only)
     locked_content_draft TEXT,         -- Plaintext staging during draft phase (cleared at publish)
+    deploy_salt TEXT,                  -- Staged 32-byte random salt for locked-content commitment during deploy
+    deploy_commitment TEXT,            -- Staged keccak256(salt || locked_content_draft) used in tx build/finalize
     -- Webhook/Farcaster linkage
     cast_hash TEXT,                    -- Farcaster cast hash linking webhook → draft
     -- Deployment lifecycle
@@ -47,6 +49,8 @@ CREATE INDEX IF NOT EXISTS idx_drops_cast_hash ON public.drops(cast_hash);
 COMMENT ON COLUMN public.drops.mint_price IS 'Wei value as TEXT string. Never use NUMERIC — BigInt precision loss risk. Validated by validateMintPriceWei(). Normalized from ETH by normalizeEthToWei().';
 COMMENT ON COLUMN public.drops.locked_content IS 'Encrypted locked content JSON payload. Written only at publish time via encryptLockedContent(). Never plaintext.';
 COMMENT ON COLUMN public.drops.locked_content_draft IS 'Temporary plaintext staging for locked content during draft phase. Cleared to NULL at publish time after encryption.';
+COMMENT ON COLUMN public.drops.deploy_salt IS 'Temporary random bytes32 salt generated at tx-build time for locked-content commitment. Cleared at publish.';
+COMMENT ON COLUMN public.drops.deploy_commitment IS 'Temporary keccak256(bytes32 salt || locked_content_draft) staged for frame deploy consistency. Cleared at publish.';
 COMMENT ON COLUMN public.drops.payout_recipient IS 'EVM address receiving mint proceeds. Lowercase, set via web flow or defaulting to creator_address.';
 COMMENT ON COLUMN public.drops.cast_hash IS 'Farcaster cast hash linking a Neynar webhook event to this draft.';
 COMMENT ON COLUMN public.drops.creator_fid IS 'Farcaster FID of the creator. Set via webhook flow when creator_address is not available.';

@@ -1,5 +1,6 @@
-import { createPublicClient, encodeFunctionData, encodePacked, http, isAddress, keccak256 } from "viem";
+import { createPublicClient, decodeEventLog, encodeFunctionData, encodePacked, http, isAddress, keccak256, toBytes } from "viem";
 import { base } from "viem/chains";
+import { randomBytes } from "crypto";
 import { FACTORY_ABI, getChainContracts } from "@/lib/contracts";
 import { validateEditionSize, validateEvmAddress, validateLockedContent, validateMintPriceWei, validateTxHash } from "@/lib/validation/drops";
 
@@ -18,6 +19,25 @@ const publicClient = createPublicClient({
 });
 
 const ZERO_BYTES32 = `0x${"0".repeat(64)}` as const;
+const DROP_CREATED_EVENT_TOPIC0 = keccak256(
+    toBytes("DropCreated(address,address,uint256,uint256,address,address,uint256,string)")
+);
+const DROP_CREATED_EVENT_ABI = [
+    {
+        type: "event",
+        name: "DropCreated",
+        inputs: [
+            { name: "creator", type: "address", indexed: true },
+            { name: "drop", type: "address", indexed: true },
+            { name: "editionSize", type: "uint256", indexed: false },
+            { name: "mintPrice", type: "uint256", indexed: false },
+            { name: "payoutRecipient", type: "address", indexed: false },
+            { name: "protocolFeeRecipient", type: "address", indexed: false },
+            { name: "protocolFeePerMint", type: "uint256", indexed: false },
+            { name: "tokenUri", type: "string", indexed: false },
+        ],
+    },
+] as const;
 
 export type DeployDraft = {
     id: string;
@@ -31,6 +51,13 @@ export type DeployDraft = {
     image_url: string | null;
     locked_content_draft: string | null;
     contract_address: string | null;
+    deploy_salt: string | null;
+    deploy_commitment: string | null;
+};
+
+type DraftDeployStatePatch = {
+    deploy_salt: `0x${string}` | null;
+    deploy_commitment: `0x${string}` | null;
 };
 
 export type PreparedDeploy = {
@@ -45,10 +72,24 @@ export type PreparedDeploy = {
     lockedContent: string | null;
     salt: `0x${string}` | null;
     commitment: `0x${string}`;
+    draftDeployStatePatch: DraftDeployStatePatch | null;
 };
 
-function deriveDeterministicSalt(draftId: string, tokenUri: string): `0x${string}` {
-    return keccak256(encodePacked(["string", "string"], [draftId, tokenUri]));
+type PrepareMode = "tx-build" | "finalize";
+
+function normalizeBytes32Hex(raw: unknown): `0x${string}` | null {
+    if (typeof raw !== "string") return null;
+    const trimmed = raw.trim();
+    if (!/^0x[a-fA-F0-9]{64}$/.test(trimmed)) return null;
+    return `0x${trimmed.slice(2).toLowerCase()}` as `0x${string}`;
+}
+
+function deriveLockedContentCommitment(salt: `0x${string}`, lockedContent: string): `0x${string}` {
+    return keccak256(encodePacked(["bytes32", "string"], [salt, lockedContent]));
+}
+
+function generateRandomSalt(): `0x${string}` {
+    return `0x${randomBytes(32).toString("hex")}` as `0x${string}`;
 }
 
 function normalizeCandidateAddress(raw: unknown): `0x${string}` | null {
@@ -97,9 +138,40 @@ export function extractTxHashFromPayload(body: unknown): string | null {
     return null;
 }
 
+type FinalizeTxHashSelection =
+    | { kind: "none" }
+    | { kind: "selected"; txHash: string }
+    | { kind: "mismatch"; error: string };
+
+export function resolveFinalizeTxHash(
+    validationTxHash: string | null,
+    callbackPayloadTxHash: string | null
+): FinalizeTxHashSelection {
+    const validationHash = validationTxHash?.trim() || null;
+    const callbackHash = callbackPayloadTxHash?.trim() || null;
+
+    if (validationHash && callbackHash && validationHash.toLowerCase() !== callbackHash.toLowerCase()) {
+        return {
+            kind: "mismatch",
+            error: "Transaction hash mismatch between Neynar-validated payload and callback payload. Possible tampering detected.",
+        };
+    }
+
+    if (validationHash) {
+        return { kind: "selected", txHash: validationHash };
+    }
+
+    if (callbackHash) {
+        return { kind: "selected", txHash: callbackHash };
+    }
+
+    return { kind: "none" };
+}
+
 export function prepareDeployFromDraft(
     draft: DeployDraft,
-    frameWallet: `0x${string}` | null
+    frameWallet: `0x${string}` | null,
+    mode: PrepareMode = "tx-build"
 ): { ok: true; value: PreparedDeploy } | { ok: false; error: string } {
     if (draft.status !== "DRAFT") {
         return { ok: false, error: "This draft is no longer deployable." };
@@ -133,13 +205,49 @@ export function prepareDeployFromDraft(
     const lockedCheck = validateLockedContent(draft.locked_content_draft);
     if (!lockedCheck.valid) return { ok: false, error: lockedCheck.error };
 
+    const hasStoredDeployState =
+        typeof draft.deploy_salt === "string" ||
+        typeof draft.deploy_commitment === "string";
+    const storedSalt = normalizeBytes32Hex(draft.deploy_salt);
+    const storedCommitment = normalizeBytes32Hex(draft.deploy_commitment);
+
     let salt: `0x${string}` | null = null;
     let commitment = ZERO_BYTES32 as `0x${string}`;
+    let draftDeployStatePatch: DraftDeployStatePatch | null = null;
+
     if (lockedCheck.value) {
-        salt = deriveDeterministicSalt(draft.id, tokenUri);
-        commitment = keccak256(
-            encodePacked(["bytes32", "string"], [salt, lockedCheck.value])
-        );
+        if (mode === "finalize") {
+            if (!storedSalt || !storedCommitment) {
+                return {
+                    ok: false,
+                    error: "Missing staged deploy salt/commitment for locked content. Rebuild the deploy transaction before finalizing.",
+                };
+            }
+            salt = storedSalt;
+            commitment = storedCommitment;
+        } else {
+            const storedMatchesLockedContent =
+                !!storedSalt &&
+                !!storedCommitment &&
+                deriveLockedContentCommitment(storedSalt, lockedCheck.value).toLowerCase() === storedCommitment.toLowerCase();
+
+            if (storedMatchesLockedContent) {
+                salt = storedSalt;
+                commitment = storedCommitment;
+            } else {
+                salt = generateRandomSalt();
+                commitment = deriveLockedContentCommitment(salt, lockedCheck.value);
+                draftDeployStatePatch = {
+                    deploy_salt: salt,
+                    deploy_commitment: commitment,
+                };
+            }
+        }
+    } else if (mode === "tx-build" && hasStoredDeployState) {
+        draftDeployStatePatch = {
+            deploy_salt: null,
+            deploy_commitment: null,
+        };
     }
 
     return {
@@ -156,6 +264,7 @@ export function prepareDeployFromDraft(
             lockedContent: lockedCheck.value,
             salt,
             commitment,
+            draftDeployStatePatch,
         },
     };
 }
@@ -194,15 +303,33 @@ export async function resolveDropAddressFromReceipt(
         throw new Error("Deployment transaction has not succeeded onchain yet.");
     }
 
-    const deployLog = receipt.logs.find(
-        (log) => log.address.toLowerCase() === factoryAddress.toLowerCase() && log.topics.length >= 3
+    const dropCreatedLog = receipt.logs.find(
+        (log) =>
+            log.address.toLowerCase() === factoryAddress.toLowerCase() &&
+            (log.topics[0]?.toLowerCase() || "") === DROP_CREATED_EVENT_TOPIC0.toLowerCase()
     );
-    const candidateAddress = deployLog?.topics?.[2] ? `0x${deployLog.topics[2].slice(-40)}` : null;
-    if (!candidateAddress || !isAddress(candidateAddress)) {
-        throw new Error("Unable to resolve deployed drop address from transaction logs.");
+    if (!dropCreatedLog) {
+        throw new Error("No DropCreated event found for the factory in this deployment transaction.");
     }
 
-    return candidateAddress as `0x${string}`;
+    let decodedDropAddress: unknown;
+    try {
+        const decoded = decodeEventLog({
+            abi: DROP_CREATED_EVENT_ABI,
+            data: dropCreatedLog.data,
+            topics: dropCreatedLog.topics,
+            strict: true,
+        });
+        decodedDropAddress = decoded.args.drop;
+    } catch {
+        throw new Error("Failed to decode DropCreated event from deployment transaction logs.");
+    }
+
+    if (typeof decodedDropAddress !== "string" || !isAddress(decodedDropAddress)) {
+        throw new Error("DropCreated event did not contain a valid indexed drop address.");
+    }
+
+    return decodedDropAddress as `0x${string}`;
 }
 
 export function extractFrameWalletFromValidation(validationData: unknown): `0x${string}` | null {

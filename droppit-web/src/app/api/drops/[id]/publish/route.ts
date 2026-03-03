@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabase";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { keccak256, encodePacked } from "viem";
+import { base, baseSepolia } from "viem/chains";
+import { createPublicClient, decodeEventLog, encodePacked, http, isAddress, keccak256, toBytes } from "viem";
+import { getChainContracts } from "@/lib/contracts";
 import {
     validateEvmAddress,
     validateTxHash,
@@ -33,6 +35,26 @@ function validateCommitment(raw: unknown): { valid: true; value: string } | { va
     }
     return { valid: true, value: trimmed };
 }
+
+const DROP_CREATED_EVENT_TOPIC0 = keccak256(
+    toBytes("DropCreated(address,address,uint256,uint256,address,address,uint256,string)")
+);
+const DROP_CREATED_EVENT_ABI = [
+    {
+        type: "event",
+        name: "DropCreated",
+        inputs: [
+            { name: "creator", type: "address", indexed: true },
+            { name: "drop", type: "address", indexed: true },
+            { name: "editionSize", type: "uint256", indexed: false },
+            { name: "mintPrice", type: "uint256", indexed: false },
+            { name: "payoutRecipient", type: "address", indexed: false },
+            { name: "protocolFeeRecipient", type: "address", indexed: false },
+            { name: "protocolFeePerMint", type: "uint256", indexed: false },
+            { name: "tokenUri", type: "string", indexed: false },
+        ],
+    },
+] as const;
 
 // ── Route Handler ────────────────────────────────────────────────
 
@@ -102,6 +124,92 @@ export async function POST(
         // ── Resolve Locked Content with Precedence Rules ─────────
         // Priority: body.lockedContent (client override) > draft.locked_content_draft (staged from frame)
 
+        // Verify deploy tx provenance before allowing DRAFT -> LIVE transition.
+        const activeChain = process.env.NEXT_PUBLIC_ENVIRONMENT === "sandbox" ? baseSepolia : base;
+        const alchemyNetwork = process.env.NEXT_PUBLIC_ENVIRONMENT === "sandbox" ? "base-sepolia" : "base-mainnet";
+        const chainContracts = getChainContracts(activeChain.id);
+        const configuredFactory = chainContracts?.factoryAddress;
+
+        if (!configuredFactory || !isAddress(configuredFactory)) {
+            return NextResponse.json(
+                { error: `Factory address is not configured for ${activeChain.name}.` },
+                { status: 500 }
+            );
+        }
+
+        const rpcUrl = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+            ? `https://${alchemyNetwork}.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
+            : undefined;
+        const publicClient = createPublicClient({
+            chain: activeChain,
+            transport: http(rpcUrl),
+        });
+
+        let txReceipt: Awaited<ReturnType<typeof publicClient.getTransactionReceipt>>;
+        try {
+            txReceipt = await publicClient.getTransactionReceipt({
+                hash: txHashCheck.value as `0x${string}`,
+            });
+        } catch (receiptError) {
+            const message = receiptError instanceof Error ? receiptError.message.toLowerCase() : "";
+            if (message.includes("not found") || message.includes("missing")) {
+                return NextResponse.json({
+                    error: "Deployment transaction is pending or unavailable on the configured network. Wait for confirmation before publishing.",
+                }, { status: 409 });
+            }
+            console.error("[Drops API] Failed to fetch deploy transaction receipt:", receiptError);
+            return NextResponse.json({ error: "Unable to fetch deployment transaction receipt." }, { status: 500 });
+        }
+
+        if (txReceipt.status !== "success") {
+            return NextResponse.json({
+                error: "Deployment transaction did not succeed onchain. Cannot publish this draft.",
+            }, { status: 422 });
+        }
+
+        const matchingDropCreatedLogs = txReceipt.logs.filter(
+            (log) =>
+                log.address.toLowerCase() === configuredFactory.toLowerCase() &&
+                (log.topics[0]?.toLowerCase() || "") === DROP_CREATED_EVENT_TOPIC0.toLowerCase()
+        );
+
+        if (matchingDropCreatedLogs.length === 0) {
+            return NextResponse.json({
+                error: "No DropCreated event found from the configured factory in this deployment transaction.",
+            }, { status: 422 });
+        }
+
+        let onchainDropAddress: string | null = null;
+        for (const log of matchingDropCreatedLogs) {
+            try {
+                const decoded = decodeEventLog({
+                    abi: DROP_CREATED_EVENT_ABI,
+                    data: log.data,
+                    topics: log.topics,
+                    strict: true,
+                });
+                const drop = decoded.args.drop;
+                if (typeof drop === "string" && isAddress(drop)) {
+                    onchainDropAddress = drop;
+                    break;
+                }
+            } catch {
+                // Ignore malformed candidate logs and continue scanning.
+            }
+        }
+
+        if (!onchainDropAddress) {
+            return NextResponse.json({
+                error: "Unable to decode a valid drop address from DropCreated event logs in this deployment transaction.",
+            }, { status: 422 });
+        }
+
+        if (onchainDropAddress.toLowerCase() !== addressCheck.value.toLowerCase()) {
+            return NextResponse.json({
+                error: `Contract address mismatch. Requested ${addressCheck.value}, but receipt DropCreated emitted ${onchainDropAddress}.`,
+            }, { status: 422 });
+        }
+
         const rawLockedContent = body.lockedContent || draft.locked_content_draft || null;
 
         const lockedCheck = validateLockedContent(rawLockedContent);
@@ -114,6 +222,8 @@ export async function POST(
             tx_hash_deploy: txHashCheck.value,
             contract_address: addressCheck.value,
             locked_content_draft: null, // Always clear draft staging column
+            deploy_salt: null,          // Clear staged deploy metadata once published
+            deploy_commitment: null,
         };
 
         if (tokenUri) updatePayload.token_uri = tokenUri;

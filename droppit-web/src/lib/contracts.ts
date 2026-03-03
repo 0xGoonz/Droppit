@@ -1,4 +1,5 @@
 import { base, baseSepolia } from "wagmi/chains";
+import { formatEther } from "viem";
 
 export type ChainContractConfig = {
     factoryAddress: `0x${string}` | "";
@@ -22,6 +23,10 @@ export const CHAIN_CONTRACTS: Record<number, ChainContractConfig> = {
             defaultImplementation) as `0x${string}` | ""),
     },
 };
+
+export const PROTOCOL_FEE_PER_MINT_WEI = 100000000000000n;
+export const PROTOCOL_FEE_PER_MINT_ETH = formatEther(PROTOCOL_FEE_PER_MINT_WEI);
+export const PROTOCOL_FEE_PER_MINT_LABEL = `${PROTOCOL_FEE_PER_MINT_ETH} ETH`;
 
 export function getChainContracts(chainId: number): ChainContractConfig | null {
     return CHAIN_CONTRACTS[chainId] || null;

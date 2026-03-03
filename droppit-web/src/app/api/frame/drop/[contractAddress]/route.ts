@@ -18,6 +18,7 @@ function getFrameHtmlResponse(opts: FrameOptions): string {
 }
 import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
+import { getAlchemyRpcUrl } from '@/lib/chains';
 
 function buildFrameUrls(baseUrl: string, contractAddress: string) {
     return {
@@ -38,12 +39,7 @@ const DROP_ABI = [
 // (create/page.tsx, drop/locked/route.ts, mint/route.ts, stats/route.ts, etc.)
 // Frame MVP is pinned to Base mainnet.
 const activeChain = base;
-
-// Prefer Alchemy RPC when configured; falls back to the chain's default public RPC.
-const alchemyNetwork = 'base-mainnet';
-const rpcUrl = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
-    ? `https://${alchemyNetwork}.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
-    : undefined;
+const rpcUrl = getAlchemyRpcUrl('base-mainnet');
 
 const publicClient = createPublicClient({
     chain: activeChain,

@@ -5,6 +5,7 @@ import {
     buildCreateDropTxPayload,
     extractTxHashFromPayload,
     prepareDeployFromDraft,
+    resolveFinalizeTxHash,
     resolveDropAddressFromReceipt,
     validateFramePayloadWithNeynar,
 } from "@/lib/frame-deploy";
@@ -12,7 +13,7 @@ import { getServiceRoleClient } from "@/lib/supabase";
 import { validateLockedContent, validateTxHash } from "@/lib/validation/drops";
 
 export const DEPLOY_DRAFT_SELECT =
-    "id, status, title, edition_size, mint_price, payout_recipient, creator_address, token_uri, image_url, locked_content_draft, contract_address";
+    "id, status, title, edition_size, mint_price, payout_recipient, creator_address, token_uri, image_url, locked_content_draft, contract_address, deploy_salt, deploy_commitment";
 
 type RenderFrameArgs = {
     buttons: FrameButton[];
@@ -193,7 +194,11 @@ export async function stageDraftSecretFromFrameInput(draftId: string, body: unkn
     const supabaseAdmin = getServiceRoleClient();
     await supabaseAdmin
         .from("drops")
-        .update({ locked_content_draft: lockedCheck.value })
+        .update({
+            locked_content_draft: lockedCheck.value,
+            deploy_salt: null,
+            deploy_commitment: null,
+        })
         .eq("id", draftId)
         .eq("status", "DRAFT");
 
@@ -247,7 +252,7 @@ export async function buildDeployTxFrameResponse({
         });
     }
 
-    const prepared = prepareDeployFromDraft(draft, validation.wallet);
+    const prepared = prepareDeployFromDraft(draft, validation.wallet, "tx-build");
     if (!prepared.ok) {
         return buildTxPayloadFallbackResponse({
             baseUrl,
@@ -257,6 +262,27 @@ export async function buildDeployTxFrameResponse({
             message: prepared.error,
             status: 400,
         });
+    }
+
+    if (prepared.value.draftDeployStatePatch) {
+        const supabaseAdmin = getServiceRoleClient();
+        const { error: stageError } = await supabaseAdmin
+            .from("drops")
+            .update(prepared.value.draftDeployStatePatch)
+            .eq("id", draft.id)
+            .eq("status", "DRAFT");
+
+        if (stageError) {
+            console.error("[Frame Deploy TX] Failed to stage deploy salt/commitment:", stageError);
+            return buildTxPayloadFallbackResponse({
+                baseUrl,
+                postUrl,
+                fallbackTarget,
+                fallbackImageSrc,
+                message: "Unable to stage deploy metadata before transaction build.",
+                status: 500,
+            });
+        }
     }
 
     return NextResponse.json(buildCreateDropTxPayload(prepared.value));
@@ -271,10 +297,7 @@ export async function finalizeDeployFromFrameCallback({
     draft,
     body,
 }: FinalizeContext): Promise<NextResponse | null> {
-    const directTxHash = extractTxHashFromPayload(body);
-    if (!directTxHash) {
-        return null;
-    }
+    const callbackPayloadTxHash = extractTxHashFromPayload(body);
 
     const messageBytes = extractMessageBytes(body);
     if (!messageBytes) {
@@ -318,12 +341,15 @@ export async function finalizeDeployFromFrameCallback({
         });
     }
 
-    const txHashCandidate = directTxHash || validationResult.txHash;
-    if (!txHashCandidate) {
+    const txHashSelection = resolveFinalizeTxHash(validationResult.txHash, callbackPayloadTxHash);
+    if (txHashSelection.kind === "none") {
         return null;
     }
+    if (txHashSelection.kind === "mismatch") {
+        return NextResponse.json({ error: txHashSelection.error }, { status: 400 });
+    }
 
-    const txHashCheck = validateTxHash(txHashCandidate);
+    const txHashCheck = validateTxHash(txHashSelection.txHash);
     if (!txHashCheck.valid) {
         return buildTxPayloadFallbackResponse({
             baseUrl,
@@ -335,7 +361,7 @@ export async function finalizeDeployFromFrameCallback({
         });
     }
 
-    const prepared = prepareDeployFromDraft(draft, validationResult.wallet);
+    const prepared = prepareDeployFromDraft(draft, validationResult.wallet, "finalize");
     if (!prepared.ok) {
         return buildTxPayloadFallbackResponse({
             baseUrl,

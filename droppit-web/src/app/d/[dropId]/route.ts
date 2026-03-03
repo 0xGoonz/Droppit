@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabase";
+import { normalizeReferralPayloadFromSearchParams } from "@/lib/attribution";
+
+function applyAttributionQueryParams(targetUrl: URL, sourceParams: URLSearchParams) {
+    const referralPayload = normalizeReferralPayloadFromSearchParams(sourceParams);
+
+    if (referralPayload.ref) {
+        targetUrl.searchParams.set("ref", referralPayload.ref);
+    }
+
+    for (const [key, value] of Object.entries(referralPayload.utm)) {
+        targetUrl.searchParams.set(key, value);
+    }
+}
 
 export async function GET(
     req: NextRequest,
@@ -9,7 +22,6 @@ export async function GET(
         const resolvedParams = await params;
         const dropId = resolvedParams.dropId;
         const searchParams = req.nextUrl.searchParams;
-        const ref = searchParams.get("ref");
 
         const supabaseAdmin = getServiceRoleClient();
 
@@ -27,20 +39,16 @@ export async function GET(
             // Non-live drops should land on draft-aware create flow.
             const draftUrl = new URL(`/create`, req.url);
             draftUrl.searchParams.set("draftId", dropId);
-            if (ref) {
-                draftUrl.searchParams.set("ref", ref);
-            }
+            applyAttributionQueryParams(draftUrl, searchParams);
             return NextResponse.redirect(draftUrl);
         }
 
         const canonicalUrl = new URL(`/drop/base/${data.contract_address}`, req.url);
-        if (ref) {
-            canonicalUrl.searchParams.set("ref", ref);
-        }
+        applyAttributionQueryParams(canonicalUrl, searchParams);
 
         return NextResponse.redirect(canonicalUrl, 301);
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Short link redirect error:", e);
         return new NextResponse("Internal Server Error", { status: 500 });
     }

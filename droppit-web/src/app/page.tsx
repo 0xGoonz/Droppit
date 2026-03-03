@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { BRAND, BRAND_LINKS } from "@/lib/brand";
+import { PROTOCOL_FEE_PER_MINT_LABEL } from "@/lib/contracts";
 
 const HERO_PARTICLES = [
   { left: "8%", top: "16%", size: 4, opacity: 0.45, duration: "4.4s", delay: "0s" },
@@ -174,7 +175,7 @@ export default function Home() {
             <PriceCard
               revealClassName="reveal-up reveal-delay-7"
               title="Protocol Fee (Per Mint)"
-              value="0.00005 ETH"
+              value={PROTOCOL_FEE_PER_MINT_LABEL}
               detail="Flat protocol fee per mint. Shown transparently in mint context."
             />
             <PriceCard

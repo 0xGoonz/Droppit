@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabase";
+import { PROTOCOL_FEE_PER_MINT_WEI } from "@/lib/contracts";
 import { createPublicClient, http, isAddress, formatEther, verifyMessage } from "viem";
 import { base, baseSepolia } from "viem/chains";
 
@@ -160,7 +161,7 @@ export async function POST(
                 if (row.session_id) uniqueSessions.add(row.session_id);
             });
         }
-        const uniqueVisitors = Math.max(uniqueSessions.size, 1);
+        const uniqueVisitors = uniqueSessions.size;
 
         const uniqueWallets = new Set<string>();
         if (uniqueWalletsRes.data) {
@@ -185,7 +186,7 @@ export async function POST(
 
         // 6) Onchain stats (live)
         let actualTotalMinted = dbTotalMinted;
-        let protocolFeePerMintStr = "100000000000000"; // 0.0001 ETH fallback
+        let protocolFeePerMintStr = PROTOCOL_FEE_PER_MINT_WEI.toString();
 
         if (drop.status === "LIVE" && drop.contract_address && isAddress(drop.contract_address)) {
             const chain = process.env.NEXT_PUBLIC_ENVIRONMENT === "sandbox" ? baseSepolia : base;
@@ -210,7 +211,7 @@ export async function POST(
                         address: drop.contract_address as `0x${string}`,
                         abi: implementationAbi,
                         functionName: "protocolFeePerMint",
-                    }).catch(() => BigInt(100000000000000)),
+                    }).catch(() => PROTOCOL_FEE_PER_MINT_WEI),
                 ]);
 
                 actualTotalMinted = Number(onchainMinted);
@@ -238,7 +239,7 @@ export async function POST(
             },
             traffic: {
                 totalViews,
-                uniqueVisitors: uniqueSessions.size,
+                uniqueVisitors,
                 uniqueConnectedWallets: uniqueWallets.size,
                 conversionRate: uniqueVisitors > 0 ? (actualTotalMinted / uniqueVisitors) * 100 : 0,
             },
