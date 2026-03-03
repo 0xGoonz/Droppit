@@ -19,6 +19,8 @@ export function getFrameHtmlResponse(opts: FrameOptions): string {
         : '';
 
     return `<!DOCTYPE html><html><head>
+        <meta property="og:title" content="Droppit Frame" />
+        <meta property="og:image" content="${opts.image.src}" />
         <meta property="fc:frame" content="vNext" />
         <meta property="fc:frame:image" content="${opts.image.src}" />
         <meta property="fc:frame:post_url" content="${opts.postUrl}" />

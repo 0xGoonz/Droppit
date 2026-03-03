@@ -73,18 +73,20 @@
 
 ### Primary Personas
 
-- **Creator**
-  - Wants a simple drop generator with predictable costs
-  - Wants a link that looks good in a feed and converts to mints
-- **Collector**
-  - Sees a link in a feed
-  - Clicks → lands on mint page → mints quickly and confidently
+- **Creator (Crypto Artists & Everyday Users)**
+  - Wants a simple drop generator with predictable costs.
+  - Wants a link that looks good in a feed and converts to mints instantly.
+  - *Event Organizers/Normies:* Wants to create digital souvenirs for weddings, birthdays, and IRL meetups without crypto friction.
+- **Collector / Follower / Guest**
+  - Sees a link in a feed or scans a QR code at an event.
+  - Clicks → lands on mint page → mints quickly and confidently in 1-2 taps.
 
 ### Core Use Cases
 
-- Creator uploads artwork, sets editions and price, publishes drop, shares link.
-- Creator casts an artwork on Warpcast and tags `@droppit` with deploy instructions; AI parses, drafts, and returns a deploy frame.
-- Collector opens link, sees art + authenticity, mints in 1–2 taps.
+- **Standard Drop:** Creator uploads artwork, sets editions and price, publishes drop, shares link.
+- **Agentic Launch:** Creator casts an artwork on Warpcast and tags `@droppit` with deploy instructions; AI parses, drafts, and returns a deploy frame.
+- **Immortalized Events:** Creator sets up a Free Mint for an event (wedding/birthday), guests scan a QR code to claim their "Modern Onchain Souvenir".
+- **Frictionless Minting:** Collector opens link, sees art + authenticity, mints in 1–2 taps.
 
 ---
 
@@ -767,6 +769,7 @@ Track:
 ### 11.1 Autonomous Farcaster Persona (MVP+)
 
 - Droppit AI operates as an active Farcaster account, not only a command parser.
+- **Persona Vibe:** **"Hybrid: Sassy Hype-man"**. High energy, extremely supportive (LFG, 🔥), but with a witty, slightly sarcastic edge to keep Farcaster engagement fun and meme-able.
 - Persona behavior is driven by modular prompt configuration (e.g., `soul.md`) with explicit brand/safety constraints.
 - **Automated milestone posts:** backend event listeners trigger quote-casts when drops hit configured thresholds (e.g., 25/50/100 mints).
 - **Daily curation:** scheduled cron reads `analytics_events` and publishes "Top Drops of the Day" on Base with transparent ranking criteria.
@@ -792,12 +795,19 @@ Track:
 - Reveal payload: *Never Gonna Give You Up* lyrics + `... guess who've got rick rolled 🫵🏼🤣`.
 - Purpose: make unlock mechanic legible, memorable, and share-native on Farcaster without changing trust/safety rules.
 
-### V1 (Adds ERC-721 option)
+### V1 Roadmap
 
-- Creator chooses ERC-1155 or ERC-721
-- Optional: royalties (EIP-2981)
-- Expand agent persona modules (e.g., `soul.md`) for style-safe autonomous posting controls
-- Maintain “one post = one artwork = one drop” + same trust section
+1. **Token Standard Expansion:** Adding an **ERC-721 option** (MVP is strictly ERC-1155 editions).
+2. **Rich Media Support:** Allowing **GIF and Video** uploads (MVP is currently images only: PNG/JPG/WebP).
+3. **Flexible Supply Mechanics:** **Open editions "until time X"** (timed mints). (MVP is fixed hard-cap supply only).
+4. **Onchain Affiliate Payouts:** Real revenue splitting for referrals using withdraw accounting and guardrails. (MVP only tracks attribution).
+5. **Royalties (EIP-2981):** Adding royalty settings and recipients. (Deferred from MVP).
+6. **Verifiable Secret Immutability:** Adding an **onchain commitment hash (`lockedMessageCommitment`)** for the mint-to-unlock feature, so users can mathematically verify the secret wasn't changed post-publish, plus adding a **“Commitment onchain ✅”** badge on the UI.
+7. **Smarter Agent:** Expanding the AI persona modules (e.g., `soul.md`) for more advanced, style-safe autonomous posting controls.
+8. **Theme / Event Modes:** Give creators the option to select UI themes (e.g., Wedding, Birthday, Standard) that change the mint page copy (e.g., changing "Mint" to "Claim Digital Souvenir").
+9. **Physical Redeemables (Phygitals):** Explicitly list that the Mint-to-Unlock feature can be used for IRL utilities like Shopify discount codes or event barcodes.
+10. **Memory Wall / Guestbook:** Add a feature where collectors can leave a short public message (e.g., "Happy birthday bro!") on the mint page when they claim the drop.
+11. **Creator-Selectable Agent Vibe:** Allow creators to override the default "Sassy Hype-man" persona by adding flags to their Farcaster cast (e.g., `@droppit --vibe=gallery` or `--vibe=roast`).
 
 ### Later (Post-grants)
 
