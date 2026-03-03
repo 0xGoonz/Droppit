@@ -162,17 +162,7 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
                         <p className="text-slate-400">Analytics for Drop {stats.drop.id.slice(0, 8)}... &middot; <span className="text-cyan-300 font-medium">{stats.drop.status}</span> &middot; {selectedChain.name}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <label className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-mono-brand">
-                            <span>Chain</span>
-                            <select
-                                value={selectedChainId}
-                                onChange={(event) => setSelectedChainId(Number(event.target.value) as 8453 | 84532)}
-                                className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
-                            >
-                                <option value="8453">Base</option>
-                                <option value="84532">Base Sepolia</option>
-                            </select>
-                        </label>
+
                     </div>
                 </div>
 

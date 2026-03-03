@@ -486,17 +486,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                         {selectedChain.name}
                     </div>
-                    <label className="hidden md:flex items-center gap-2 text-xs text-gray-400 font-mono">
-                        <span>Chain</span>
-                        <select
-                            value={selectedChainId}
-                            onChange={(event) => setSelectedChainId(Number(event.target.value) as 8453 | 84532)}
-                            className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
-                        >
-                            <option value="8453">Base</option>
-                            <option value="84532">Base Sepolia</option>
-                        </select>
-                    </label>
+
                     <Wallet>
                         <ConnectWallet className="bg-white/10 text-white hover:bg-white/20 px-6 py-2 rounded-full !min-w-[140px] text-sm font-medium transition-all shadow-[0_0_15px_rgba(255,255,255,0.05)]">
                             <Avatar className="h-6 w-6" />
@@ -700,14 +690,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                                 : "Mint Drop"}
                         </button>
 
-                        {hasMinted && receiptHref && (
-                            <Link
-                                href={receiptHref}
-                                className="w-full mt-3 py-3 rounded-full font-bold text-sm text-blue-300 bg-blue-500/15 hover:bg-blue-500/25 hover:text-white transition-all border border-blue-500/40 flex items-center justify-center"
-                            >
-                                View Receipt
-                            </Link>
-                        )}
+
 
                         <button
                             onClick={handleShare}
