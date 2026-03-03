@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceRoleClient } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { classifyRef, extractReferralPayloadFromBody, normalizeOptionalString } from '@/lib/attribution';
+import { isAddress } from 'viem';
 
 export async function POST(req: NextRequest) {
     try {
@@ -26,7 +27,19 @@ export async function POST(req: NextRequest) {
         const referralPayload = extractReferralPayloadFromBody(bodyRecord);
 
         if ((!rawDropId && !normalizedContractAddress) || !normalizedTxHash || !Number.isInteger(rawQuantity) || rawQuantity <= 0) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+            return NextResponse.json({ error: "Missing required fields or invalid quantity" }, { status: 400 });
+        }
+        if (rawDropId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawDropId)) {
+            return NextResponse.json({ error: "Invalid dropId format (must be UUID)" }, { status: 400 });
+        }
+        if (normalizedContractAddress && !isAddress(normalizedContractAddress)) {
+            return NextResponse.json({ error: "Invalid contractAddress format (must be EVM address)" }, { status: 400 });
+        }
+        if (normalizedWallet && !isAddress(normalizedWallet)) {
+            return NextResponse.json({ error: "Invalid wallet format (must be EVM address)" }, { status: 400 });
+        }
+        if (!/^0x[a-fA-F0-9]{64}$/.test(normalizedTxHash)) {
+            return NextResponse.json({ error: "Invalid txHash format (must be 66-character hex string starting with 0x)" }, { status: 400 });
         }
 
         const { refType, refNormalized } = classifyRef(referralPayload.ref);

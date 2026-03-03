@@ -10,7 +10,7 @@ import {
 
 export async function POST(req: NextRequest) {
     try {
-        const limited = await checkRateLimit(req, "draftCreate", "[Draft Create]");
+        const limited = await checkRateLimit(req, "createDraft", "[Draft Create]");
         if (limited) return limited;
 
         const body = await req.json();
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
         const walletScopedLimited = await checkRateLimit(
             req,
-            "draftCreate",
+            "createDraft",
             "[Draft Create]",
             { identityParts: ["wallet", addressCheck.value] }
         );

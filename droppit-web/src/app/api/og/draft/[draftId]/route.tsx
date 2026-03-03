@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { NextRequest } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import {
     OG_BRAND,
@@ -29,10 +31,13 @@ type DraftRow = {
 };
 
 export async function GET(
-    _request: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ draftId: string }> }
 ) {
     try {
+        const limited = await checkRateLimit(req, "ogRender", "[OG Render]");
+        if (limited) return limited;
+
         const resolvedParams = await params;
         const draftId = resolvedParams.draftId;
 

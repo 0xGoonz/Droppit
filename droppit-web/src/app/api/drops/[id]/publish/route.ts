@@ -70,7 +70,7 @@ export async function POST(
             return NextResponse.json({ error: "Missing draft ID" }, { status: 400 });
         }
 
-        const limited = await checkRateLimit(req, "draftPublish", "[Draft Publish]");
+        const limited = await checkRateLimit(req, "publish", "[Draft Publish]");
         if (limited) return limited;
 
         const body = await req.json();
@@ -80,13 +80,7 @@ export async function POST(
         const txHashCheck = validateTxHash(body.txHash);
         if (!txHashCheck.valid) return NextResponse.json({ error: txHashCheck.error }, { status: 400 });
 
-        const draftScopedLimited = await checkRateLimit(
-            req,
-            "draftPublish",
-            "[Draft Publish]",
-            { identityParts: ["drop", draftId, "tx", txHashCheck.value] }
-        );
-        if (draftScopedLimited) return draftScopedLimited;
+
 
         const addressCheck = validateEvmAddress(body.contractAddress, "contractAddress");
         if (!addressCheck.valid) return NextResponse.json({ error: addressCheck.error }, { status: 400 });
@@ -99,7 +93,7 @@ export async function POST(
 
         const { data: draft, error: draftError } = await supabaseAdmin
             .from('drops')
-            .select('id, status, locked_content_draft')
+            .select('id, status, locked_content_draft, creator_address')
             .eq('id', draftId)
             .eq('status', 'DRAFT')
             .single();
@@ -120,6 +114,14 @@ export async function POST(
             }
             return NextResponse.json({ error: "Cannot publish drop in current state." }, { status: 400 });
         }
+
+        const walletScopedLimited = await checkRateLimit(
+            req,
+            "publish",
+            "[Draft Publish]",
+            { identityParts: ["wallet", draft.creator_address] }
+        );
+        if (walletScopedLimited) return walletScopedLimited;
 
         // ── Resolve Locked Content with Precedence Rules ─────────
         // Priority: body.lockedContent (client override) > draft.locked_content_draft (staged from frame)

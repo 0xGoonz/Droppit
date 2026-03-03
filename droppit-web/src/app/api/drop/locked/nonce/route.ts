@@ -3,6 +3,12 @@ import { getServiceRoleClient } from "@/lib/supabase";
 import { checkRateLimit } from "@/lib/rate-limit";
 import crypto from "crypto";
 
+const NO_CACHE_HEADERS = {
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+};
+
 /**
  * POST /api/drop/locked/nonce
  *
@@ -12,15 +18,16 @@ import crypto from "crypto";
  */
 export async function POST(request: NextRequest) {
     try {
-        // Rate limit: nonce preset (20 reqs / 5 min)
-        const limited = await checkRateLimit(request, "nonce", "[Locked Nonce]");
-        if (limited) return limited;
-
         const { wallet, dropContract } = await request.json();
 
         if (!wallet || !dropContract) {
-            return NextResponse.json({ error: "wallet and dropContract are required." }, { status: 400 });
+            return NextResponse.json({ error: "wallet and dropContract are required." }, { status: 400, headers: NO_CACHE_HEADERS });
         }
+
+        const limited = await checkRateLimit(request, "unlockReveal", "[Locked Nonce]", {
+            identityParts: ["wallet", wallet, "drop", dropContract]
+        });
+        if (limited) return limited;
 
         const supabaseAdmin = getServiceRoleClient();
 
@@ -55,12 +62,12 @@ export async function POST(request: NextRequest) {
 
         if (error) {
             console.error("[Locked Nonce] DB Insert Error:", error);
-            return NextResponse.json({ error: "Failed to generate challenge" }, { status: 500 });
+            return NextResponse.json({ error: "Failed to generate challenge" }, { status: 500, headers: NO_CACHE_HEADERS });
         }
 
-        return NextResponse.json({ nonce });
+        return NextResponse.json({ nonce }, { headers: NO_CACHE_HEADERS });
     } catch (e) {
         console.error("[Locked Nonce] Error:", e);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500, headers: NO_CACHE_HEADERS });
     }
 }

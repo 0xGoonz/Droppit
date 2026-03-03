@@ -3,6 +3,7 @@ import { getServiceRoleClient } from '@/lib/supabase';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { classifyRef, extractReferralPayloadFromBody, normalizeOptionalString } from '@/lib/attribution';
 import crypto from 'crypto';
+import { isAddress } from 'viem';
 
 /**
  * Generates a stable anonymous session fingerprint.
@@ -46,7 +47,16 @@ export async function POST(req: NextRequest) {
         const referralPayload = extractReferralPayloadFromBody(bodyRecord);
 
         if (!rawDropId && !normalizedContractAddress) {
-            return NextResponse.json({ error: "Missing drop identifier" }, { status: 400 });
+            return NextResponse.json({ error: "Missing required fields: dropId or contractAddress must be provided" }, { status: 400 });
+        }
+        if (rawDropId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawDropId)) {
+            return NextResponse.json({ error: "Invalid dropId format (must be UUID)" }, { status: 400 });
+        }
+        if (normalizedContractAddress && !isAddress(normalizedContractAddress)) {
+            return NextResponse.json({ error: "Invalid contractAddress format (must be EVM address)" }, { status: 400 });
+        }
+        if (normalizedWallet && !isAddress(normalizedWallet)) {
+            return NextResponse.json({ error: "Invalid wallet format (must be EVM address)" }, { status: 400 });
         }
 
         const { refType, refNormalized } = classifyRef(referralPayload.ref);

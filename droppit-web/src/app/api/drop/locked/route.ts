@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getServiceRoleClient } from "@/lib/supabase";
 import { consumeNonceOnce } from "@/lib/nonce-consume";
 import { createPublicClient, http, parseAbi, verifyMessage, keccak256, encodePacked } from "viem";
@@ -24,7 +25,7 @@ const dropAbi = parseAbi([
 ]);
 
 const NO_CACHE_HEADERS = {
-    'Cache-Control': 'no-store, max-age=0, must-revalidate',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0'
 };
@@ -41,13 +42,18 @@ const ZERO_BYTES32 = '0x00000000000000000000000000000000000000000000000000000000
  * the server recomputes keccak256(encodePacked(salt, plaintext)) and compares
  * against the onchain value. Content is only revealed if they match.
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     try {
         const { tokenUri, userAddress, contractAddress, signature, nonce } = await request.json();
 
         if (!tokenUri || !userAddress || !contractAddress || !signature || !nonce) {
             return NextResponse.json({ error: "Missing required parameters (including signature & nonce)" }, { status: 400, headers: NO_CACHE_HEADERS });
         }
+
+        const limited = await checkRateLimit(request, "unlockReveal", "[Unlock Reveal]", {
+            identityParts: ["wallet", userAddress, "drop", contractAddress]
+        });
+        if (limited) return limited;
 
         const normalizedWallet = userAddress.toLowerCase();
         const normalizedContract = contractAddress.toLowerCase();

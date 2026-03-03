@@ -102,7 +102,17 @@ export async function POST(
             return NextResponse.json({ error: "Nonce has expired. Please request a new challenge." }, { status: 403 });
         }
 
-        // 3) Verify signature
+        // 3) Verify exact message contents server-side
+        if (
+            !nonce.includes(`Action: stats_read`) ||
+            !nonce.includes(`Wallet: ${wallet}`) ||
+            (!nonce.includes(`Contract: ${normalizedContract}`) && !nonce.includes(`Drop ID: ${drop.id}`)) ||
+            !nonce.includes(`Chain ID: ${expectedChainId}`)
+        ) {
+            return NextResponse.json({ error: "Challenge nonce payload content tampered." }, { status: 403 });
+        }
+
+        // 4) Verify signature
         const isValidSignature = await verifyMessage({
             address: wallet as `0x${string}`,
             message: nonce,
@@ -113,7 +123,7 @@ export async function POST(
             return NextResponse.json({ error: "Invalid signature." }, { status: 403 });
         }
 
-        // 4) Atomic nonce burn (anti-replay)
+        // 5) Atomic nonce burn (anti-replay)
         let burnQuery = supabaseAdmin
             .from("nonces")
             .update({ used: true })
@@ -139,7 +149,7 @@ export async function POST(
             return NextResponse.json({ error: "Challenge nonce has already been consumed." }, { status: 403 });
         }
 
-        // 5) Aggregate stats
+        // 6) Aggregate stats
         const dropId = drop.id;
         const [viewsRes, mintsRes, uniqueSessionsRes, uniqueWalletsRes, referrersRes] = await Promise.all([
             supabaseAdmin.from("analytics_events").select("id", { count: "exact", head: true }).eq("drop_id", dropId).eq("event", "page_view"),
@@ -184,7 +194,7 @@ export async function POST(
             .sort((a, b) => b.count - a.count)
             .slice(0, 10);
 
-        // 6) Onchain stats (live)
+        // 7) Onchain stats (live)
         let actualTotalMinted = dbTotalMinted;
         let protocolFeePerMintStr = PROTOCOL_FEE_PER_MINT_WEI.toString();
 
@@ -221,14 +231,14 @@ export async function POST(
             }
         }
 
-        // 7) Revenue
+        // 8) Revenue
         const mintPriceBigInt = BigInt(drop.mint_price || "0");
         const protocolFeeBigInt = BigInt(protocolFeePerMintStr);
         const mintedBigInt = BigInt(actualTotalMinted);
         const creatorRevenueWei = mintPriceBigInt * mintedBigInt;
         const protocolRevenueWei = protocolFeeBigInt * mintedBigInt;
 
-        // 8) Response
+        // 9) Response
         return NextResponse.json({
             drop: {
                 id: dropId,

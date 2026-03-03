@@ -12,10 +12,14 @@ export const RATE_LIMITS = {
     analytics: { maxPoints: 120, windowMinutes: 1 },
     // Webhook endpoints: allow bursts but cap sustained abuse
     webhook: { maxPoints: 60, windowMinutes: 5 },
-    // Draft create endpoint: tighter than generic endpoints
-    draftCreate: { maxPoints: 8, windowMinutes: 10 },
-    // Draft publish endpoint: tight since publish is privileged
-    draftPublish: { maxPoints: 6, windowMinutes: 10 },
+    // Draft create endpoint: 5 per day (wallet-scoped)
+    createDraft: { maxPoints: 5, windowMinutes: 1440 },
+    // Draft publish endpoint: 3 per hour (wallet-scoped)
+    publish: { maxPoints: 3, windowMinutes: 60 },
+    // Unlock reveal endpoint: 10 per hour (wallet + drop scoped)
+    unlockReveal: { maxPoints: 10, windowMinutes: 60 },
+    // OG render endpoint: 60 per minute (IP scoped)
+    ogRender: { maxPoints: 60, windowMinutes: 1 },
 } as const;
 
 export type RateLimitPreset = keyof typeof RATE_LIMITS;

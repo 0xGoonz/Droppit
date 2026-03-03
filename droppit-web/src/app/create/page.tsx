@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formatEther, parseEther, keccak256, encodePacked, isAddress } from "viem";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL, ALLOWED_MIME_ACCEPT } from "@/lib/constants/upload";
+import { validateLockedContent } from "@/lib/validation/drops";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage } from "wagmi";
 import {
     ConnectWallet,
@@ -583,11 +584,9 @@ export default function CreateDrop() {
                                             value={formData.lockedContent}
                                             onChange={(e) => {
                                                 const val = e.target.value;
-                                                // Spec: Block URLs/links at input validation
-                                                const lowerVal = val.toLowerCase().replace(/[\u200B-\u200D\uFEFF]/g, '');
-                                                const urlRegex = /\b[a-z][a-z0-9+\-.]*:\/\/|\bwww\.|\b[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+\b|\b(\d{1,3}\.){3}\d{1,3}\b|\[[^\]]+\]\([^)]+\)/;
-                                                if (urlRegex.test(lowerVal)) {
-                                                    setFormError("URLs and links are not allowed in locked content for security reasons.");
+                                                const check = validateLockedContent(val);
+                                                if (!check.valid) {
+                                                    setFormError(check.error);
                                                 } else {
                                                     setFormError(null);
                                                 }
@@ -608,7 +607,7 @@ export default function CreateDrop() {
                                             <span className="text-3xl text-blue-400">👤</span>
                                         </div>
                                         <h3 className="text-xl font-bold mb-2">Creator Identity (Optional)</h3>
-                                        <p className="text-gray-400 text-sm">Sign a message with your wallet to explicitly link your Droppit account to an external handle for verification tracking on the drop page.</p>
+                                        <p className="text-gray-400 text-sm">Sign a message with your wallet to explicitly link your Droppit account to an external handle for a wallet-linked identity signal on the drop page.</p>
                                     </div>
 
                                     <div className="p-6 bg-blue-900/10 border border-blue-500/20 rounded-2xl space-y-4">
@@ -631,7 +630,7 @@ export default function CreateDrop() {
                                             {identityVerified ? (
                                                 <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center gap-3 text-green-400">
                                                     <span>✅</span>
-                                                    <span className="font-semibold text-sm">Identity Linked: @{formData.farcasterHandle}</span>
+                                                    <span className="font-semibold text-sm">Linked to @{formData.farcasterHandle}</span>
                                                 </div>
                                             ) : (
                                                 <button
@@ -639,7 +638,7 @@ export default function CreateDrop() {
                                                     disabled={!formData.farcasterHandle || isLinkingIdentity}
                                                     className="w-full py-3 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 font-bold hover:bg-blue-600/30 hover:border-blue-500/50 transition-all disabled:opacity-30 disabled:pointer-events-none"
                                                 >
-                                                    {isLinkingIdentity ? "Signing..." : "Sign to verify handle"}
+                                                    {isLinkingIdentity ? "Signing..." : "Link handle via signature"}
                                                 </button>
                                             )}
                                         </div>
@@ -684,7 +683,7 @@ export default function CreateDrop() {
                                         </div>
                                         <div className="flex justify-between pb-4 border-b border-white/10">
                                             <span className="text-gray-500">Price</span>
-                                            <span className="text-white">{formData.mintPrice} ETH</span>
+                                            <span className={Number(formData.mintPrice) === 0 ? "text-green-400 font-bold" : "text-white"}>{Number(formData.mintPrice) === 0 ? "Free mint" : `${formData.mintPrice} ETH`}</span>
                                         </div>
                                         <div className="flex justify-between pb-2">
                                             <span className="text-gray-500">Recipient</span>
@@ -717,17 +716,9 @@ export default function CreateDrop() {
 
                                             if (step === 2) {
                                                 if (formData.lockedContent) {
-                                                    const normalized = formData.lockedContent.normalize('NFKC').toLowerCase().replace(/[\u200B-\u200D\uFEFF]/g, '');
-                                                    const blockedPatterns = [
-                                                        /\b[a-z][a-z0-9+\-.]*:\/\//,
-                                                        /\bwww\./,
-                                                        /\b[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+\b/,
-                                                        /\b(\d{1,3}\.){3}\d{1,3}\b/,
-                                                        /\[[^\]]+\]\([^)]+\)/
-                                                    ];
-
-                                                    if (blockedPatterns.some(pattern => pattern.test(normalized))) {
-                                                        setFormError("URLs and links are not allowed in locked content for security reasons.");
+                                                    const check = validateLockedContent(formData.lockedContent);
+                                                    if (!check.valid) {
+                                                        setFormError(check.error);
                                                         return;
                                                     }
                                                 }
@@ -749,7 +740,7 @@ export default function CreateDrop() {
 
                                             // Step 3 handles identity internally vs skip explicit handler.
                                             if (step === 3 && formData.farcasterHandle && !identityVerified) {
-                                                setFormError("Please sign to verify your entered handle, or clear the box completely to skip anonymously.");
+                                                setFormError("Please link your entered handle via signature, or clear the box completely to skip anonymously.");
                                                 return;
                                             }
 

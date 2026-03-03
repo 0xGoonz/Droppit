@@ -215,7 +215,7 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
                         <div className="text-3xl font-bold mb-4">{Number(stats.revenue.creatorRevenueEth).toFixed(4)} <span className="text-sm font-normal text-slate-500">ETH</span></div>
                         <div className="flex justify-between items-end border-t border-white/10 pt-4 mt-4 text-sm">
                             <span className="text-slate-500">Asset Price</span>
-                            <span className="font-mono-brand">{stats.drop.mintPriceEth} ETH</span>
+                            <span className={Number(stats.drop.mintPriceEth) === 0 ? "text-green-400 font-bold font-mono-brand" : "font-mono-brand"}>{Number(stats.drop.mintPriceEth) === 0 ? "Free mint" : `${stats.drop.mintPriceEth} ETH`}</span>
                         </div>
                     </div>
 

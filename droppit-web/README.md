@@ -83,6 +83,24 @@ This switch is used consistently across: `create/page.tsx`, `drop/base/[contract
 
 ---
 
+## MVP Scope & Non-Goals
+
+### Implemented Features (MVP)
+Droppit AI implements a highly focused set of features aimed at frictionless ERC-1155 drops and agentic creation.
+- **Canonical Minting:** `/drop/base/[contractAddress]`
+- **Farcaster Minting Frames:** `/api/frame/drop/[contractAddress]`, `/api/frame/drop/[contractAddress]/mint`
+- **Agentic Creation:** NLP-driven drop deployment via `@droppit` tags (`/api/webhooks/neynar`).
+- **Locked Content:** Mint-to-unlock encrypted secrets (`/api/drop/locked`).
+- **Creator Stats:** Signature-gated analytics dashboard (`/api/stats/[contractAddress]`).
+
+### Explicit Non-Goals
+To keep the MVP minimal, secure, and highly focused, the following are explicitly **not** supported:
+- ❌ **No Public Gallery:** There is no index or discovery page for drops. Drops are exclusively distributed via direct link or Farcaster Frame.
+- ❌ **No Allowlists or Presales:** Drops are public and open to anyone with the link/frame.
+- ❌ **No Token Gating:** We do not restrict minting based on external token or NFT ownership.
+
+---
+
 ## Key API Routes
 
 ### Drop Lifecycle

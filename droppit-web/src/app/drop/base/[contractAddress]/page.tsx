@@ -71,6 +71,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     const [hasMinted, setHasMinted] = useState(false);
     const [copied, setCopied] = useState(false);
     const [copiedTrustKey, setCopiedTrustKey] = useState<string | null>(null);
+    const [isLockedContentCopied, setIsLockedContentCopied] = useState(false);
     const [lockedContentData, setLockedContentData] = useState<string | null>(null);
     const [isUnlocking, setIsUnlocking] = useState(false);
     const [unlockError, setUnlockError] = useState<string | null>(null);
@@ -465,6 +466,17 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         }
     }, []);
 
+    const handleCopyLockedContent = React.useCallback(async () => {
+        if (!lockedContentData) return;
+        try {
+            await navigator.clipboard.writeText(lockedContentData);
+            setIsLockedContentCopied(true);
+            setTimeout(() => setIsLockedContentCopied(false), 2000);
+        } catch (err) {
+            console.error("Failed to copy locked content", err);
+        }
+    }, [lockedContentData]);
+
     return (
         <div className="min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20">
             <nav className="p-6 border-b border-white/10 bg-black/45 backdrop-blur-xl sticky top-0 z-50 flex justify-between items-center">
@@ -549,7 +561,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                             <div>
                                 <p className="text-sm text-gray-500 mb-1">Price</p>
                                 {Number(priceEth) === 0 ? (
-                                    <p className="text-2xl font-bold text-green-400">Free Mint</p>
+                                    <p className="text-2xl font-bold text-green-400">Free mint</p>
                                 ) : (
                                     <p className="text-2xl font-bold text-white">{priceEth} ETH</p>
                                 )}
@@ -561,31 +573,6 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 </p>
                             </div>
                         </div>
-
-                        {/* Price Breakdown */}
-                        {!isLoading && (
-                            <div className="mb-6 p-3 bg-white/[0.02] rounded-xl border border-white/5 space-y-1.5 text-xs font-mono">
-                                <div className="flex justify-between text-gray-500">
-                                    <span>Creator Price</span>
-                                    <span>{Number(priceEth) === 0 ? "Free" : `${priceEth} ETH`}</span>
-                                </div>
-                                <div className="flex justify-between text-gray-500">
-                                    <span>Protocol Fee</span>
-                                    <span>{formatEther(rawProtocolFee)} ETH</span>
-                                </div>
-                                <div className="h-px bg-white/10 my-1" />
-                                <div className="flex justify-between text-white font-bold text-sm">
-                                    <span>Total per mint</span>
-                                    <span>{formatEther(rawPrice + rawProtocolFee)} ETH</span>
-                                </div>
-                                {quantity > 1 && (
-                                    <div className="flex justify-between text-blue-400 text-sm">
-                                        <span>× {quantity}</span>
-                                        <span>{formatEther((rawPrice + rawProtocolFee) * BigInt(quantity))} ETH</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
 
                         {/* Quantity & Gifting Options */}
                         <div className="space-y-4 mb-6">
@@ -654,6 +641,33 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 )}
                             </div>
                         </div>
+
+                        {/* Price Breakdown (Before confirmation) */}
+                        {!isLoading && (
+                            <div className="mb-4 p-4 bg-[#111] border border-white/10 rounded-2xl space-y-2">
+                                <div className="flex justify-between text-gray-400 text-sm">
+                                    <span>Mint price</span>
+                                    <span className="font-mono">{Number(priceEth) === 0 ? "Free mint" : `${priceEth} ETH`}</span>
+                                </div>
+                                <div className="flex justify-between text-gray-400 text-sm">
+                                    <span>Protocol fee</span>
+                                    <span className="font-mono">{formatEther(rawProtocolFee)} ETH</span>
+                                </div>
+                                {quantity > 1 && (
+                                    <div className="flex justify-between text-white text-sm">
+                                        <span>Subtotal (1 qty)</span>
+                                        <span className="font-mono">{formatEther(rawPrice + rawProtocolFee)} ETH</span>
+                                    </div>
+                                )}
+                                <div className="h-px bg-white/10 my-2" />
+                                <div className="flex justify-between items-center text-white">
+                                    <span className="font-bold">Total {quantity > 1 ? `(× ${quantity})` : ""}</span>
+                                    <span className="font-mono text-lg font-bold text-blue-400">
+                                        {formatEther((rawPrice + rawProtocolFee) * BigInt(quantity))} ETH
+                                    </span>
+                                </div>
+                            </div>
+                        )}
 
                         {!isMintEnabledForSelectedChain && (
                             <div className="mb-4 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-200 text-xs font-mono">
@@ -733,9 +747,21 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 </p>
                             )}
                             {isContentUnlocked && lockedContentData && (
-                                <p className="text-sm font-mono text-indigo-200/80 break-words whitespace-pre-wrap">
-                                    {lockedContentData}
-                                </p>
+                                <div className="mt-4 pt-4 border-t border-indigo-500/20">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-xs font-mono text-indigo-300/70">Secret Data</span>
+                                        <button
+                                            type="button"
+                                            onClick={handleCopyLockedContent}
+                                            className="px-1.5 py-0.5 rounded border border-indigo-500/30 text-indigo-300 hover:text-white hover:border-indigo-400/50 transition-colors text-xs font-mono"
+                                        >
+                                            {isLockedContentCopied ? "Copied" : "Copy"}
+                                        </button>
+                                    </div>
+                                    <p className="text-sm font-mono text-indigo-200/80 break-words whitespace-pre-wrap">
+                                        {lockedContentData}
+                                    </p>
+                                </div>
                             )}
                         </div>
                     )}
@@ -751,12 +777,12 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                     </span>
                                     {creatorIdentity && (
                                         <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                                            {farcasterHandle ? `Wallet-linked to @${farcasterHandle}` : "Wallet-linked social handle"}
+                                            {farcasterHandle ? `Wallet-linked: @${farcasterHandle}` : "Wallet-linked profile"}
                                         </span>
                                     )}
                                     {creatorIdentity && (
                                         <span className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-300 border border-green-500/20">
-                                            Linked via wallet signature
+                                            Linked via signature
                                         </span>
                                     )}
                                     {creatorProfileHref && (
@@ -801,7 +827,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                             : creatorIdentity?.fid
                                                 ? `Farcaster FID ${creatorIdentity.fid} (wallet-linked)`
                                                 : creatorIdentity
-                                                    ? "Linked via wallet signature (no Farcaster FID recorded)"
+                                                    ? "Linked via signature (no Farcaster FID recorded)"
                                                     : isErrorEns
                                                         ? "ENS lookup unavailable"
                                                         : isLoadingEns

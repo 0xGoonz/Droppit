@@ -293,6 +293,71 @@ contract DropTest is Test {
         drop.mint{value: perTokenTotal}(1);
     }
 
+    /// @dev Invariant: creator cannot override per-drop protocolFeePerMint at create time.
+    /// Since createDrop() doesn't accept a fee parameter and initialize() can only be called once,
+    /// manual setup attempts with custom fees will revert.
+    function test_cannotOverrideProtocolFeePerMint() public {
+        vm.prank(initialOwner);
+        address dropAddress = factory.createDrop(
+            editionSize,
+            mintPrice,
+            payoutRecipient,
+            tokenUri,
+            bytes32(0)
+        );
+        Drop1155 drop = Drop1155(dropAddress);
+
+        // Attempt to re-initialize the same drop clone with a different (0) fee
+        vm.prank(initialOwner);
+        vm.expectRevert(abi.encodeWithSignature("InvalidInitialization()"));
+        drop.initialize(
+            initialOwner,
+            editionSize,
+            mintPrice,
+            payoutRecipient,
+            protocolFeeRecipient,
+            0, // Custom 0 fee spoof
+            tokenUri,
+            bytes32(0)
+        );
+
+        // Factory-enforced fee is completely intact
+        assertEq(drop.protocolFeePerMint(), defaultProtocolFee);
+    }
+
+    /// @dev Invariant: fee updates only affect new drops. Old drops retain their initialized fee.
+    function test_feeUpdatesOnlyAffectNewDrops() public {
+        // 1. Create Drop A with initial fee
+        vm.prank(initialOwner);
+        address dropA = factory.createDrop(
+            editionSize,
+            mintPrice,
+            payoutRecipient,
+            tokenUri,
+            bytes32(0)
+        );
+        assertEq(Drop1155(dropA).protocolFeePerMint(), defaultProtocolFee);
+
+        // 2. Factory Owner updates the global fee
+        uint256 newFee = 0.0002 ether;
+        factory.setDefaultProtocolFeePerMint(newFee);
+        assertEq(factory.defaultProtocolFeePerMint(), newFee);
+
+        // 3. Drop A maintains the OLD fee
+        assertEq(Drop1155(dropA).protocolFeePerMint(), defaultProtocolFee);
+
+        // 4. Create Drop B and ensure it gets the NEW fee
+        vm.prank(initialOwner);
+        address dropB = factory.createDrop(
+            editionSize,
+            mintPrice,
+            payoutRecipient,
+            tokenUri,
+            bytes32(0)
+        );
+        assertEq(Drop1155(dropB).protocolFeePerMint(), newFee);
+    }
+
     /// @dev Invariant: lockedMessageCommitment is initialized exactly once and preserved.
     function test_lockedMessageCommitmentInitializationIntegrity() public {
         bytes32 commitment = keccak256("locked-message-commitment");

@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { isAddress } from "viem";
 import {
@@ -43,10 +44,12 @@ function normalizeHandle(raw: string | null | undefined): string | null {
 }
 
 export async function GET(
-    _req: NextRequest,
+    req: NextRequest,
     { params }: { params: Promise<{ dropIdOrAddress: string }> }
 ) {
     try {
+        const limited = await checkRateLimit(req, "ogRender", "[OG Render]");
+        if (limited) return limited;
         const resolvedParams = await params;
         const identifier = resolvedParams.dropIdOrAddress;
 

@@ -38,8 +38,20 @@ export async function POST(request: NextRequest) {
         const normalizedDropId = dropIdRaw || null;
         const action = "stats_read";
         const chainId = process.env.NEXT_PUBLIC_ENVIRONMENT === "production" ? "8453" : "84532";
-        const nonce = randomBytes(32).toString("hex");
+        const issuedAt = new Date().toISOString();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+        const randomHex = randomBytes(16).toString("hex");
+
+        const nonce = [
+            `Droppit AI Stats Access`,
+            `Action: ${action}`,
+            `Wallet: ${normalizedWallet}`,
+            normalizedContract ? `Contract: ${normalizedContract}` : `Drop ID: ${normalizedDropId}`,
+            `Chain ID: ${chainId}`,
+            `Issued At: ${issuedAt}`,
+            `Expires At: ${expiresAt}`,
+            `Nonce: ${randomHex}`
+        ].join('\n');
 
         let invalidateQuery = supabaseAdmin
             .from("nonces")
