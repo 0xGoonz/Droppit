@@ -373,6 +373,12 @@ export default function CreateDrop() {
                 <BrandLockup markSize={24} wordmarkClassName="text-xl font-bold tracking-tight" />
 
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => router.push('/creator')}
+                        className="hidden sm:inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white font-medium transition-colors border border-transparent hover:border-white/10 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                    >
+                        My Drops
+                    </button>
                     <label className="hidden sm:flex items-center gap-2 text-xs text-gray-400 font-mono">
                         <span>Chain</span>
                         <select
