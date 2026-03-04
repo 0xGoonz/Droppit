@@ -372,8 +372,8 @@ export default function CreateDrop() {
             <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
 
             {/* Nav */}
-            <nav className="relative z-20 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
-                <BrandLockup markSize={24} wordmarkClassName="text-xl font-bold tracking-tight" />
+            <nav className="relative z-20 flex items-center justify-between px-4 py-5 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+                <BrandLockup markSize={28} wordmarkClassName="text-xl font-bold tracking-tight" />
 
                 <div className="flex items-center gap-3">
                     <button

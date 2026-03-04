@@ -1,4 +1,12 @@
-<h1 align="center">🎨 Droppit</h1>
+<p align="center">
+  <img src="assets/banner.png" alt="Droppit Banner" width="100%" />
+</p>
+
+<p align="center">
+  <img src="assets/logo.png" alt="Droppit Logo" width="80" />
+</p>
+
+<h1 align="center">Droppit</h1>
 
 <p align="center">
   <strong>The native Farcaster drop infrastructure for Base.</strong><br/>
@@ -64,14 +72,19 @@ droppit/
 │   │   ├── app/
 │   │   │   ├── create/         # Drop creation wizard
 │   │   │   ├── drop/           # Canonical mint page
-│   │   │   └── api/            # 14+ API routes
+│   │   │   └── api/            # Complete API routes
+│   │   │       ├── agent/      # AI intent parser
+│   │   │       ├── attribution/# View and mint attribution
+│   │   │       ├── creator/    # Creator profiles
+│   │   │       ├── drop/       # Locked content unlock
 │   │   │       ├── drops/      # CRUD + publish lifecycle
 │   │   │       ├── frame/      # Farcaster Frame endpoints
-│   │   │       ├── drop/       # Locked content unlock
-│   │   │       ├── webhooks/   # Neynar webhook ingestion
-│   │   │       ├── agent/      # AI intent parser
+│   │   │       ├── identity/   # Identity and auth
 │   │   │       ├── og/         # Dynamic OG image generation
-│   │   │       └── ...
+│   │   │       ├── receipt/    # View receipt endpoints
+│   │   │       ├── stats/      # Creator analytics
+│   │   │       ├── upload/     # Artwork upload
+│   │   │       └── webhooks/   # Neynar webhook ingestion
 │   │   └── lib/
 │   │       ├── crypto/         # AES-256-GCM encryption
 │   │       ├── validation/     # Shared input validators
@@ -84,7 +97,8 @@ droppit/
 │       └── check-schema-conformance.ts  # CI schema drift detection
 │
 ├── BRANDING.md                 # Official brand guidelines & assets
-└── droppitv2.md                # MVP Product Specification
+├── litepaper.md                # Droppit Litepaper documentation
+└── product-spec.md             # MVP Product Specification
 ```
 
 ---
@@ -281,21 +295,26 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
 
 | Route | Method | Description |
 |-------|--------|-------------|
+| `/api/agent/parse-deploy-intent` | POST | Parse cast text into structured drop intent |
+| `/api/attribution/view` | POST | Record page view attribution |
+| `/api/attribution/mint` | POST | Record mint attribution |
+| `/api/creator/...` | GET/POST| Creator profile and settings management |
+| `/api/drop/locked` | POST | Decrypt + return locked content (ownership-gated) |
+| `/api/drop/locked/nonce` | POST | Issue challenge nonce for unlock |
 | `/api/drops` | POST | Create draft drop |
-| `/api/drops/[id]` | GET | Lifecycle-aware fetch (DRAFT hydration or LIVE/PUBLISHED non-editable payload) |
+| `/api/drops/[id]` | GET | Lifecycle-aware fetch (DRAFT or LIVE non-editable) |
 | `/api/drops/[id]/publish` | POST | Publish: encrypt + transition DRAFT → LIVE |
 | `/api/drops/by-address/[address]` | GET | Lookup drop by contract address |
 | `/api/frame/deploy/[castHash]` | POST | Deploy frame for webhook-originated drafts |
 | `/api/frame/draft/[draftId]/deploy` | POST | Deploy frame for direct drafts |
 | `/api/frame/drop/[contractAddress]` | GET | Collector mint frame metadata |
 | `/api/frame/drop/[contractAddress]/mint` | POST | Frame mint transaction data |
-| `/api/drop/locked` | POST | Decrypt + return locked content (ownership-gated) |
-| `/api/drop/locked/nonce` | POST | Issue challenge nonce for unlock |
-| `/api/webhooks/neynar` | POST | Ingest Farcaster casts (HMAC-verified) |
-| `/api/agent/parse-deploy-intent` | POST | Parse cast text into structured drop intent |
+| `/api/identity/...` | GET/POST| Identity resolution and management |
 | `/api/og/drop/[dropIdOrAddress]` | GET | Dynamic OG image generation |
-| `/api/attribution/view` | POST | Record page view attribution |
-| `/api/attribution/mint` | POST | Record mint attribution |
+| `/api/receipt/...` | GET  | View receipt rendering and logic |
+| `/api/stats/...` | GET  | Creator analytics and drop statistics |
+| `/api/upload/...` | POST | Direct file upload handlers |
+| `/api/webhooks/neynar` | POST | Ingest Farcaster casts (HMAC-verified) |
 | `/r/[code]` | GET | Referral shortlink resolution and redirect |
 
 ---

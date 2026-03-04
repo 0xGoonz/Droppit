@@ -72,14 +72,14 @@ export default function CreatorHubPage() {
         <div className="relative min-h-screen bg-[#05070f] text-white overflow-hidden">
             <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
 
-            <nav className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
-                <BrandLockup markSize={24} wordmarkClassName="text-xl font-bold tracking-tight" />
+            <nav className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+                <BrandLockup markSize={28} wordmarkClassName="text-xl font-bold tracking-tight" />
                 <div className="flex items-center gap-3">
                     <Link
                         href="/create"
-                        className="rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-5 py-2 text-sm font-bold text-white transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_20px_rgba(0,82,255,0.3)]"
+                        className="lift-hover rounded-full border border-[#22D3EE]/40 bg-[#0052FF]/20 px-4 py-2 text-sm font-semibold text-blue-100 transition-colors hover:bg-[#0052FF]/35"
                     >
-                        Create New Drop
+                        Start a Drop
                     </Link>
                     <Wallet>
                         <ConnectWallet className="rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 text-sm font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">

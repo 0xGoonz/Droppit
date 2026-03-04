@@ -103,7 +103,7 @@ export function HeroSection() {
                     className="relative z-40"
                 >
                     <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
-                        <BrandLockup markSize={32} wordmarkClassName="text-2xl font-bold tracking-tight" />
+                        <BrandLockup markSize={28} wordmarkClassName="text-2xl font-bold tracking-tight" />
                         <div className="flex items-center gap-3">
                             <Link
                                 href="#how-it-works"

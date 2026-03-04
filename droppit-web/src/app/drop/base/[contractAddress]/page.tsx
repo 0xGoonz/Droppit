@@ -481,9 +481,15 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     return (
         <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
             <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
-            <nav className="relative z-20 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
-                <BrandLockup markSize={24} wordmarkClassName="text-xl font-bold tracking-tight" />
-                <div className="flex items-center gap-4">
+            <nav className="relative z-20 flex items-center justify-between px-4 py-5 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+                <BrandLockup markSize={28} wordmarkClassName="text-xl font-bold tracking-tight" />
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/create"
+                        className="hidden sm:inline-flex lift-hover rounded-full border border-[#22D3EE]/40 bg-[#0052FF]/20 px-4 py-2 text-sm font-semibold text-blue-100 transition-colors hover:bg-[#0052FF]/35"
+                    >
+                        Start a Drop
+                    </Link>
                     <div className="hidden md:flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-mono text-slate-400">
                         <div className="h-2 w-2 rounded-full bg-[#22D3EE] animate-pulse" />
                         {selectedChain.name}
