@@ -78,6 +78,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     const [isContentUnlocked, setIsContentUnlocked] = useState(false);
     const [referralPayload, setReferralPayload] = useState<ReferralPayload>({ ref: null, utm: {} });
     const [isReferralReady, setIsReferralReady] = useState(false);
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     const hasTrackedViewRef = React.useRef(false);
     const trackedMintSessionKeysRef = React.useRef<Set<string>>(new Set());
 
@@ -478,112 +479,124 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     }, [lockedContentData]);
 
     return (
-        <div className="min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20">
-            <nav className="p-6 border-b border-white/10 bg-black/45 backdrop-blur-xl sticky top-0 z-50 flex justify-between items-center">
+        <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
+            <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
+            <nav className="relative z-20 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
                 <BrandLockup markSize={24} wordmarkClassName="text-xl font-bold tracking-tight" />
                 <div className="flex items-center gap-4">
-                    <div className="hidden md:flex px-3 py-1.5 bg-white/5 rounded-full text-xs font-mono text-gray-400 border border-white/10 items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    <div className="hidden md:flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-mono text-slate-400">
+                        <div className="h-2 w-2 rounded-full bg-[#22D3EE] animate-pulse" />
                         {selectedChain.name}
                     </div>
 
                     <Wallet>
-                        <ConnectWallet className="bg-white/10 text-white hover:bg-white/20 px-6 py-2 rounded-full !min-w-[140px] text-sm font-medium transition-all shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-                            <Avatar className="h-6 w-6" />
-                            <Name />
+                        <ConnectWallet className="rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 text-sm font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">
+                            <Avatar className="h-7 w-7 ring-2 ring-[#0052FF]/30" />
                         </ConnectWallet>
-                        <WalletDropdown className="bg-[#111] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-                            <Identity className="px-4 pt-4 pb-2 text-white hover:bg-white/5 transition-colors" hasCopyAddressOnClick>
-                                <Avatar className="h-10 w-10 ring-2 ring-blue-500/50" />
+                        <WalletDropdown className="border border-white/[0.08] bg-[#0B1020] rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                            <Identity className="px-4 pt-4 pb-2 text-white hover:bg-white/[0.03] transition-colors" hasCopyAddressOnClick>
+                                <Avatar className="h-10 w-10 ring-2 ring-[#0052FF]/40" />
                                 <Name className="text-white font-bold" />
-                                <Address className="text-gray-400 font-mono text-sm" />
-                                <EthBalance className="text-blue-400 font-bold" />
+                                <Address className="text-slate-400 font-mono text-sm" />
+                                <EthBalance className="text-[#22D3EE] font-bold" />
                             </Identity>
-                            <div className="h-px bg-white/10 w-full" />
+                            <div className="h-px bg-white/[0.06] w-full" />
                             <WalletDropdownDisconnect className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold" text="Disconnect" />
                         </WalletDropdown>
                     </Wallet>
                 </div>
             </nav>
 
-            <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-12 grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-12 grid grid-cols-1 lg:grid-cols-2 gap-12">
                 {/* Left: Artwork */}
-                <div className="relative w-full max-w-lg mx-auto lg:mx-0 rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(59,130,246,0.15)] bg-white/5 group flex flex-col justify-center items-center min-h-[300px]">
+                <div
+                    className={`relative w-full max-w-lg mx-auto lg:mx-0 rounded-3xl overflow-hidden border border-white/[0.06] shadow-[0_0_50px_rgba(0,82,255,0.1)] bg-white/[0.02] group cursor-pointer self-start lg:sticky lg:top-24 ${drop.image ? '' : 'aspect-square'}`}
+                    onClick={() => drop.image && setIsLightboxOpen(true)}
+                >
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10 pointer-events-none" />
 
                     {drop.image ? (
-                        <img src={drop.image} alt={drop.title} className="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-700 block relative z-0" />
+                        <img src={drop.image} alt={drop.title} className="w-full h-auto object-contain object-center group-hover:scale-105 transition-transform duration-700 block relative z-0 m-auto" />
                     ) : (
-                        <div className="absolute inset-0 flex items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-700 z-0">🖼️</div>
+                        <div className="absolute inset-0 flex items-center justify-center z-0">
+                            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/8 text-[#22D3EE]">
+                                <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="1.2"><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                            </div>
+                        </div>
                     )}
 
-                    <div className="absolute bottom-6 left-6 z-20">
-                        <div className="text-xs font-mono text-blue-400 bg-blue-500/10 px-2 py-1 rounded inline-block mb-2 backdrop-blur-md border border-blue-500/20">
+                    <div className="absolute bottom-6 left-6 z-20 flex items-center gap-2">
+                        <div className="text-xs font-mono text-[#22D3EE] bg-[#0052FF]/10 px-2.5 py-1 rounded-lg inline-block backdrop-blur-md border border-[#0052FF]/20">
                             ERC-1155
                         </div>
+                        {drop.image && (
+                            <div className="text-xs text-slate-400 bg-black/40 px-2.5 py-1 rounded-lg backdrop-blur-md border border-white/[0.06] opacity-0 group-hover:opacity-100 transition-opacity">
+                                Click to expand
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {/* Right: Info & Minting */}
                 <div className="flex flex-col justify-center">
                     <div className="mb-8">
-                        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
+                        <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
                             {isLoading ? "Loading Drop..." : drop.title}
                         </h1>
-                        <div className="flex items-center gap-3 text-sm text-gray-400 mb-6">
-                            <span className="font-mono bg-white/5 px-2 py-1 rounded border border-white/10 text-gray-300">
+                        <div className="flex items-center gap-3 text-sm text-slate-400 mb-6">
+                            <span className="font-mono rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 text-slate-300">
                                 Created by {isLoading ? "Loading..." : creatorDisplay}
                             </span>
                             {isCreatorViewer && (
                                 <Link
                                     href={`/drop/base/${contractAddress}/stats`}
-                                    className="font-mono bg-blue-500/10 text-blue-400 px-2 py-1 rounded border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
+                                    className="font-mono rounded-lg border border-[#0052FF]/20 bg-[#0052FF]/10 px-2.5 py-1 text-[#22D3EE] hover:bg-[#0052FF]/20 transition-colors"
                                 >
                                     View Stats
                                 </Link>
                             )}
                         </div>
-                        <p className="text-gray-400 leading-relaxed text-lg">{drop.description}</p>
+                        <p className="text-slate-400 leading-relaxed text-lg">{drop.description}</p>
                     </div>
 
-                    <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-6 mb-8 backdrop-blur-sm">
+                    <div className="rounded-3xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent p-6 mb-8 backdrop-blur-sm">
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <div>
-                                <p className="text-sm text-gray-500 mb-1">Price</p>
+                                <p className="text-sm text-slate-500 mb-1">Price</p>
                                 {Number(priceEth) === 0 ? (
-                                    <p className="text-2xl font-bold text-green-400">Free mint</p>
+                                    <p className="text-2xl font-bold text-[#22D3EE]">Free mint</p>
                                 ) : (
                                     <p className="text-2xl font-bold text-white">{priceEth} ETH</p>
                                 )}
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500 mb-1">Minted</p>
+                                <p className="text-sm text-slate-500 mb-1">Minted</p>
                                 <p className="text-2xl font-bold text-white">
-                                    {minted} <span className="text-gray-600 text-lg">/ {supply}</span>
+                                    {minted} <span className="text-slate-600 text-lg">/ {supply}</span>
                                 </p>
                             </div>
                         </div>
 
                         {/* Quantity & Gifting Options */}
                         <div className="space-y-4 mb-6">
-                            <div className="flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-2xl">
-                                <span className="text-gray-300 font-medium">Quantity</span>
-                                <div className="flex items-center gap-4 bg-black/50 rounded-full px-2 py-1">
+                            <div className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4">
+                                <span className="text-slate-300 font-medium">Quantity</span>
+                                <div className="flex items-center gap-4 rounded-full border border-white/[0.06] bg-[#05070f]/60 px-2 py-1">
                                     <button
                                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] font-bold transition-all hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={quantity <= 1 || isSoldOut}
                                     >-</button>
                                     <span className="font-mono w-4 text-center">{quantity}</span>
                                     <button
                                         onClick={() => setQuantity(Math.min(maxSelectable, quantity + 1))}
-                                        className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.05] font-bold transition-all hover:bg-white/[0.1] disabled:opacity-50 disabled:cursor-not-allowed"
                                         disabled={quantity >= maxSelectable || isSoldOut}
                                     >+</button>
                                 </div>
                             </div>
 
-                            <div className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-3">
+                            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4 space-y-3">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -593,9 +606,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                             setIsGifting(nextValue);
                                             if (!nextValue) setRecipientError(null);
                                         }}
-                                        className="w-5 h-5 rounded border-white/20 bg-black/50 text-blue-500 focus:ring-blue-500 focus:ring-offset-black"
+                                        className="w-5 h-5 rounded border-white/20 bg-[#05070f]/50 text-[#0052FF] focus:ring-[#0052FF] focus:ring-offset-[#05070f]"
                                     />
-                                    <span className="text-gray-300 font-medium">Mint as Gift</span>
+                                    <span className="text-slate-300 font-medium">Mint as Gift</span>
                                 </label>
                                 {isGifting && (
                                     <div className="space-y-2">
@@ -619,9 +632,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                                 setRecipientError(null);
                                             }}
                                             onBlur={() => setRecipient((prev) => prev.trim())}
-                                            className={`w-full bg-black/50 border rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-colors ${recipientError
+                                            className={`w-full rounded-xl border bg-white/[0.02] px-4 py-3 text-white text-sm focus:outline-none transition-all ${recipientError
                                                 ? "border-red-500/70 focus:border-red-400"
-                                                : "border-white/10 focus:border-blue-500"
+                                                : "border-white/[0.08] focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)]"
                                                 }`}
                                         />
                                         {recipientError && (
@@ -634,12 +647,12 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
                         {/* Price Breakdown (Before confirmation) */}
                         {!isLoading && (
-                            <div className="mb-4 p-4 bg-[#111] border border-white/10 rounded-2xl space-y-2">
-                                <div className="flex justify-between text-gray-400 text-sm">
+                            <div className="mb-4 p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] space-y-2">
+                                <div className="flex justify-between text-slate-400 text-sm">
                                     <span>Mint price</span>
                                     <span className="font-mono">{Number(priceEth) === 0 ? "Free mint" : `${priceEth} ETH`}</span>
                                 </div>
-                                <div className="flex justify-between text-gray-400 text-sm">
+                                <div className="flex justify-between text-slate-400 text-sm">
                                     <span>Protocol fee</span>
                                     <span className="font-mono">{formatEther(rawProtocolFee)} ETH</span>
                                 </div>
@@ -649,10 +662,10 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         <span className="font-mono">{formatEther(rawPrice + rawProtocolFee)} ETH</span>
                                     </div>
                                 )}
-                                <div className="h-px bg-white/10 my-2" />
+                                <div className="h-px bg-white/[0.06] my-2" />
                                 <div className="flex justify-between items-center text-white">
                                     <span className="font-bold">Total {quantity > 1 ? `(× ${quantity})` : ""}</span>
-                                    <span className="font-mono text-lg font-bold text-blue-400">
+                                    <span className="font-mono text-lg font-bold text-[#22D3EE]">
                                         {formatEther((rawPrice + rawProtocolFee) * BigInt(quantity))} ETH
                                     </span>
                                 </div>
@@ -674,7 +687,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                     ? "bg-red-500/20 text-red-500 border border-red-500/50 cursor-not-allowed"
                                     : (isMinting || isLoading || isPending || isConfirming || !isMintEnabledForSelectedChain)
                                         ? "bg-white/10 text-white/50 cursor-not-allowed"
-                                        : "bg-white text-black hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                                        : "bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(0,82,255,0.35)]"
                                 }`}
                         >
                             {!isMintEnabledForSelectedChain
@@ -694,7 +707,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
                         <button
                             onClick={handleShare}
-                            className="w-full mt-4 py-3 rounded-full font-bold text-sm text-gray-400 bg-white/5 hover:bg-white/10 hover:text-white transition-all border border-white/5"
+                            className="w-full mt-4 py-3 rounded-full font-bold text-sm text-slate-400 border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:text-white transition-all"
                         >
                             {copied ? "Link Copied! ✓" : "Share Link 🔗"}
                         </button>
@@ -702,25 +715,25 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
                     {/* Locked Content Unlock */}
                     {userAddress && (
-                        <div className="p-6 rounded-2xl bg-indigo-900/20 border border-indigo-500/30 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="rounded-2xl border border-[#7C3AED]/15 bg-gradient-to-b from-[#7C3AED]/[0.06] to-transparent p-6 animate-in fade-in slide-in-from-top-4 duration-500">
                             <div className="flex items-center justify-between gap-4 mb-3">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-indigo-400">🔓</span>
-                                    <h3 className="font-bold text-indigo-300">Locked Content</h3>
+                                    <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#7C3AED]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></svg>
+                                    <h3 className="font-bold text-[#7C3AED] text-sm">Locked Content</h3>
                                 </div>
                                 <button
                                     onClick={handleUnlockContent}
                                     disabled={!canAttemptUnlock || isUnlocking || isContentUnlocked}
                                     className={`px-4 py-2 rounded-full text-xs font-semibold transition-all border ${(!canAttemptUnlock || isUnlocking || isContentUnlocked)
-                                        ? "bg-white/10 text-white/50 border-white/10 cursor-not-allowed"
-                                        : "bg-indigo-500/20 text-indigo-200 border-indigo-400/40 hover:bg-indigo-500/30"
+                                        ? "bg-white/[0.05] text-white/50 border-white/[0.08] cursor-not-allowed"
+                                        : "bg-[#7C3AED]/15 text-[#7C3AED] border-[#7C3AED]/30 hover:bg-[#7C3AED]/25"
                                         }`}
                                 >
                                     {isContentUnlocked ? "Unlocked" : isUnlocking ? "Unlocking..." : "Unlock Content"}
                                 </button>
                             </div>
                             {!canAttemptUnlock && (
-                                <p className="text-sm text-indigo-200/70">
+                                <p className="text-sm text-slate-500">
                                     Loading drop metadata to enable unlock verification...
                                 </p>
                             )}
@@ -730,18 +743,18 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 </p>
                             )}
                             {isContentUnlocked && lockedContentData && (
-                                <div className="mt-4 pt-4 border-t border-indigo-500/20">
+                                <div className="mt-4 pt-4 border-t border-[#7C3AED]/15">
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="text-xs font-mono text-indigo-300/70">Secret Data</span>
+                                        <span className="text-xs font-mono text-[#7C3AED]/70">Secret Data</span>
                                         <button
                                             type="button"
                                             onClick={handleCopyLockedContent}
-                                            className="px-1.5 py-0.5 rounded border border-indigo-500/30 text-indigo-300 hover:text-white hover:border-indigo-400/50 transition-colors text-xs font-mono"
+                                            className="px-1.5 py-0.5 rounded border border-[#7C3AED]/25 text-[#7C3AED] hover:text-white hover:border-[#7C3AED]/40 transition-colors text-xs font-mono"
                                         >
                                             {isLockedContentCopied ? "Copied" : "Copy"}
                                         </button>
                                     </div>
-                                    <p className="text-sm font-mono text-indigo-200/80 break-words whitespace-pre-wrap">
+                                    <p className="text-sm font-mono text-[#22D3EE]/80 break-words whitespace-pre-wrap">
                                         {lockedContentData}
                                     </p>
                                 </div>
@@ -750,16 +763,16 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                     )}
 
                     {/* Trust Section */}
-                    <div className="mt-8 pt-8 border-t border-white/10">
-                        <div className="flex flex-col gap-2 text-xs text-gray-500 font-mono bg-black/30 p-4 rounded-xl border border-white/5">
+                    <div className="mt-8 pt-8 border-t border-white/[0.06]">
+                        <div className="flex flex-col gap-2 text-xs text-slate-500 font-mono rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <span className="shrink-0">Creator</span>
                                 <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                                    <span className="text-right text-gray-300 break-all">
+                                    <span className="text-right text-slate-300 break-all">
                                         {isLoading ? "Loading..." : creatorDisplay}
                                     </span>
                                     {creatorIdentity && (
-                                        <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                        <span className="px-1.5 py-0.5 rounded bg-[#0052FF]/10 text-[#22D3EE] border border-[#0052FF]/20">
                                             {farcasterHandle ? `Wallet-linked: @${farcasterHandle}` : "Wallet-linked profile"}
                                         </span>
                                     )}
@@ -773,7 +786,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                             href={creatorProfileHref}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30"
+                                            className="text-[#22D3EE] hover:text-[#0052FF] underline decoration-[#0052FF]/30"
                                         >
                                             Profile
                                         </a>
@@ -783,7 +796,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                             href={creatorExplorerHref}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-blue-400 hover:text-blue-300 underline decoration-blue-500/30"
+                                            className="text-[#22D3EE] hover:text-[#0052FF] underline decoration-[#0052FF]/30"
                                         >
                                             Explorer
                                         </a>
@@ -792,7 +805,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         <button
                                             type="button"
                                             onClick={() => handleCopyTrustValue(creatorAddress, "creator")}
-                                            className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:text-white hover:border-white/25"
+                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20"
                                         >
                                             {copiedTrustKey === "creator" ? "Copied" : "Copy"}
                                         </button>
@@ -843,14 +856,14 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         href={`${explorerUrl}/address/${contractAddress}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="hover:text-blue-400 text-blue-500 underline decoration-blue-500/30"
+                                        className="hover:text-[#0052FF] text-[#22D3EE] underline decoration-[#0052FF]/30"
                                     >
                                         {shortAddress(contractAddress)}
                                     </a>
                                     <button
                                         type="button"
                                         onClick={() => handleCopyTrustValue(contractAddress, "drop-contract")}
-                                        className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:text-white hover:border-white/25"
+                                        className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20"
                                     >
                                         {copiedTrustKey === "drop-contract" ? "Copied" : "Copy"}
                                     </button>
@@ -867,20 +880,20 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                             href={`${explorerUrl}/address/${factoryAddress}#code`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="hover:text-gray-300 underline decoration-white/20 text-gray-400"
+                                            className="hover:text-slate-300 underline decoration-white/20 text-slate-400"
                                         >
                                             {shortAddress(factoryAddress)}
                                         </a>
                                         <button
                                             type="button"
                                             onClick={() => handleCopyTrustValue(factoryAddress, "factory")}
-                                            className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:text-white hover:border-white/25"
+                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20"
                                         >
                                             {copiedTrustKey === "factory" ? "Copied" : "Copy"}
                                         </button>
                                     </div>
                                 ) : (
-                                    <span className="text-gray-600">{isError ? "Unavailable" : "Not detected"}</span>
+                                    <span className="text-slate-600">{isError ? "Unavailable" : "Not detected"}</span>
                                 )}
                             </div>
 
@@ -894,14 +907,14 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                             href={`${explorerUrl}/address/${implementationAddress}#code`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="hover:text-gray-300 underline decoration-white/20 text-gray-400"
+                                            className="hover:text-slate-300 underline decoration-white/20 text-slate-400"
                                         >
                                             {shortAddress(implementationAddress)}
                                         </a>
                                         <button
                                             type="button"
                                             onClick={() => handleCopyTrustValue(implementationAddress, "implementation")}
-                                            className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:text-white hover:border-white/25"
+                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20"
                                         >
                                             {copiedTrustKey === "implementation" ? "Copied" : "Copy"}
                                         </button>
@@ -911,7 +924,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 )}
                             </div>
                         </div>
-                        <p className="text-xs text-center text-gray-600 font-mono mt-4">
+                        <p className="text-xs text-center text-slate-600 font-mono mt-4">
                             Secured by Base L2. 100% Non-Custodial.
                             <br />
                             <span className="opacity-70 mt-1 inline-block">Names and wallet-linked social profiles are informational signals only and do not constitute Farcaster/Warpcast verification or KYC.</span>
@@ -919,6 +932,28 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                     </div>
                 </div>
             </main >
+
+            {/* Lightbox Overlay */}
+            {isLightboxOpen && drop.image && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-xl cursor-zoom-out animate-in fade-in duration-200"
+                    onClick={() => setIsLightboxOpen(false)}
+                >
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setIsLightboxOpen(false); }}
+                        className="absolute top-6 right-6 flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.05] text-white transition-all hover:bg-white/[0.1] z-[110]"
+                        aria-label="Close"
+                    >
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </button>
+                    <img
+                        src={drop.image}
+                        alt={drop.title}
+                        className="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-[0_0_80px_rgba(0,82,255,0.2)] animate-in zoom-in-95 duration-300"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div >
     );
 }

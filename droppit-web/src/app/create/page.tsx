@@ -143,10 +143,10 @@ export default function CreateDrop() {
                         commitment: deployedState.commitment
                     })
                 }).then(() => {
-                    router.push(`/drop/base/${dropAddress}/stats`);
+                    router.push(`/drop/base/${dropAddress}`);
                 }).catch(err => {
                     console.error("Publish failed:", err);
-                    router.push(`/drop/base/${dropAddress}/stats`);
+                    router.push(`/drop/base/${dropAddress}`);
                 });
             }
         }
@@ -367,49 +367,52 @@ export default function CreateDrop() {
     }, [autoDeploy, hasHydrated, hydrationError, address, file, chainId, formError, isUploading, isPending, isConfirming, isSuccess, handleDeploy, draftTokenUri, hasSelectedChainContractConfig, selectedFactoryAddress, selectedChain]);
 
     return (
-        <div className="min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20">
-            {/* Simple Nav with Wallet */}
-            <nav className="p-6 flex justify-between items-center max-w-5xl mx-auto">
+        <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
+            {/* Background gradient — matches all pages */}
+            <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
+
+            {/* Nav */}
+            <nav className="relative z-20 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
                 <BrandLockup markSize={24} wordmarkClassName="text-xl font-bold tracking-tight" />
 
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => router.push('/creator')}
-                        className="hidden sm:inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white font-medium transition-colors border border-transparent hover:border-white/10 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10"
+                        className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-400 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white"
                     >
                         My Drops
                     </button>
-                    <label className="hidden sm:flex items-center gap-2 text-xs text-gray-400 font-mono">
-                        <span>Chain</span>
+                    <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-mono text-slate-400">
+                        <div className="h-2 w-2 rounded-full bg-[#22D3EE] animate-pulse" />
                         <select
                             value={selectedChainId}
                             onChange={(event) => setSelectedChainId(Number(event.target.value) as 8453 | 84532)}
-                            className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                            className="bg-transparent text-xs text-white focus:outline-none cursor-pointer appearance-none pr-4"
+                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0 center' }}
                         >
-                            <option value="8453">Base</option>
-                            <option value="84532">Base Sepolia</option>
+                            <option value="8453" className="bg-[#0B1020] text-white">Base</option>
+                            <option value="84532" className="bg-[#0B1020] text-white">Base Sepolia</option>
                         </select>
-                    </label>
+                    </div>
                     <Wallet>
-                        <ConnectWallet className="bg-white/10 text-white hover:bg-white/20 px-6 py-2 rounded-full !min-w-[160px] font-medium transition-all">
-                            <Avatar className="h-6 w-6" />
-                            <Name />
+                        <ConnectWallet className="rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">
+                            <Avatar className="h-7 w-7 ring-2 ring-[#0052FF]/30" />
                         </ConnectWallet>
-                        <WalletDropdown className="bg-[#111] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-                            <Identity className="px-4 pt-4 pb-2 text-white hover:bg-white/5 transition-colors" hasCopyAddressOnClick>
-                                <Avatar className="h-10 w-10 ring-2 ring-purple-500/50" />
+                        <WalletDropdown className="border border-white/[0.08] bg-[#0B1020] rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                            <Identity className="px-4 pt-4 pb-2 text-white hover:bg-white/[0.03] transition-colors" hasCopyAddressOnClick>
+                                <Avatar className="h-10 w-10 ring-2 ring-[#0052FF]/40" />
                                 <Name className="text-white font-bold" />
-                                <Address className="text-gray-400 font-mono text-sm" />
-                                <EthBalance className="text-purple-400 font-bold" />
+                                <Address className="text-slate-400 font-mono text-sm" />
+                                <EthBalance className="text-[#22D3EE] font-bold" />
                             </Identity>
-                            <div className="h-px bg-white/10 w-full" />
+                            <div className="h-px bg-white/[0.06] w-full" />
                             <WalletDropdownDisconnect className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold" text="Disconnect" />
                         </WalletDropdown>
                     </Wallet>
                 </div>
             </nav>
 
-            <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-12">
+            <main className="relative z-10 mx-auto max-w-3xl px-4 sm:px-6 pt-12">
                 {/* Hydration loading / error indicators */}
                 {draftId && !hasHydrated && (
                     <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
@@ -438,13 +441,13 @@ export default function CreateDrop() {
                 )}
                 {!address ? (
                     <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="w-20 h-20 bg-purple-500/10 rounded-full flex items-center justify-center mb-2">
-                            <span className="text-3xl">🔌</span>
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10 mb-2">
+                            <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                         </div>
-                        <h1 className="text-4xl font-extrabold tracking-tight">Connect your Wallet</h1>
-                        <p className="text-gray-400 max-w-md mx-auto">Connect your wallet to configure and deploy an ERC-1155 Drop on {selectedChain.name}.</p>
+                        <h1 className="font-display text-4xl font-extrabold tracking-tight">Connect your Wallet</h1>
+                        <p className="text-slate-400 max-w-md mx-auto">Connect your wallet to configure and deploy an ERC-1155 Drop on {selectedChain.name}.</p>
                         <Wallet>
-                            <ConnectWallet className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(219,39,119,0.4)] px-8 py-3 rounded-full !min-w-[200px]">
+                            <ConnectWallet className="bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white font-bold hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_30px_rgba(0,82,255,0.35)] px-8 py-3 rounded-full !min-w-[200px]">
                                 <Avatar className="h-6 w-6" />
                                 <Name />
                             </ConnectWallet>
@@ -453,27 +456,36 @@ export default function CreateDrop() {
                 ) : (
                     <>
                         <div className="mb-12">
-                            <h1 className="text-4xl font-extrabold tracking-tight mb-4">Launch your Drop</h1>
-                            <p className="text-gray-400">Configure your {selectedChain.name} ERC-1155 contract and unlockable content.</p>
+                            <div className="mb-3 inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/70">
+                                Create Drop
+                            </div>
+                            <h1 className="font-display text-4xl font-extrabold tracking-tight mb-3">Launch your Drop</h1>
+                            <p className="text-slate-400">Configure your {selectedChain.name} ERC-1155 contract and unlockable content.</p>
                         </div>
 
                         {/* Stepper */}
-                        <div className="flex items-center gap-4 mb-12">
+                        <div className="flex items-center gap-3 mb-12">
                             {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="flex items-center gap-4 flex-1">
+                                <div key={i} className="flex items-center gap-3 flex-1">
                                     <div
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${step >= i ? "bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.4)]" : "bg-white/5 text-gray-500"
+                                        className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-all duration-300 ${step >= i
+                                            ? "bg-gradient-to-br from-[#0052FF] to-[#22D3EE] text-white shadow-[0_0_20px_rgba(0,82,255,0.35)]"
+                                            : step === i - 1
+                                                ? "border border-[#0052FF]/30 bg-[#0052FF]/10 text-[#22D3EE]"
+                                                : "border border-white/[0.06] bg-white/[0.02] text-slate-600"
                                             }`}
                                     >
-                                        {i}
+                                        {step > i ? (
+                                            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" /></svg>
+                                        ) : i}
                                     </div>
-                                    {i !== 4 && <div className={`h-[2px] w-full ${step > i ? "bg-purple-600/50" : "bg-white/5"}`} />}
+                                    {i !== 4 && <div className={`h-[2px] w-full rounded-full transition-all duration-300 ${step > i ? "bg-gradient-to-r from-[#0052FF] to-[#22D3EE]/50" : "bg-white/[0.04]"}`} />}
                                 </div>
                             ))}
                         </div>
 
                         {/* Form Container */}
-                        <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
+                        <div className="rounded-3xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent p-8 shadow-[0_0_0_1px_rgba(0,82,255,0.04),0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl">
                             {/* Error Message Display */}
                             {formError && (
                                 <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
@@ -485,28 +497,33 @@ export default function CreateDrop() {
 
                             {step === 1 && (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-2">
+                                        <h3 className="font-display text-lg font-bold text-white">Drop Details</h3>
+                                        <p className="text-sm text-slate-500">Give your drop a name, tell its story, and upload the artwork.</p>
+                                    </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Drop Title</label>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">Drop Title</label>
                                         <input
                                             type="text"
                                             value={formData.title}
                                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
                                             placeholder="e.g. The Farcaster Genesis"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
                                         <textarea
                                             value={formData.description}
                                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors h-32 resize-none"
+                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all h-32 resize-none"
                                             placeholder="Tell the story behind this drop..."
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Artwork Image (PNG, JPG, WebP)</label>
-                                        <div className="border-2 border-dashed border-white/20 rounded-2xl p-8 text-center hover:bg-white/[0.02] transition-colors cursor-pointer">
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">Artwork Image</label>
+                                        <p className="text-xs text-slate-500 mb-3">PNG, JPG, or WebP · Max {MAX_UPLOAD_SIZE_LABEL}</p>
+                                        <div className="group relative rounded-2xl border-2 border-dashed border-white/[0.08] p-8 text-center transition-all hover:border-[#0052FF]/30 hover:bg-[#0052FF]/[0.02] cursor-pointer">
                                             <input
                                                 type="file"
                                                 accept={ALLOWED_MIME_ACCEPT}
@@ -528,14 +545,16 @@ export default function CreateDrop() {
                                                         <img
                                                             src={URL.createObjectURL(file)}
                                                             alt="Preview"
-                                                            className="max-h-[250px] max-w-full object-contain rounded-xl border border-white/10 shadow-[0_0_20px_rgba(147,51,234,0.2)]"
+                                                            className="max-h-[250px] max-w-full object-contain rounded-xl border border-white/[0.08] shadow-[0_0_30px_rgba(0,82,255,0.15)]"
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <div className="text-4xl mb-4">🖼️</div>
+                                                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/8 text-[#22D3EE] transition-transform group-hover:scale-110">
+                                                        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 16V7" /><path d="M8.5 10.5L12 7l3.5 3.5" /><rect x="4" y="16" width="16" height="4" rx="1.5" /></svg>
+                                                    </div>
                                                 )}
-                                                <span className="text-gray-400 font-medium">
-                                                    {file ? file.name : `Click to upload media (max ${MAX_UPLOAD_SIZE_LABEL})`}
+                                                <span className="text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
+                                                    {file ? file.name : "Click to upload artwork"}
                                                 </span>
                                             </label>
                                         </div>
@@ -545,47 +564,60 @@ export default function CreateDrop() {
 
                             {step === 2 && (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="grid grid-cols-2 gap-6">
+                                    <div className="mb-2">
+                                        <h3 className="font-display text-lg font-bold text-white">Pricing & Config</h3>
+                                        <p className="text-sm text-slate-500">Set your edition size, mint price, and optional locked content.</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-5">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-2">Edition Size (Max Supply)</label>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">Edition Size</label>
                                             <input
                                                 type="number"
                                                 min="1" max="10000"
                                                 value={formData.editionSize}
-                                                onChange={(e) => setFormData({ ...formData, editionSize: e.target.value })}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                                                onChange={(e) => {
+                                                    let val = e.target.value;
+                                                    if (val !== "" && parseInt(val, 10) > 10000) {
+                                                        val = "10000";
+                                                    }
+                                                    setFormData({ ...formData, editionSize: val });
+                                                }}
+                                                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
                                             />
-                                            <p className="text-xs text-gray-500 mt-2">Between 1 and 10,000</p>
+                                            <p className="text-xs text-slate-600 mt-2">Between 1 and 10,000</p>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-2">Mint Price (ETH)</label>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">Mint Price (ETH)</label>
                                             <input
                                                 type="number"
                                                 step="0.0001"
                                                 min="0"
                                                 value={formData.mintPrice}
                                                 onChange={(e) => setFormData({ ...formData, mintPrice: e.target.value })}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                                                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
                                             />
-                                            <p className="text-xs text-gray-500 mt-2">Set to 0 for Free Mints</p>
+                                            <p className="text-xs text-slate-600 mt-2">Set to 0 for Free Mints</p>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Wallet to receive funds (defaults to you)</label>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">Payout Recipient</label>
                                         <input
                                             type="text"
                                             value={formData.payoutRecipient}
                                             onChange={(e) => setFormData({ ...formData, payoutRecipient: e.target.value })}
-                                            className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors font-mono disabled:opacity-50"
+                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all font-mono disabled:opacity-50"
                                             placeholder={address ? address : "0x..."}
                                         />
-                                        <p className="text-xs text-gray-500 mt-2">Optional: specify a different wallet address to receive mint proceeds.</p>
+                                        <p className="text-xs text-slate-600 mt-2">Defaults to your connected wallet.</p>
                                     </div>
 
-                                    <div className="p-4 rounded-xl bg-purple-900/10 border border-purple-500/20">
-                                        <h4 className="font-semibold text-purple-300 mb-1">Locked Content (Supabase Vault)</h4>
-                                        <p className="text-sm text-purple-200/60 mb-4">This special message, link, or password will only be visible to wallets that own the NFT.</p>
+                                    <div className="rounded-2xl border border-[#7C3AED]/15 bg-gradient-to-b from-[#7C3AED]/[0.06] to-transparent p-5">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#7C3AED]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></svg>
+                                            <h4 className="font-semibold text-[#7C3AED] text-sm">Locked Content (Mint-to-Unlock)</h4>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mb-4">Secret message only visible to wallets that own the NFT. Text only — no URLs.</p>
                                         <textarea
                                             value={formData.lockedContent}
                                             onChange={(e) => {
@@ -599,7 +631,7 @@ export default function CreateDrop() {
                                                 setFormData({ ...formData, lockedContent: val });
                                             }}
                                             maxLength={1000}
-                                            className="w-full bg-black/80 border border-purple-500/30 rounded-xl px-4 py-3 text-green-400 font-mono text-sm focus:outline-none focus:border-purple-500 transition-colors h-32 resize-none"
+                                            className="w-full rounded-xl border border-[#7C3AED]/20 bg-[#0B1020]/80 px-4 py-3 text-[#22D3EE] font-mono text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#7C3AED]/40 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)] transition-all h-32 resize-none"
                                             placeholder="e.g. The secret password for the event is 'BASE'"
                                         />
                                     </div>
@@ -609,23 +641,23 @@ export default function CreateDrop() {
                             {step === 3 && (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <div className="text-center mb-8">
-                                        <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
-                                            <span className="text-3xl text-blue-400">👤</span>
+                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10">
+                                            <svg viewBox="0 0 24 24" className="h-7 w-7 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                                         </div>
-                                        <h3 className="text-xl font-bold mb-2">Creator Identity (Optional)</h3>
-                                        <p className="text-gray-400 text-sm">Sign a message with your wallet to explicitly link your Droppit account to an external handle for a wallet-linked identity signal on the drop page.</p>
+                                        <h3 className="font-display text-xl font-bold mb-2">Creator Identity</h3>
+                                        <p className="text-sm text-slate-400 max-w-md mx-auto">Link a Farcaster handle via wallet signature. This is optional — not KYC.</p>
                                     </div>
 
-                                    <div className="p-6 bg-blue-900/10 border border-blue-500/20 rounded-2xl space-y-4">
+                                    <div className="rounded-2xl border border-[#0052FF]/15 bg-gradient-to-b from-[#0052FF]/[0.05] to-transparent p-6 space-y-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-blue-300 mb-2">Handle / Username</label>
+                                            <label className="block text-sm font-medium text-[#22D3EE]/80 mb-2">Handle / Username</label>
                                             <div className="relative">
-                                                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-blue-400/50 font-mono">@</span>
+                                                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-[#0052FF]/50 font-mono">@</span>
                                                 <input
                                                     type="text"
                                                     value={formData.farcasterHandle}
                                                     onChange={(e) => setFormData({ ...formData, farcasterHandle: e.target.value.replace(/[^a-zA-Z0-9_.-]/g, '') })}
-                                                    className="w-full bg-black/60 border border-blue-500/30 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors font-mono disabled:opacity-50"
+                                                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] pl-10 pr-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all font-mono disabled:opacity-50"
                                                     placeholder="e.g. jesse.base"
                                                     disabled={identityVerified}
                                                 />
@@ -634,29 +666,29 @@ export default function CreateDrop() {
 
                                         <div className="pt-2">
                                             {identityVerified ? (
-                                                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center gap-3 text-green-400">
-                                                    <span>✅</span>
+                                                <div className="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.06] p-4 text-green-400">
+                                                    <svg viewBox="0 0 16 16" className="h-5 w-5 shrink-0" fill="currentColor"><path d="M8 1a7 7 0 110 14A7 7 0 018 1zm3.22 4.72a.75.75 0 00-1.06.02L7.4 8.78 5.84 7.22a.75.75 0 00-1.08 1.04l2.1 2.1a.75.75 0 001.07-.01l3.3-3.55a.75.75 0 00-.01-1.08z" /></svg>
                                                     <span className="font-semibold text-sm">Linked to @{formData.farcasterHandle}</span>
                                                 </div>
                                             ) : (
                                                 <button
                                                     onClick={handleLinkIdentity}
                                                     disabled={!formData.farcasterHandle || isLinkingIdentity}
-                                                    className="w-full py-3 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 font-bold hover:bg-blue-600/30 hover:border-blue-500/50 transition-all disabled:opacity-30 disabled:pointer-events-none"
+                                                    className="w-full rounded-xl border border-[#0052FF]/25 bg-[#0052FF]/10 py-3 font-bold text-[#22D3EE] transition-all hover:bg-[#0052FF]/20 hover:border-[#0052FF]/40 disabled:opacity-30 disabled:pointer-events-none"
                                                 >
                                                     {isLinkingIdentity ? "Signing..." : "Link handle via signature"}
                                                 </button>
                                             )}
                                         </div>
 
-                                        <p className="text-xs text-blue-200/50 text-center leading-relaxed mt-4">
-                                            * This applies an active wallet signature check confirming ownership of the handle text for anti-spoofing indicators rendering across client viewers. Not a KYC platform. Skip if you prefer full anonymity.
+                                        <p className="text-[11px] text-slate-600 text-center leading-relaxed mt-4">
+                                            Wallet-signature proof only. Not official Farcaster verification and not KYC.
                                         </p>
                                     </div>
 
                                     {!identityVerified && (
                                         <div className="text-center mt-4">
-                                            <button onClick={handleNext} className="text-sm text-gray-500 hover:text-white underline decoration-white/20">Skip and Continue Anonymously</button>
+                                            <button onClick={handleNext} className="text-sm text-slate-500 hover:text-white underline decoration-white/20 transition-colors">Skip and Continue Anonymously</button>
                                         </div>
                                     )}
                                 </div>
@@ -665,11 +697,11 @@ export default function CreateDrop() {
                             {step === 4 && (
                                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                     <div className="text-center">
-                                        <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                                            <span className="text-4xl">🚀</span>
+                                        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0052FF]/20 to-[#22D3EE]/15 border border-[#22D3EE]/20">
+                                            <svg viewBox="0 0 24 24" className="h-9 w-9 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                         </div>
-                                        <h2 className="text-2xl font-bold mb-2">Ready to Deploy</h2>
-                                        <p className="text-gray-400">Review your drop details before signing the {selectedChain.name} transaction.</p>
+                                        <h2 className="font-display text-2xl font-bold mb-2">Ready to Deploy</h2>
+                                        <p className="text-slate-400">Review your drop details before signing the {selectedChain.name} transaction.</p>
                                     </div>
 
                                     {!hasSelectedChainContractConfig && (
@@ -678,21 +710,21 @@ export default function CreateDrop() {
                                         </div>
                                     )}
 
-                                    <div className="bg-black/50 rounded-2xl p-6 border border-white/5 space-y-4 font-mono text-sm">
-                                        <div className="flex justify-between border-b border-white/10 pb-4">
-                                            <span className="text-gray-500">Title</span>
-                                            <span className="text-white">{formData.title || "Untitled"}</span>
+                                    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 space-y-0 font-mono text-sm">
+                                        <div className="flex justify-between border-b border-white/[0.06] py-4">
+                                            <span className="text-slate-500">Title</span>
+                                            <span className="text-white font-medium">{formData.title || "Untitled"}</span>
                                         </div>
-                                        <div className="flex justify-between border-b border-white/10 pb-4">
-                                            <span className="text-gray-500">Supply</span>
+                                        <div className="flex justify-between border-b border-white/[0.06] py-4">
+                                            <span className="text-slate-500">Supply</span>
                                             <span className="text-white">{formData.editionSize}</span>
                                         </div>
-                                        <div className="flex justify-between pb-4 border-b border-white/10">
-                                            <span className="text-gray-500">Price</span>
-                                            <span className={Number(formData.mintPrice) === 0 ? "text-green-400 font-bold" : "text-white"}>{Number(formData.mintPrice) === 0 ? "Free mint" : `${formData.mintPrice} ETH`}</span>
+                                        <div className="flex justify-between border-b border-white/[0.06] py-4">
+                                            <span className="text-slate-500">Price</span>
+                                            <span className={Number(formData.mintPrice) === 0 ? "text-[#22D3EE] font-bold" : "text-white"}>{Number(formData.mintPrice) === 0 ? "Free mint" : `${formData.mintPrice} ETH`}</span>
                                         </div>
-                                        <div className="flex justify-between pb-2">
-                                            <span className="text-gray-500">Recipient</span>
+                                        <div className="flex justify-between py-4">
+                                            <span className="text-slate-500">Recipient</span>
                                             <span className="text-white truncate max-w-[150px] sm:max-w-xs">{formData.payoutRecipient.trim() ? formData.payoutRecipient.trim() : address}</span>
                                         </div>
                                     </div>
@@ -702,11 +734,11 @@ export default function CreateDrop() {
 
 
                             {/* Action Buttons */}
-                            <div className="mt-12 flex justify-between items-center pt-6 border-t border-white/10">
+                            <div className="mt-10 flex justify-between items-center pt-6 border-t border-white/[0.06]">
                                 <button
                                     onClick={handlePrev}
                                     disabled={step === 1}
-                                    className={`px-6 py-2 rounded-full font-medium transition-colors ${step === 1 ? "opacity-0 pointer-events-none" : "text-gray-400 hover:text-white bg-white/5 hover:bg-white/10"
+                                    className={`px-6 py-2.5 rounded-full font-medium transition-all ${step === 1 ? "opacity-0 pointer-events-none" : "text-slate-400 hover:text-white border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/15"
                                         }`}
                                 >
                                     Back
@@ -753,7 +785,7 @@ export default function CreateDrop() {
                                             setFormError(null);
                                             handleNext();
                                         }}
-                                        className="px-8 py-2 rounded-full bg-white text-black font-bold hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                                        className="px-8 py-2.5 rounded-full bg-white text-[#05070f] font-bold hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)]"
                                     >
                                         Next Step
                                     </button>
@@ -767,7 +799,7 @@ export default function CreateDrop() {
                                             handleDeploy();
                                         }}
                                         disabled={!hasSelectedChainContractConfig || !hasHydrated || !!hydrationError || isUploading || isPending || isConfirming || isSuccess}
-                                        className="px-8 py-2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(219,39,119,0.5)] disabled:opacity-50 disabled:pointer-events-none"
+                                        className="px-8 py-2.5 rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white font-bold hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_30px_rgba(0,82,255,0.4)] disabled:opacity-50 disabled:pointer-events-none"
                                     >
                                         {!address
                                             ? "Connect to Deploy"

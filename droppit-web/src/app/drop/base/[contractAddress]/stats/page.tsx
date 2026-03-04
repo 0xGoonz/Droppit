@@ -115,8 +115,9 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
 
     if (loading || isConnecting) {
         return (
-            <div className="min-h-screen bg-[#05070f] text-white flex items-center justify-center p-4">
-                <div className="text-center">
+            <div className="relative min-h-screen bg-[#05070f] text-white flex items-center justify-center p-4 overflow-hidden">
+                <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
+                <div className="relative z-10 text-center">
                     <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin mx-auto mb-4"></div>
                     <p className="text-slate-400">Loading Drop Stats...</p>
                 </div>
@@ -126,17 +127,20 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
 
     if (error) {
         return (
-            <div className="min-h-screen bg-[#05070f] text-white flex flex-col items-center justify-center p-4">
-                <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
-                    <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+            <div className="relative min-h-screen bg-[#05070f] text-white flex flex-col items-center justify-center p-4 overflow-hidden">
+                <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
+                <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+                        <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h1 className="font-display text-2xl font-bold mb-2">Access Denied</h1>
+                    <p className="text-slate-400 mb-8 max-w-md text-center">{error}</p>
+                    <Link href={`/drop/base/${contractAddress}`} className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors">
+                        Back to Mint Page
+                    </Link>
                 </div>
-                <h1 className="font-display text-2xl font-bold mb-2">Access Denied</h1>
-                <p className="text-slate-400 mb-8 max-w-md text-center">{error}</p>
-                <Link href={`/drop/base/${contractAddress}`} className="px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition-colors">
-                    Back to Mint Page
-                </Link>
             </div>
         );
     }
@@ -173,10 +177,10 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                    <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-6 shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">
+                    <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-6 shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">
                         <h3 className="text-slate-400 text-sm font-medium mb-1">Views</h3>
                         <div className="text-3xl font-bold mb-4">{stats.traffic.totalViews}</div>
-                        <div className="flex justify-between items-end border-t border-white/10 pt-4 mt-4 text-sm">
+                        <div className="flex justify-between items-end border-t border-white/[0.06] pt-4 mt-4 text-sm">
                             <span className="text-slate-500">Unique visitors</span>
                             <span className="font-mono-brand">{stats.traffic.uniqueVisitors}</span>
                         </div>
@@ -186,7 +190,7 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
                         </div>
                     </div>
 
-                    <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-6 shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">
+                    <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-6 shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">
                         <h3 className="text-slate-400 text-sm font-medium mb-1">Minted</h3>
                         <div className="text-3xl font-bold mb-1">{stats.supply.totalMinted}</div>
                         <p className="text-sm text-slate-500 mb-4">/ {stats.supply.editionSize} editions</p>
@@ -200,10 +204,10 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
                         <div className="text-xs text-slate-500 mt-2 text-right">{stats.supply.remaining} remaining</div>
                     </div>
 
-                    <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-6 shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">
+                    <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-6 shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">
                         <h3 className="text-slate-400 text-sm font-medium mb-1">Creator Revenue</h3>
                         <div className="text-3xl font-bold mb-4">{Number(stats.revenue.creatorRevenueEth).toFixed(4)} <span className="text-sm font-normal text-slate-500">ETH</span></div>
-                        <div className="flex justify-between items-end border-t border-white/10 pt-4 mt-4 text-sm">
+                        <div className="flex justify-between items-end border-t border-white/[0.06] pt-4 mt-4 text-sm">
                             <span className="text-slate-500">Asset Price</span>
                             <span className={Number(stats.drop.mintPriceEth) === 0 ? "text-green-400 font-bold font-mono-brand" : "font-mono-brand"}>{Number(stats.drop.mintPriceEth) === 0 ? "Free mint" : `${stats.drop.mintPriceEth} ETH`}</span>
                         </div>
@@ -211,16 +215,16 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
 
                 </div>
 
-                <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-6 overflow-hidden shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">
+                <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-6 overflow-hidden shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">
                     <h2 className="font-display text-xl font-bold mb-4">Top Referrers</h2>
                     {stats.referrers.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr>
-                                        <th className="border-b border-white/10 py-3 text-sm font-medium text-slate-400 w-12">Rank</th>
-                                        <th className="border-b border-white/10 py-3 text-sm font-medium text-slate-400">Referrer Identifier (Code or Address)</th>
-                                        <th className="border-b border-white/10 py-3 text-sm font-medium text-slate-400 text-right">Mints Driven</th>
+                                        <th className="border-b border-white/[0.06] py-3 text-sm font-medium text-slate-400 w-12">Rank</th>
+                                        <th className="border-b border-white/[0.06] py-3 text-sm font-medium text-slate-400">Referrer Identifier (Code or Address)</th>
+                                        <th className="border-b border-white/[0.06] py-3 text-sm font-medium text-slate-400 text-right">Mints Driven</th>
                                     </tr>
                                 </thead>
                                 <tbody>
