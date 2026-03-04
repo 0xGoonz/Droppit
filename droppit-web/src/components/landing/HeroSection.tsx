@@ -93,34 +93,33 @@ function CyclingText() {
 export function HeroSection() {
     return (
         <>
-            {/* ── Nav ── */}
-            <motion.nav
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.2, 0.75, 0.2, 1] }}
-                className="sticky top-0 z-40 border-b border-white/10 bg-[#05070f]/85 backdrop-blur-xl"
-            >
-                <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                    <BrandLockup markSize={32} wordmarkClassName="text-2xl font-bold tracking-tight" />
-                    <div className="flex items-center gap-3">
-                        <Link
-                            href="#how-it-works"
-                            className="text-sm font-medium text-white/75 transition-colors hover:text-white"
-                        >
-                            How It Works
-                        </Link>
-                        <Link
-                            href="/create"
-                            className="lift-hover rounded-full border border-[#22D3EE]/40 bg-[#0052FF]/20 px-4 py-2 text-sm font-semibold text-blue-100 transition-colors hover:bg-[#0052FF]/35"
-                        >
-                            Start a Drop
-                        </Link>
+            {/* ── Hero Section — nav is inside so there's no seam ── */}
+            <section className="relative">
+                {/* ── Nav ── */}
+                <motion.nav
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: [0.2, 0.75, 0.2, 1] }}
+                    className="relative z-40"
+                >
+                    <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+                        <BrandLockup markSize={32} wordmarkClassName="text-2xl font-bold tracking-tight" />
+                        <div className="flex items-center gap-3">
+                            <Link
+                                href="#how-it-works"
+                                className="text-sm font-medium text-white/75 transition-colors hover:text-white"
+                            >
+                                How It Works
+                            </Link>
+                            <Link
+                                href="/create"
+                                className="lift-hover rounded-full border border-[#22D3EE]/40 bg-[#0052FF]/20 px-4 py-2 text-sm font-semibold text-blue-100 transition-colors hover:bg-[#0052FF]/35"
+                            >
+                                Start a Drop
+                            </Link>
+                        </div>
                     </div>
-                </div>
-            </motion.nav>
-
-            {/* ── Hero Section ── */}
-            <section className="relative overflow-hidden">
+                </motion.nav>
                 {/* Background effects — full-width so orbs bleed naturally */}
                 <div className="pointer-events-none absolute inset-0">
                     {HERO_PARTICLES.map((particle, index) => (
