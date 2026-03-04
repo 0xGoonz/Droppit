@@ -1,5 +1,5 @@
 /**
- * Shared Input Validators for Droppit AI
+ * Shared Input Validators for Droppit
  * 
  * Used by: api/drops, api/drops/[id]/publish, api/webhooks/neynar
  * Ensures consistent 4xx error messages across web, webhook, and frame paths.

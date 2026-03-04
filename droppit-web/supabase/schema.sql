@@ -1,5 +1,5 @@
 -- ============================================================
--- Droppit AI — Canonical Schema (Source of Truth)
+-- Droppit — Canonical Schema (Source of Truth)
 -- ============================================================
 -- This file defines every table the application code expects.
 -- Run this on a fresh Supabase project for local/CI setup.

@@ -157,10 +157,10 @@ export async function POST(req: NextRequest) {
                 // Upload paired metadata JSON
                 const metadata = {
                     name: parsed.title || "Untitled Drop",
-                    description: "Created via Droppit AI on Farcaster",
+                    description: "Created via Droppit on Farcaster",
                     image: imageUrl,
                     properties: {
-                        generator: "Droppit AI AgentKit (Farcaster Webhook)",
+                        generator: "Droppit AgentKit (Farcaster Webhook)",
                         castHash: castHash
                     },
                 };

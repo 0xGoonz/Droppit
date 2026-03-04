@@ -1,4 +1,4 @@
-# Droppit AI Smart Contracts
+# Droppit Smart Contracts
 
 ERC-1155 drop factory system for Base (mainnet and Sepolia).
 

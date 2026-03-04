@@ -1,6 +1,6 @@
-# Droppit AI — Web Application
+# Droppit — Web Application
 
-Next.js application for [Droppit AI](https://droppit.ai): an agentic NFT drop platform on **Base**.
+Next.js application for [Droppit](https://droppit.ai): an agentic NFT drop platform on **Base**.
 Creators launch one-artwork ERC-1155 drops via the web wizard **or** by tagging `@droppit` on Farcaster.
 Collectors mint in 1–2 taps from a universal share link or a Farcaster Frame.
 
@@ -86,7 +86,7 @@ This switch is used consistently across: `create/page.tsx`, `drop/base/[contract
 ## MVP Scope & Non-Goals
 
 ### Implemented Features (MVP)
-Droppit AI implements a highly focused set of features aimed at frictionless ERC-1155 drops and agentic creation.
+Droppit implements a highly focused set of features aimed at frictionless ERC-1155 drops and agentic creation.
 - **Canonical Minting:** `/drop/base/[contractAddress]`
 - **Farcaster Minting Frames:** `/api/frame/drop/[contractAddress]`, `/api/frame/drop/[contractAddress]/mint`
 - **Agentic Creation:** NLP-driven drop deployment via `@droppit` tags (`/api/webhooks/neynar`).

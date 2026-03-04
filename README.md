@@ -1,4 +1,4 @@
-<h1 align="center">🎨 Droppit AI</h1>
+<h1 align="center">🎨 Droppit</h1>
 
 <p align="center">
   <strong>The native Farcaster drop infrastructure for Base.</strong><br/>
@@ -15,7 +15,7 @@
 
 ---
 
-## What is Droppit AI?
+## What is Droppit?
 
 Droppit is an **agentic web platform for Base** that lets creators launch single-artwork NFT drops in two ways:
 

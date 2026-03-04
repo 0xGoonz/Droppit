@@ -2,7 +2,7 @@
 
 ## 1) Overview
 
-**Product:** Droppit is an **Agentic Web platform for Base**: creators can launch one-artwork NFT drops either through the web app or directly from Farcaster by tagging the Droppit AI persona. The product positions Droppit as the **"Clanker for NFTs"** on Farcaster, while preserving a canonical share link and a trust-first mint page where anyone can **mint in 1–2 taps**.
+**Product:** Droppit is an **Agentic Web platform for Base**: creators can launch one-artwork NFT drops either through the web app or directly from Farcaster by tagging the Droppit persona. The product positions Droppit as the **"Clanker for NFTs"** on Farcaster, while preserving a canonical share link and a trust-first mint page where anyone can **mint in 1–2 taps**.
 
 **Payment model (MVP):** Creator pays gas to create the drop (contract deploy + config).
 
@@ -25,7 +25,7 @@
 
 **Onchain architecture:** **One contract per drop** (each drop gets its own **contract address** on Base), deployed as an **EIP-1167 minimal proxy clone** via a **Factory** that points to a single **Master Implementation** contract.
 
-**Agentic distribution layer (MVP+):** A proactive Droppit AI persona on Farcaster handles natural-language drop creation, deployment confirmation frames, and milestone/curation posting powered by backend analytics signals.
+**Agentic distribution layer (MVP+):** A proactive Droppit persona on Farcaster handles natural-language drop creation, deployment confirmation frames, and milestone/curation posting powered by backend analytics signals.
 
 **Core invariants that remain unchanged:**
 - **EIP-1167 minimal proxy clones** (one contract per drop)
@@ -768,7 +768,7 @@ Track:
 
 ### 11.1 Autonomous Farcaster Persona (MVP+)
 
-- Droppit AI operates as an active Farcaster account, not only a command parser.
+- Droppit operates as an active Farcaster account, not only a command parser.
 - **Persona Vibe:** **"Hybrid: Sassy Hype-man"**. High energy, extremely supportive (LFG, 🔥), but with a witty, slightly sarcastic edge to keep Farcaster engagement fun and meme-able.
 - Persona behavior is driven by modular prompt configuration (e.g., `soul.md`) with explicit brand/safety constraints.
 - **Automated milestone posts:** backend event listeners trigger quote-casts when drops hit configured thresholds (e.g., 25/50/100 mints).

@@ -21,10 +21,10 @@ export async function generateMetadata(
     return {
         // Standard Open Graph tags
         metadataBase: new URL(baseUrl),
-        title: "Droppit AI Mint", // Will be replaced by client or we can fetch true title here if we want, but OG image has it
+        title: "Droppit Mint", // Will be replaced by client or we can fetch true title here if we want, but OG image has it
         description: "Mint this drop on Base via Droppit.",
         openGraph: {
-            title: "Droppit AI Mint",
+            title: "Droppit Mint",
             description: "Mint this drop on Base via Droppit.",
             url: dropUrl,
             images: [
@@ -39,7 +39,7 @@ export async function generateMetadata(
         },
         twitter: {
             card: "summary_large_image",
-            title: "Droppit AI Mint",
+            title: "Droppit Mint",
             description: "Mint this drop on Base via Droppit.",
             images: [ogImageUrl],
         },

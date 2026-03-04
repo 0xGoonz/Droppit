@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         const randomHex = randomBytes(16).toString("hex");
 
         const nonce = [
-            `Droppit AI Stats Access`,
+            `Droppit Stats Access`,
             `Action: ${action}`,
             `Wallet: ${normalizedWallet}`,
             normalizedContract ? `Contract: ${normalizedContract}` : `Drop ID: ${normalizedDropId}`,

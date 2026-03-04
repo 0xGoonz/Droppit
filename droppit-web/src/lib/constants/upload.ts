@@ -1,5 +1,5 @@
 /**
- * Shared Upload Constants for Droppit AI
+ * Shared Upload Constants for Droppit
  *
  * Single source of truth for file upload limits and MIME types.
  * Used by: create/page.tsx (client), api/upload/route.ts (server)

@@ -73,10 +73,10 @@ export async function POST(request: Request) {
 
         const metadata = {
             name: title || "Untitled Drop",
-            description: description || "Created via Droppit AI",
+            description: description || "Created via Droppit",
             image: imageUri,
             properties: {
-                generator: "Droppit AI AgentKit",
+                generator: "Droppit AgentKit",
             },
         };
 

@@ -32,17 +32,23 @@ export const metadata: Metadata = {
   },
   description: BRAND.description,
   applicationName: BRAND.name,
+  icons: {
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: BRAND.name,
     description: BRAND.description,
     siteName: BRAND.name,
     type: "website",
     url: baseUrl,
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: BRAND.name }],
   },
   twitter: {
     card: "summary_large_image",
     title: BRAND.name,
     description: BRAND.description,
+    images: ["/og-image.png"],
   },
 };
 

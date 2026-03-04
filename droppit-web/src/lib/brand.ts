@@ -1,5 +1,5 @@
 export const BRAND = {
-    name: "Droppit AI",
+    name: "Droppit",
     shortName: "Droppit",
     tagline: "Launch drops at feed speed.",
     description: "Create ERC-1155 drops on Base, then share via links and Farcaster Frames.",

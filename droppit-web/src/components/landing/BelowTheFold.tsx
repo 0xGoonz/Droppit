@@ -672,7 +672,7 @@ function CtaBanner() {
                     <motion.p variants={fadeUp} className="mx-auto mt-4 max-w-xl text-lg text-slate-300">
                         Join creators, event organizers, and collectors on Base. Launch your first drop in under 3 minutes.
                     </motion.p>
-                    <motion.div variants={fadeUp} className="mt-8 flex items-center gap-4">
+                    <motion.div variants={fadeUp} className="mt-8 flex flex-col items-center gap-4 sm:flex-row">
                         <div className="relative group">
                             <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] opacity-80 blur-md transition-opacity group-hover:opacity-100 cta-glow" />
                             <Link
@@ -713,8 +713,17 @@ function Footer() {
                 {/* Brand Column */}
                 <div>
                     <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#0052FF] to-[#7C3AED]">
-                            <span className="text-xs font-bold text-white">D</span>
+                        <div className="flex h-7 w-7 items-center justify-center">
+                            <svg viewBox="0 0 64 64" fill="none" className="h-6 w-6 drop-shadow-[0_0_4px_rgba(0,82,255,0.5)]">
+                                <defs>
+                                    <linearGradient id="footerDropGrad" x1="32" y1="8" x2="32" y2="58" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stopColor="#0052FF" />
+                                        <stop offset="100%" stopColor="#22D3EE" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M32 6 C32 6 12 30 12 40 C12 51.046 20.954 60 32 60 C43.046 60 52 51.046 52 40 C52 30 32 6 32 6Z" fill="url(#footerDropGrad)" />
+                                <ellipse cx="26" cy="30" rx="6" ry="10" fill="white" opacity="0.2" transform="rotate(-15 26 30)" />
+                            </svg>
                         </div>
                         <span className="font-display text-lg font-bold tracking-tight">{BRAND.name}</span>
                     </div>
