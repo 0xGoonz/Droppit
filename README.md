@@ -83,6 +83,7 @@ droppit/
 │   └── scripts/
 │       └── check-schema-conformance.ts  # CI schema drift detection
 │
+├── BRANDING.md                 # Official brand guidelines & assets
 └── droppitv2.md                # MVP Product Specification
 ```
 
@@ -295,6 +296,7 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
 | `/api/og/drop/[dropIdOrAddress]` | GET | Dynamic OG image generation |
 | `/api/attribution/view` | POST | Record page view attribution |
 | `/api/attribution/mint` | POST | Record mint attribution |
+| `/r/[code]` | GET | Referral shortlink resolution and redirect |
 
 ---
 

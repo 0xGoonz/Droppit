@@ -145,6 +145,7 @@ CREATE OR REPLACE FUNCTION check_and_increment_rate_limit(
 ) RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     current_points INTEGER;
