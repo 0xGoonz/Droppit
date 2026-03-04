@@ -1,12 +1,6 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Droppit Banner" width="100%" />
+  <img src="assets/banner.png" alt="Droppit — Launch drops at feed speed" width="100%" />
 </p>
-
-<p align="center">
-  <img src="assets/logo.png" alt="Droppit Logo" width="80" />
-</p>
-
-<h1 align="center">Droppit</h1>
 
 <p align="center">
   <strong>The native Farcaster drop infrastructure for Base.</strong><br/>
@@ -23,7 +17,7 @@
 
 ---
 
-## What is Droppit?
+## <img src="https://img.shields.io/badge/What_is_Droppit%3F-0052FF?style=for-the-badge" alt="What is Droppit?" />
 
 Droppit is an **agentic web platform for Base** that lets creators launch single-artwork NFT drops in two ways:
 
@@ -34,7 +28,7 @@ Every drop gets its own **smart contract address** on Base (gas-optimized via EI
 
 ---
 
-## ✨ Core Features
+## <img src="https://img.shields.io/badge/✨_Core_Features-22D3EE?style=for-the-badge&logoColor=white" alt="Core Features" />
 
 ### 🚀 Creator-Friendly Drop Generator
 Two first-class creation paths. Web creators get a step-by-step wizard with live preview. Farcaster creators just cast and go.
@@ -56,7 +50,7 @@ Private per-drop stats: views, mints, conversion rate, top referrers, and revenu
 
 ---
 
-## 🏗️ Repository Structure
+## <img src="https://img.shields.io/badge/🏗️_Repository_Structure-7C3AED?style=for-the-badge&logoColor=white" alt="Repository Structure" />
 
 ```
 droppit/
@@ -103,7 +97,7 @@ droppit/
 
 ---
 
-## 🛠️ Tech Stack
+## <img src="https://img.shields.io/badge/🛠️_Tech_Stack-0052FF?style=for-the-badge" alt="Tech Stack" />
 
 | Layer | Technology |
 |-------|-----------|
@@ -120,7 +114,7 @@ droppit/
 
 ---
 
-## 🔒 Security Architecture
+## <img src="https://img.shields.io/badge/🔒_Security_Architecture-22D3EE?style=for-the-badge&logoColor=white" alt="Security Architecture" />
 
 ```
 ┌─ Draft Phase ──────────────────────────────────────────┐
@@ -153,7 +147,7 @@ droppit/
 
 ---
 
-## 📖 Getting Started
+## <img src="https://img.shields.io/badge/📖_Getting_Started-7C3AED?style=for-the-badge&logoColor=white" alt="Getting Started" />
 
 ### Prerequisites
 
@@ -232,7 +226,7 @@ npm run check:schema
 
 ---
 
-## ⛓️ Onchain Architecture
+## <img src="https://img.shields.io/badge/⛓️_Onchain_Architecture-0052FF?style=for-the-badge" alt="Onchain Architecture" />
 
 ```
                     ┌──────────────────┐
@@ -260,7 +254,7 @@ Metadata: Frozen at initialize — no setURI
 
 ---
 
-## 🤖 AI Agent Flow
+## <img src="https://img.shields.io/badge/🤖_AI_Agent_Flow-22D3EE?style=for-the-badge&logoColor=white" alt="AI Agent Flow" />
 
 ```
 Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
@@ -291,7 +285,7 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
 
 ---
 
-## 📁 API Routes
+## <img src="https://img.shields.io/badge/📁_API_Routes-7C3AED?style=for-the-badge&logoColor=white" alt="API Routes" />
 
 | Route | Method | Description |
 |-------|--------|-------------|
@@ -319,7 +313,7 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
 
 ---
 
-## 🧪 Testing
+## <img src="https://img.shields.io/badge/🧪_Testing-0052FF?style=for-the-badge" alt="Testing" />
 
 | Layer | Framework | Command |
 |-------|-----------|---------|
@@ -331,7 +325,7 @@ The schema conformance check scans every API route for Supabase column reference
 
 ---
 
-## 📄 License
+## <img src="https://img.shields.io/badge/📄_License-22D3EE?style=for-the-badge&logoColor=white" alt="License" />
 
 MIT
 
