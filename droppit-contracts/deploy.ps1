@@ -74,6 +74,7 @@ $protocolFeeWei = Resolve-EnvValue -Names @("DROPPIT_DEFAULT_PROTOCOL_FEE_WEI", 
 [Environment]::SetEnvironmentVariable("DROPPIT_DEFAULT_PROTOCOL_FEE_WEI", $protocolFeeWei)
 [Environment]::SetEnvironmentVariable("DEPLOY_NETWORK", $Network)
 [Environment]::SetEnvironmentVariable("DEPLOY_ARTIFACTS_DIR", $ArtifactsDir)
+[Environment]::SetEnvironmentVariable("FOUNDRY_PROFILE", $Profile)
 
 $forgePath = "C:\Users\Admin\.foundry\bin\forge.exe"
 if (!(Test-Path $forgePath)) {
@@ -83,7 +84,6 @@ if (!(Test-Path $forgePath)) {
 $args = @(
     "script",
     "script/Deploy.s.sol:DeployScript",
-    "--profile", $Profile,
     "--rpc-url", $resolvedRpc,
     "--chain", $chainByNetwork[$Network],
     "--broadcast",

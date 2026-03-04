@@ -1,1 +1,4 @@
 AGENTS.md
+.DS_Store
+*.pem
+.env*

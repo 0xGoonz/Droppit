@@ -114,6 +114,14 @@ droppit/
 
 ---
 
+## <img src="https://img.shields.io/badge/🌍_Live_Deployments-10B981?style=for-the-badge&logoColor=white" alt="Live Deployments" />
+
+### Base Mainnet
+- **DropFactory**: [`0x2D42cEd72a1babf630Fe6bFEB70B43491dB20608`](https://basescan.org/address/0x2D42cEd72a1babf630Fe6bFEB70B43491dB20608)
+- **Drop1155 Implementation**: [`0x36D14123b868E385dfA10754bE960215ca294EA6`](https://basescan.org/address/0x36D14123b868E385dfA10754bE960215ca294EA6)
+
+---
+
 ## <img src="https://img.shields.io/badge/🔒_Security_Architecture-22D3EE?style=for-the-badge&logoColor=white" alt="Security Architecture" />
 
 ```
