@@ -172,19 +172,25 @@ export default function CreateDrop() {
                     finalPayoutRecipient = formData.payoutRecipient.trim() as `0x${string}`;
                 }
 
-                const gas = await publicClient!.estimateContractGas({
-                    address: selectedFactoryAddress as `0x${string}`,
-                    abi: FACTORY_ABI,
-                    functionName: "createDrop",
-                    account: address as `0x${string}`,
-                    args: [
-                        BigInt(formData.editionSize || "1"),
-                        parseEther(formData.mintPrice || "0"),
-                        finalPayoutRecipient,
-                        dummyTokenUri,
-                        dummyCommitment as `0x${string}`
-                    ]
-                });
+                let gas: bigint;
+                try {
+                    gas = await publicClient!.estimateContractGas({
+                        address: selectedFactoryAddress as `0x${string}`,
+                        abi: FACTORY_ABI,
+                        functionName: "createDrop",
+                        account: address as `0x${string}`,
+                        args: [
+                            BigInt(formData.editionSize || "1"),
+                            parseEther(formData.mintPrice || "0"),
+                            finalPayoutRecipient,
+                            dummyTokenUri,
+                            dummyCommitment as `0x${string}`
+                        ]
+                    });
+                } catch (err) {
+                    console.warn("Real gas estimation failed, using safe fallback for EIP-1167 proxy:", err);
+                    gas = BigInt(350000); // Safe fallback estimate for clone deploy + init
+                }
 
                 const gasPrice = await publicClient!.getGasPrice();
                 const costWei = gas * gasPrice;
@@ -193,7 +199,7 @@ export default function CreateDrop() {
                     setDeployGasEstimate(formatEther(costWei + (costWei / BigInt(10))));
                 }
             } catch (err) {
-                console.warn("Gas estimation failed:", err);
+                console.warn("Gas calculation entirely failed:", err);
                 if (isMounted) setDeployGasEstimate("Unknown");
             }
         }
@@ -781,29 +787,39 @@ export default function CreateDrop() {
                                             <p className="text-xs text-slate-500">This is how your drop will look when shared on Warpcast or X.</p>
                                         </div>
                                         <div className="p-6 flex justify-center bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)]">
-                                            <div className="w-full max-w-[500px] aspect-[1.91/1] rounded-xl border border-white/10 flex p-6 relative overflow-hidden bg-black/40 backdrop-blur-md shadow-2xl">
-                                                <div className="w-[40%] rounded-lg overflow-hidden border border-white/10 shrink-0 bg-[#0B1020] flex items-center justify-center">
-                                                    {file ? (
-                                                        <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
-                                                    ) : draftImageUrl ? (
-                                                        <img src={draftImageUrl.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')} alt="" className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="text-4xl font-bold text-white/50">{formData.title.charAt(0).toUpperCase() || "D"}</div>
-                                                    )}
-                                                </div>
-                                                <div className="ml-6 flex-1 flex flex-col justify-between py-1">
-                                                    <div>
-                                                        <div className="flex gap-2 text-[10px] font-bold uppercase tracking-wider mb-2">
-                                                            <span className="px-2 py-1 rounded-full bg-[#16a34a]/20 text-[#4ade80] border border-[#16a34a]/30">LIVE</span>
-                                                            <span className="px-2 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">{selectedChain.name}</span>
+                                            <div className="w-full max-w-[500px] flex flex-col items-center">
+                                                <div className="w-full aspect-[1.91/1] rounded-t-xl border border-white/10 border-b-0 flex p-6 relative overflow-hidden bg-black/40 backdrop-blur-md shadow-2xl">
+                                                    <div className="w-[40%] rounded-xl overflow-hidden border border-white/10 shrink-0 bg-[#0B1020] flex items-center justify-center p-1 relative shadow-inner">
+                                                        {file ? (
+                                                            <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-contain rounded-lg drop-shadow-md" />
+                                                        ) : draftImageUrl ? (
+                                                            <img src={draftImageUrl.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')} alt="" className="w-full h-full object-contain rounded-lg drop-shadow-md" />
+                                                        ) : (
+                                                            <div className="text-4xl font-bold text-white/50">{formData.title.charAt(0).toUpperCase() || "D"}</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="ml-6 flex-1 flex flex-col justify-between py-1">
+                                                        <div>
+                                                            <div className="flex gap-2 text-[10px] font-bold uppercase tracking-wider mb-2">
+                                                                <span className="px-2 py-1 rounded-full bg-[#16a34a]/20 text-[#4ade80] border border-[#16a34a]/30">LIVE</span>
+                                                            </div>
+                                                            <h1 className="text-xl font-bold text-white leading-tight line-clamp-2">{formData.title || "Untitled Drop"}</h1>
+                                                            <div className="mt-2 text-sm text-[#22D3EE] font-medium bg-[#0B1020]/80 border border-[#22D3EE]/30 rounded-lg px-3 py-1.5 inline-block">
+                                                                {Number(formData.mintPrice) === 0 ? "Free" : `${formData.mintPrice} ETH`}
+                                                            </div>
                                                         </div>
-                                                        <h1 className="text-xl font-bold text-white leading-tight line-clamp-2">{formData.title || "Untitled Drop"}</h1>
-                                                        <div className="mt-2 text-sm text-[#22D3EE] font-medium bg-[#0B1020]/80 border border-[#22D3EE]/30 rounded-lg px-3 py-1.5 inline-block">
-                                                            {Number(formData.mintPrice) === 0 ? "Free" : `${formData.mintPrice} ETH`}
+                                                        <div className="text-xs text-slate-400">
+                                                            <div className="mb-1">Creator: {formData.farcasterHandle ? `@${formData.farcasterHandle}` : (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Unknown")}</div>
                                                         </div>
                                                     </div>
-                                                    <div className="text-xs text-slate-400">
-                                                        <div className="mb-1">Creator: {formData.farcasterHandle ? `@${formData.farcasterHandle}` : (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Unknown")}</div>
+                                                </div>
+                                                {/* Frame Buttons Mockup */}
+                                                <div className="w-full flex gap-2 pt-2 border border-white/10 border-t-0 bg-black/40 px-2 pb-2 rounded-b-xl shadow-2xl">
+                                                    <div className="flex-1 bg-gradient-to-r from-[#22D3EE]/20 to-[#0052FF]/20 hover:from-[#22D3EE]/30 hover:to-[#0052FF]/30 text-center py-2.5 rounded-lg border border-[#22D3EE]/50 text-sm font-bold text-[#22D3EE] cursor-default transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                                                        Mint 1
+                                                    </div>
+                                                    <div className="flex-1 bg-gradient-to-r from-[#0052FF]/20 to-[#22D3EE]/20 hover:from-[#0052FF]/30 hover:to-[#22D3EE]/30 text-center py-2.5 rounded-lg border border-[#22D3EE]/30 text-sm font-semibold text-white cursor-default transition-all shadow-[0_0_15px_rgba(34,211,238,0.1)]">
+                                                        Open mint page
                                                     </div>
                                                 </div>
                                             </div>
