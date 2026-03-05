@@ -351,9 +351,25 @@ export default function CreateDrop() {
                     method: "POST",
                     body: uploadData,
                 });
-                const uploadResult = await res.json();
 
-                if (!res.ok || uploadResult.error) throw new Error(uploadResult.error || "IPFS Upload failed");
+                if (!res.ok) {
+                    let errMsg = "IPFS Upload failed";
+                    if (res.status === 413) {
+                        errMsg = "Artwork file is too large (maximum allowed size: 20MB).";
+                    } else {
+                        try {
+                            const errData = await res.json();
+                            errMsg = errData.error || errMsg;
+                        } catch {
+                            errMsg = `Upload failed with status ${res.status}`;
+                        }
+                    }
+                    throw new Error(errMsg);
+                }
+
+                const uploadResult = await res.json();
+                if (uploadResult.error) throw new Error(uploadResult.error);
+
                 tokenUri = uploadResult.tokenUri;
                 imageUri = uploadResult.imageUri;
             } else {
@@ -815,8 +831,11 @@ export default function CreateDrop() {
                                                 </div>
                                                 {/* Frame Buttons Mockup */}
                                                 <div className="w-full flex gap-2 pt-2 border border-white/10 border-t-0 bg-black/40 px-2 pb-2 rounded-b-xl shadow-2xl">
-                                                    <div className="flex-1 bg-gradient-to-r from-[#22D3EE]/20 to-[#0052FF]/20 hover:from-[#22D3EE]/30 hover:to-[#0052FF]/30 text-center py-2.5 rounded-lg border border-[#22D3EE]/50 text-sm font-bold text-[#22D3EE] cursor-default transition-all shadow-[0_0_15px_rgba(34,211,238,0.2)]">
-                                                        Mint 1
+                                                    <div className="flex-1 relative group cursor-default">
+                                                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] opacity-60 blur-md" />
+                                                        <div className="relative h-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] text-center py-2.5 rounded-lg border border-white/20 text-sm font-bold text-white transition-transform hover:scale-[1.02]">
+                                                            Mint 1
+                                                        </div>
                                                     </div>
                                                     <div className="flex-1 bg-gradient-to-r from-[#0052FF]/20 to-[#22D3EE]/20 hover:from-[#0052FF]/30 hover:to-[#22D3EE]/30 text-center py-2.5 rounded-lg border border-[#22D3EE]/30 text-sm font-semibold text-white cursor-default transition-all shadow-[0_0_15px_rgba(34,211,238,0.1)]">
                                                         Open mint page
