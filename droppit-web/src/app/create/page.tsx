@@ -433,15 +433,7 @@ export default function CreateDrop() {
                     </button>
                     <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-mono text-slate-400">
                         <div className="h-2 w-2 rounded-full bg-[#22D3EE] animate-pulse" />
-                        <select
-                            value={selectedChainId}
-                            onChange={(event) => setSelectedChainId(Number(event.target.value) as 8453 | 84532)}
-                            className="bg-transparent text-xs text-white focus:outline-none cursor-pointer appearance-none pr-4"
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0 center' }}
-                        >
-                            <option value="8453" className="bg-[#0B1020] text-white">Base</option>
-                            <option value="84532" className="bg-[#0B1020] text-white">Base Sepolia</option>
-                        </select>
+                        {selectedChain.name}
                     </div>
                     <Wallet>
                         <ConnectWallet className="rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">

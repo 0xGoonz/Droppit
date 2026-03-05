@@ -49,9 +49,6 @@ const nextConfig = {
     };
     return config;
   },
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
   typescript: {
     ignoreBuildErrors: false,
   },
