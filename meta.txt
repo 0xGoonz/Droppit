@@ -1,0 +1,26 @@
+<meta charSet="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="next-size-adjust" content=""/>
+<meta name="description" content="Mint this drop on Base via Droppit."/>
+<meta name="application-name" content="Droppit"/>
+<meta name="fc:frame" content="vNext"/>
+<meta name="fc:frame:image" content="https://droppitonbase.xyz/api/og/drop/0xb3c316cc7b79daaa5a6e2e92ecdf6095646bdd1f"/>
+<meta name="fc:frame:post_url" content="https://droppitonbase.xyz/api/frame/drop/0xb3c316cc7b79daaa5a6e2e92ecdf6095646bdd1f"/>
+<meta name="fc:frame:button:1" content="Mint 1"/>
+<meta name="fc:frame:button:1:action" content="tx"/>
+<meta name="fc:frame:button:1:target" content="https://droppitonbase.xyz/api/frame/drop/0xb3c316cc7b79daaa5a6e2e92ecdf6095646bdd1f/mint"/>
+<meta name="fc:frame:button:2" content="Open mint page"/>
+<meta name="fc:frame:button:2:action" content="link"/>
+<meta name="fc:frame:button:2:target" content="https://droppitonbase.xyz/drop/base/0xb3c316cc7b79daaa5a6e2e92ecdf6095646bdd1f"/>
+<meta property="og:title" content="Droppit Mint"/>
+<meta property="og:description" content="Mint this drop on Base via Droppit."/>
+<meta property="og:url" content="https://droppitonbase.xyz/drop/base/0xb3c316cc7b79daaa5a6e2e92ecdf6095646bdd1f"/>
+<meta property="og:image" content="https://droppitonbase.xyz/api/og/drop/0xb3c316cc7b79daaa5a6e2e92ecdf6095646bdd1f"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:alt" content="Drop Preview"/>
+<meta property="og:type" content="website"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="Droppit Mint"/>
+<meta name="twitter:description" content="Mint this drop on Base via Droppit."/>
+<meta name="twitter:image" content="https://droppitonbase.xyz/api/og/drop/0xb3c316cc7b79daaa5a6e2e92ecdf6095646bdd1f"/>

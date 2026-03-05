@@ -126,7 +126,10 @@ export async function GET(
         let supplyLabel: string | null = null;
         if (drop?.contract_address && (drop.status === 'LIVE' || drop.status === 'PUBLISHED')) {
             try {
-                const [editionSize, totalMinted] = await Promise.all([
+                // Add a timeout to onchain calls so they don't block OG generation
+                const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Onchain query timeout')), 1500));
+
+                const onchainData = Promise.all([
                     publicClient.readContract({
                         address: drop.contract_address as `0x${string}`,
                         abi: dropAbi,
@@ -138,6 +141,8 @@ export async function GET(
                         functionName: "totalMinted",
                     }),
                 ]);
+
+                const [editionSize, totalMinted] = await Promise.race([onchainData, timeoutPromise]);
                 const editionSizeNum = Number(editionSize);
                 const totalMintedNum = Number(totalMinted);
                 const remaining = Math.max(0, editionSizeNum - totalMintedNum);
@@ -278,6 +283,9 @@ export async function GET(
             {
                 width: OG_TOKENS.width,
                 height: OG_TOKENS.height,
+                headers: {
+                    "Cache-Control": "public, max-age=60, stale-while-revalidate=86400",
+                },
             }
         );
     } catch (error) {
