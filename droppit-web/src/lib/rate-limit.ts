@@ -13,10 +13,10 @@ export const RATE_LIMITS = {
     analytics: { maxPoints: 120, windowMinutes: 1 },
     // Webhook endpoints: allow bursts but cap sustained abuse
     webhook: { maxPoints: 60, windowMinutes: 5 },
-    // Draft create endpoint: 5 per day (wallet-scoped)
-    createDraft: { maxPoints: 5, windowMinutes: 1440 },
-    // Draft publish endpoint: 3 per hour (wallet-scoped)
-    publish: { maxPoints: 3, windowMinutes: 60 },
+    // Draft create endpoint: 100 per day (wallet-scoped)
+    createDraft: { maxPoints: 100, windowMinutes: 1440 },
+    // Draft publish endpoint: 30 per hour (wallet-scoped)
+    publish: { maxPoints: 30, windowMinutes: 60 },
     // Unlock reveal endpoint: 10 per hour (wallet + drop scoped)
     unlockReveal: { maxPoints: 10, windowMinutes: 60 },
     // OG render endpoint: 60 per minute (IP scoped)
