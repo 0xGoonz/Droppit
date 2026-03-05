@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabase";
+import { logOperationalEvent } from "@/lib/monitoring";
 
 /**
  * Rate-limit presets per route category.
@@ -20,6 +21,8 @@ export const RATE_LIMITS = {
     unlockReveal: { maxPoints: 10, windowMinutes: 60 },
     // OG render endpoint: 60 per minute (IP scoped)
     ogRender: { maxPoints: 60, windowMinutes: 1 },
+    // Referral generation endpoint: 30 per hour (wallet scoped)
+    generateReferral: { maxPoints: 30, windowMinutes: 60 },
 } as const;
 
 export type RateLimitPreset = keyof typeof RATE_LIMITS;
@@ -124,6 +127,14 @@ export async function checkRateLimit(
 
         if (data === false) {
             console.warn(`${label} Rate limit exceeded for ${bucketKey}`);
+            // Item 53: Structured abuse detection logging
+            logOperationalEvent("rate_limit_abuse", "limit_exceeded", {
+                preset,
+                bucketKey,
+                maxPoints,
+                windowMinutes,
+                ip: getClientIp(req),
+            });
             return buildRateLimit429Response(preset, windowMinutes);
         }
 

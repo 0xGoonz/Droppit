@@ -2,6 +2,9 @@ import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@supabase/supabase-js";
+import { createPublicClient, http, formatEther, parseEther } from "viem";
+import { base, baseSepolia } from "viem/chains";
+import { FACTORY_ABI, getChainContracts } from "@/lib/contracts";
 import {
     OG_BRAND,
     OG_TOKENS,
@@ -24,6 +27,7 @@ type DraftRow = {
     id: string;
     title: string | null;
     status: string | null;
+    edition_size: number | null;
     mint_price: string | null;
     image_url: string | null;
     creator_address: string | null;
@@ -52,11 +56,51 @@ export async function GET(
 
         const { data } = await supabase
             .from("drops")
-            .select("id, title, status, mint_price, image_url, creator_address, creator_fid")
+            .select("id, title, status, edition_size, mint_price, image_url, creator_address, creator_fid")
             .eq("id", draftId)
             .maybeSingle();
 
         const draft = (data || null) as DraftRow | null;
+
+        let estimatedGas: string | null = null;
+        try {
+            const chainIdStr = process.env.NEXT_PUBLIC_CHAIN_ID || "8453";
+            const chainId = parseInt(chainIdStr, 10) as 8453 | 84532;
+            const activeChain = chainId === 84532 ? baseSepolia : base;
+            const contracts = getChainContracts(chainId);
+            if (!contracts?.factoryAddress) throw new Error("Missing factory contract configuration");
+
+            const factoryAddress = contracts.factoryAddress;
+
+            const publicClient = createPublicClient({
+                chain: activeChain,
+                transport: http()
+            });
+
+            const dummyTokenUri = "ipfs://QmDummyHash12345678901234567890123456789012345678901234567";
+            const dummyCommitment = "0x" + "00".repeat(32);
+            // Non-zero dummy address to avoid some zero-address revert rules if any exist in the EVM call stack
+            const account = "0x0000000000000000000000000000000000000001" as `0x${string}`;
+
+            const gas = await publicClient.estimateContractGas({
+                address: factoryAddress as `0x${string}`,
+                abi: FACTORY_ABI,
+                functionName: "createDrop",
+                account,
+                args: [
+                    BigInt(draft?.edition_size || 100),
+                    parseEther(draft?.mint_price || "0"),
+                    account, // payout recipient
+                    dummyTokenUri,
+                    dummyCommitment as `0x${string}`
+                ]
+            });
+            const gasPrice = await publicClient.getGasPrice();
+            const costWei = gas * gasPrice;
+            estimatedGas = formatEther(costWei + (costWei / BigInt(10)));
+        } catch (e) {
+            console.warn("[OG Draft] Gas Estimate failed", e);
+        }
         const title = fallbackTitle(draft?.title, "Untitled Draft");
         const titleSafe = truncateText(title, 46);
         const price = formatMintPriceWei(draft?.mint_price || "0");
@@ -177,6 +221,22 @@ export async function GET(
                                 >
                                     {price}
                                 </span>
+                                {estimatedGas && (
+                                    <span
+                                        style={{
+                                            fontSize: OG_TOKENS.subtitleSize,
+                                            color: "#e2e8f0",
+                                            background: "rgba(11,16,32,0.78)",
+                                            border: "1px solid rgba(255,255,255,0.1)",
+                                            borderRadius: 16,
+                                            padding: "8px 16px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        Est. Deploy: ~{parseFloat(estimatedGas).toFixed(4)} ETH
+                                    </span>
+                                )}
                             </div>
                         </div>
 

@@ -69,7 +69,7 @@ export async function POST(
             if (finalizedResponse) return finalizedResponse;
         }
 
-        const secretHandled = body ? await stageDraftSecretFromFrameInput(draftId, body) : false;
+        const secretHandled = body ? await stageDraftSecretFromFrameInput(draftId, draft.creator_address || "", body) : false;
 
         return renderDraftPreviewFrame({
             baseUrl,

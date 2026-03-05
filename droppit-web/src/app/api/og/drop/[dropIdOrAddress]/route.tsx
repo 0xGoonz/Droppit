@@ -2,7 +2,8 @@ import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { createClient } from "@supabase/supabase-js";
-import { isAddress } from "viem";
+import { createPublicClient, http, isAddress } from "viem";
+import { base, baseSepolia } from "viem/chains";
 import {
     OG_BRAND,
     OG_TOKENS,
@@ -19,8 +20,26 @@ import {
     truncateMiddle,
     truncateText,
 } from "@/lib/og-utils";
+import { getAlchemyNetworkId, isProductionEnvironment } from "@/lib/chains";
 
 export const runtime = "edge";
+
+const dropAbi = [
+    { type: "function", name: "editionSize", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { type: "function", name: "totalMinted", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+] as const;
+
+const isProduction = isProductionEnvironment();
+const activeChain = isProduction ? base : baseSepolia;
+const alchemyNetwork = getAlchemyNetworkId();
+const rpcUrl = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+    ? `https://${alchemyNetwork}.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
+    : undefined;
+
+const publicClient = createPublicClient({
+    chain: activeChain,
+    transport: http(rpcUrl),
+});
 
 type DropRow = {
     id: string;
@@ -103,6 +122,31 @@ export async function GET(
                 ? truncateMiddle(identifier, 10, 8)
                 : "Not deployed";
         const glyph = titleSafe.charAt(0).toUpperCase() || "D";
+
+        let supplyLabel: string | null = null;
+        if (drop?.contract_address && (drop.status === 'LIVE' || drop.status === 'PUBLISHED')) {
+            try {
+                const [editionSize, totalMinted] = await Promise.all([
+                    publicClient.readContract({
+                        address: drop.contract_address as `0x${string}`,
+                        abi: dropAbi,
+                        functionName: "editionSize",
+                    }),
+                    publicClient.readContract({
+                        address: drop.contract_address as `0x${string}`,
+                        abi: dropAbi,
+                        functionName: "totalMinted",
+                    }),
+                ]);
+                const editionSizeNum = Number(editionSize);
+                const totalMintedNum = Number(totalMinted);
+                const remaining = Math.max(0, editionSizeNum - totalMintedNum);
+                supplyLabel = `${remaining} remaining`;
+                if (remaining === 0) supplyLabel = `Sold Out`;
+            } catch (err) {
+                console.warn("[OG Drop] Failed to fetch onchain supply:", err);
+            }
+        }
 
         return new ImageResponse(
             (
@@ -200,6 +244,20 @@ export async function GET(
                                 >
                                     {price}
                                 </span>
+                                {supplyLabel && (
+                                    <span
+                                        style={{
+                                            fontSize: OG_TOKENS.subtitleSize,
+                                            color: supplyLabel === "Sold Out" ? "#ef4444" : "#bae6fd",
+                                            background: supplyLabel === "Sold Out" ? "rgba(239,68,68,0.1)" : "rgba(14,165,233,0.1)",
+                                            border: `1px solid ${supplyLabel === "Sold Out" ? "rgba(239,68,68,0.3)" : "rgba(14,165,233,0.3)"}`,
+                                            borderRadius: 16,
+                                            padding: "8px 16px",
+                                        }}
+                                    >
+                                        {supplyLabel}
+                                    </span>
+                                )}
                             </div>
                         </div>
 

@@ -1,5 +1,10 @@
 import { base, baseSepolia } from "wagmi/chains";
+import type { Chain } from "wagmi/chains";
 import { formatEther } from "viem";
+
+/** Chains supported by Droppit. Used for chain toggle UX. */
+export const SUPPORTED_CHAINS: readonly Chain[] = [base, baseSepolia] as const;
+export type SupportedChainId = typeof base.id | typeof baseSepolia.id;
 
 export type ChainContractConfig = {
     factoryAddress: `0x${string}` | "";

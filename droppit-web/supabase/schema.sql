@@ -16,7 +16,10 @@
 CREATE TABLE IF NOT EXISTS public.drops (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     -- Creator identity
-    creator_address TEXT,              -- Wallet address (web flow, lowercase)
+    creator_address TEXT
+        CONSTRAINT drops_creator_address_lowercase CHECK (
+            creator_address IS NULL OR creator_address = LOWER(creator_address)
+        ),
     creator_fid BIGINT,                -- Farcaster FID (webhook flow)
     -- Drop metadata
     title TEXT NOT NULL,
@@ -26,7 +29,10 @@ CREATE TABLE IF NOT EXISTS public.drops (
     image_url TEXT,                     -- IPFS gateway or pinned URL
     token_uri TEXT,                     -- ipfs://Qm... (set at upload time)
     -- Payout
-    payout_recipient TEXT,             -- Wallet address to receive mint proceeds (lowercase)
+    payout_recipient TEXT
+        CONSTRAINT drops_payout_recipient_lowercase CHECK (
+            payout_recipient IS NULL OR payout_recipient = LOWER(payout_recipient)
+        ),
     -- Locked content
     locked_content TEXT,               -- Encrypted JSON payload (written at publish time only)
     locked_content_draft TEXT,         -- Plaintext staging during draft phase (cleared at publish)
@@ -62,7 +68,8 @@ COMMENT ON COLUMN public.drops.tx_hash_deploy IS 'Transaction hash of the create
 CREATE TABLE IF NOT EXISTS public.nonces (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nonce TEXT NOT NULL UNIQUE,
-    wallet TEXT NOT NULL,               -- Lowercase wallet address
+    wallet TEXT NOT NULL
+        CONSTRAINT nonces_wallet_lowercase CHECK (wallet = LOWER(wallet)),
     drop_id UUID,                       -- For creator stats nonces (nullable)
     drop_contract TEXT,                 -- For locked-content nonces (nullable for identity nonces)
     action TEXT NOT NULL,               -- 'unlock' | 'identity_link' | 'stats_read'
@@ -86,7 +93,10 @@ CREATE TABLE IF NOT EXISTS public.analytics_events (
     event TEXT NOT NULL,                -- 'page_view' | 'mint_success'
     drop_id UUID,                      -- References drops.id
     contract_address TEXT,
-    wallet TEXT,                        -- Viewer/minter address
+    wallet TEXT
+        CONSTRAINT analytics_events_wallet_lowercase CHECK (
+            wallet IS NULL OR wallet = LOWER(wallet)
+        ),
     session_id TEXT,                    -- SHA-256(IP+UA+daily salt) — anonymous, non-PII, rotates daily
     -- Referral attribution
     ref TEXT,                           -- Raw ref param value
@@ -125,8 +135,10 @@ CREATE INDEX IF NOT EXISTS idx_identity_links_address ON public.identity_links(c
 
 -- 5. webhook_events — Idempotency tracking for Farcaster webhooks
 -- Used by: api/webhooks/neynar
+-- event_id format: "<castHash>:<eventType>" (Item 34)
 CREATE TABLE IF NOT EXISTS public.webhook_events (
-    event_id TEXT PRIMARY KEY,
+    event_id TEXT PRIMARY KEY,          -- e.g. "0xabc123:cast.created"
+    event_type TEXT,                    -- e.g. "cast.created"
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
@@ -209,3 +221,32 @@ COMMENT ON TABLE  public.referral_links IS 'Short-code referral links that redir
 COMMENT ON COLUMN public.referral_links.code IS 'Alphanumeric referral code (plus _ and -). 1–64 chars. Validated by CHECK and by the route regex /^[A-Za-z0-9_-]{1,64}$/.';
 COMMENT ON COLUMN public.referral_links.contract_address IS 'Lowercase EVM contract address of the linked drop. Must match a drops.contract_address row.';
 COMMENT ON COLUMN public.referral_links.creator_address IS 'Optional lowercase EVM address of the referral link creator (for attribution/payouts).';
+
+-- ============================================================
+-- 8. Cleanup function — periodic purge of stale rows (Item 49)
+-- ============================================================
+-- Schedule via pg_cron: SELECT cron.schedule('cleanup-stale-rows', '0 3 * * *', $$SELECT public.cleanup_stale_rows()$$);
+-- This runs daily at 03:00 UTC.
+CREATE OR REPLACE FUNCTION public.cleanup_stale_rows()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    -- Delete used or expired nonces older than 24 hours
+    DELETE FROM public.nonces
+    WHERE (used = TRUE OR expires_at < NOW())
+      AND created_at < NOW() - INTERVAL '24 hours';
+
+    -- Delete rate_limit rows not touched in 24 hours
+    DELETE FROM public.rate_limits
+    WHERE last_reset < NOW() - INTERVAL '24 hours';
+
+    -- Delete webhook_events older than 30 days
+    DELETE FROM public.webhook_events
+    WHERE created_at < NOW() - INTERVAL '30 days';
+END;
+$$;
+
+COMMENT ON FUNCTION public.cleanup_stale_rows() IS 'Periodic cleanup: purges expired nonces (24h), stale rate_limit rows (24h), and old webhook_events (30d). Schedule with pg_cron.';

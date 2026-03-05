@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
-import { createPublicClient, formatEther, http } from "viem";
+import { createPublicClient, formatEther, http, decodeFunctionData } from "viem";
 import { base, baseSepolia } from "viem/chains";
 import { createClient } from "@supabase/supabase-js";
 import { BRAND } from "@/lib/brand";
@@ -18,6 +18,11 @@ interface DropMeta {
     mint_price: string | null;
 }
 
+const dropAbi = [
+    { type: "function", name: "mint", inputs: [{ type: "uint256", name: "quantity" }] },
+    { type: "function", name: "mintTo", inputs: [{ type: "address", name: "recipient" }, { type: "uint256", name: "quantity" }] },
+] as const;
+
 const isProduction = isProductionEnvironment();
 const activeChain = isProduction ? base : baseSepolia;
 const networkLabel = DEFAULT_CHAIN_LABEL;
@@ -34,8 +39,8 @@ const publicClient = createPublicClient({
 
 function resolveVariant(req: NextRequest): ReceiptVariant {
     const raw = req.nextUrl.searchParams.get("variant");
-    if (raw === "square") return "square";
-    return "card";
+    if (raw === "card") return "card";
+    return "square"; // default to 1080x1080 square
 }
 
 function truncateEnd(value: string, maxChars: number): string {
@@ -62,7 +67,7 @@ function getStatusUi(status: TxStatus) {
     if (status === "reverted") {
         return { color: "#dc2626", symbol: "X", label: "Transaction Reverted" };
     }
-    return { color: "#ca8a04", symbol: "...", label: "Transaction Pending" };
+    return { color: "#ca8a04", symbol: "...", label: "Mint Pending" };
 }
 
 export async function GET(
@@ -81,6 +86,10 @@ export async function GET(
 
         let txStatus: TxStatus = "pending";
         let contractAddress: string | null = null;
+        let minterAddress: string | null = null;
+        let txValue: bigint | null = null;
+        let txData: `0x${string}` | null = null;
+        let txDate: string | null = null;
 
         try {
             const receipt = await publicClient.getTransactionReceipt({
@@ -88,12 +97,27 @@ export async function GET(
             });
             txStatus = receipt.status;
             contractAddress = receipt.to?.toLowerCase() ?? null;
+            minterAddress = receipt.from?.toLowerCase() ?? null;
+
+            try {
+                const block = await publicClient.getBlock({ blockHash: receipt.blockHash });
+                txDate = new Date(Number(block.timestamp) * 1000).toLocaleDateString();
+            } catch { }
+
+            try {
+                const tx = await publicClient.getTransaction({ hash: hash as `0x${string}` });
+                txValue = tx.value;
+                txData = tx.input;
+            } catch { }
         } catch {
             try {
                 const tx = await publicClient.getTransaction({
                     hash: hash as `0x${string}`,
                 });
                 contractAddress = tx.to?.toLowerCase() ?? null;
+                minterAddress = tx.from?.toLowerCase() ?? null;
+                txValue = tx.value;
+                txData = tx.input;
             } catch {
                 // keep generic fallback values
             }
@@ -118,18 +142,25 @@ export async function GET(
                     .single();
 
                 if (data) drop = data as DropMeta;
-            } catch {
-                // render without drop metadata
-            }
+            } catch { }
+        }
+
+        let quantity = 1;
+        if (txData) {
+            try {
+                const { functionName, args } = decodeFunctionData({ abi: dropAbi, data: txData });
+                if (functionName === 'mint' && args?.[0]) quantity = Number(args[0]);
+                if (functionName === 'mintTo' && args?.[1]) quantity = Number(args[1]);
+            } catch { }
         }
 
         const title = truncateEnd(drop?.title || "Droppit Drop", variant === "square" ? 54 : 66);
-        const priceStr = drop?.mint_price && drop.mint_price !== "0"
-            ? `${formatEther(BigInt(drop.mint_price))} ETH`
-            : "Free";
         const shortHash = truncateMiddle(hash, 12, 10);
         const artSrc = drop?.image_url ? toGatewayUrl(drop.image_url) : null;
         const statusUi = getStatusUi(txStatus);
+
+        const totalEth = txValue != null ? formatEther(txValue) : "?";
+        const feeStr = `0.0001 ETH / mint`;
 
         return new ImageResponse(
             (
@@ -228,14 +259,14 @@ export async function GET(
                                 >
                                     {statusUi.symbol}
                                 </div>
-                                <div style={{ fontSize: variant === "square" ? 46 : 42, fontWeight: 800, lineHeight: 1.05 }}>
+                                <div style={{ fontSize: variant === "square" ? 40 : 36, fontWeight: 800, lineHeight: 1.05 }}>
                                     {statusUi.label}
                                 </div>
                             </div>
 
                             <div
                                 style={{
-                                    fontSize: variant === "square" ? 56 : 52,
+                                    fontSize: variant === "square" ? 50 : 46,
                                     fontWeight: 800,
                                     lineHeight: 1.05,
                                     letterSpacing: "-0.02em",
@@ -245,46 +276,46 @@ export async function GET(
                                 {title}
                             </div>
 
-                            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                                <span
-                                    style={{
-                                        fontSize: 24,
-                                        backgroundColor: "rgba(11,16,32,0.9)",
-                                        border: "1px solid rgba(34,211,238,0.24)",
-                                        color: OG_BRAND.text1,
-                                        padding: "8px 18px",
-                                        borderRadius: 14,
-                                    }}
-                                >
-                                    {priceStr}
-                                </span>
-                                <span
-                                    style={{
-                                        fontSize: 24,
-                                        backgroundColor: "rgba(11,16,32,0.9)",
-                                        border: "1px solid rgba(0,82,255,0.28)",
-                                        color: OG_BRAND.text1,
-                                        padding: "8px 18px",
-                                        borderRadius: 14,
-                                    }}
-                                >
-                                    {networkLabel}
-                                </span>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: "45%" }}>
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>Quantity</span>
+                                    <span style={{ fontSize: 22, fontWeight: 600, color: OG_BRAND.text1 }}>{quantity}</span>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: "45%" }}>
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>Total Cost</span>
+                                    <span style={{ fontSize: 22, fontWeight: 600, color: OG_BRAND.text1 }}>{totalEth} ETH</span>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: "45%" }}>
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>Minter</span>
+                                    <span style={{ fontSize: 22, fontWeight: 600, color: OG_BRAND.text1 }}>{minterAddress ? truncateMiddle(minterAddress, 6, 4) : "Unknown"}</span>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: "45%" }}>
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>Date</span>
+                                    <span style={{ fontSize: 22, fontWeight: 600, color: OG_BRAND.text1 }}>{txDate || "Pending"}</span>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: "45%" }}>
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>Network</span>
+                                    <span style={{ fontSize: 22, fontWeight: 600, color: OG_BRAND.text1 }}>{networkLabel}</span>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: "45%" }}>
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>Fee</span>
+                                    <span style={{ fontSize: 22, fontWeight: 600, color: OG_BRAND.text1 }}>{feeStr}</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
                             <div
                                 style={{
-                                    fontSize: variant === "square" ? 26 : 22,
+                                    fontSize: variant === "square" ? 22 : 18,
                                     color: OG_BRAND.text2,
                                     maxWidth: "100%",
                                 }}
                             >
                                 Tx: {shortHash}
                             </div>
-                            <div style={{ fontSize: 18, color: OG_BRAND.text2 }}>
-                                Powered by {BRAND.name} on {networkLabel}
+                            <div style={{ fontSize: 16, color: OG_BRAND.text2 }}>
+                                Powered by {BRAND.name}
                             </div>
                         </div>
                     </div>

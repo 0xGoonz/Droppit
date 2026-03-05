@@ -16,6 +16,15 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Missing or invalid wallet parameter." }, { status: 400 });
         }
 
+        // Item 54: Creator-only route hardening — verify caller identity
+        const callerWallet = req.headers.get("x-creator-address")?.toLowerCase();
+        if (!callerWallet || !isAddress(callerWallet)) {
+            return NextResponse.json({ error: "Missing or invalid x-creator-address header." }, { status: 401 });
+        }
+        if (callerWallet !== wallet) {
+            return NextResponse.json({ error: "Unauthorized: wallet mismatch." }, { status: 403 });
+        }
+
         const supabaseAdmin = getServiceRoleClient();
         const { data, error } = await supabaseAdmin
             .from("drops")

@@ -27,6 +27,7 @@ import {
     normalizeReferralPayloadFromSearchParams,
     serializeUtm,
 } from "@/lib/attribution";
+import { trackEvent } from "@/lib/analytics";
 
 // Minimal Drop1155 ABI for reads and writes
 const dropAbi = [
@@ -38,7 +39,8 @@ const dropAbi = [
     { type: 'function', name: 'uri', stateMutability: 'view', inputs: [{ name: 'id', type: 'uint256' }], outputs: [{ type: 'string' }] },
     { type: 'function', name: 'mint', stateMutability: 'payable', inputs: [{ name: 'quantity', type: 'uint256' }], outputs: [] },
     { type: 'function', name: 'mintTo', stateMutability: 'payable', inputs: [{ name: 'to', type: 'address' }, { name: 'quantity', type: 'uint256' }], outputs: [] },
-    { type: 'function', name: 'factory', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] }
+    { type: 'function', name: 'factory', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+    { type: 'function', name: 'lockedContentCommitment', stateMutability: 'view', inputs: [], outputs: [{ type: 'bytes32' }] }
 ] as const;
 
 // Minimal Factory ABI for implementation resolution
@@ -104,6 +106,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
             { address: contractAddress as `0x${string}`, abi: dropAbi, functionName: 'uri', args: [BigInt(1)] },
             { address: contractAddress as `0x${string}`, abi: dropAbi, functionName: 'protocolFeePerMint' },
             { address: contractAddress as `0x${string}`, abi: dropAbi, functionName: 'factory' },
+            { address: contractAddress as `0x${string}`, abi: dropAbi, functionName: 'lockedContentCommitment' },
         ],
     });
 
@@ -117,6 +120,8 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     const tokenUri = (data?.[4].result as string) || "";
     const rawProtocolFee = (data?.[5].result as bigint) || PROTOCOL_FEE_PER_MINT_WEI;
     const factoryAddress = (data?.[6].result as string) || null;
+    const lockedCommitment = (data?.[7].result as string) || null;
+    const hasOnchainCommitment = lockedCommitment && lockedCommitment !== "0x0000000000000000000000000000000000000000000000000000000000000000";
 
     // Fetch implementation from the resolved factory
     const { data: factoryData, isLoading: isLoadingFactory, isError: isErrorFactory } = useReadContracts({
@@ -150,8 +155,13 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
     React.useEffect(() => {
         if (typeof window !== "undefined") {
-            const parsed = normalizeReferralPayloadFromSearchParams(new URLSearchParams(window.location.search));
+            const searchParams = new URLSearchParams(window.location.search);
+            const parsed = normalizeReferralPayloadFromSearchParams(searchParams);
             setReferralPayload(parsed);
+
+            if (searchParams.get("gift") === "true") {
+                setIsGifting(true);
+            }
         }
         setIsReferralReady(true);
     }, []);
@@ -181,11 +191,12 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                 wallet: userAddress || null,
                 referral: referralPayload,
                 dedupeKey,
+                metadata: isGifting ? { gift: true } : undefined,
             }),
         }).catch((error) => {
             console.error("Attribution view event failed:", error);
         });
-    }, [contractAddress, isReferralReady, referralPayload, userAddress]);
+    }, [contractAddress, isReferralReady, referralPayload, userAddress, isGifting]);
 
     const [metadata, setMetadata] = useState<{ name?: string; description?: string; image?: string } | null>(null);
 
@@ -289,6 +300,14 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
             setHasMinted(true);
             refetch(); // Refresh the minted count dynamically
 
+            // Item 22: Track mint success event
+            trackEvent("mint_success", {
+                contract_address: contractAddress,
+                quantity,
+                wallet: userAddress,
+                tx_hash: receipt.transactionHash,
+            });
+
             // Auto-attempt unlock after a successful mint.
             // Unlock state remains independent from mint state.
             if (canAttemptUnlock && !isContentUnlocked) {
@@ -328,11 +347,12 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                 wallet: userAddress || null,
                 referral: referralPayload,
                 dedupeKey,
+                metadata: isGifting ? { gift: true } : undefined,
             }),
         }).catch((error) => {
             console.error("Attribution mint event failed:", error);
         });
-    }, [isSuccess, receipt, contractAddress, quantity, userAddress, referralPayload]);
+    }, [isSuccess, receipt, contractAddress, quantity, userAddress, referralPayload, isGifting]);
 
     const [creatorIdentity, setCreatorIdentity] = useState<{ handle: string; fid: number | null } | null>(null);
     const [isLoadingCreatorIdentity, setIsLoadingCreatorIdentity] = useState(false);
@@ -414,6 +434,14 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
             setIsMinting(true);
 
+            // Item 22: Track mint click event
+            trackEvent("mint_click", {
+                contract_address: contractAddress,
+                quantity,
+                wallet: userAddress,
+                is_gift: isGifting,
+            });
+
             // Calculate total exact payment (mintPrice + protocolFeePerMint) * quantity
             const totalValueRequired = (rawPrice + rawProtocolFee) * BigInt(quantity);
 
@@ -477,6 +505,22 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
             console.error("Failed to copy locked content", err);
         }
     }, [lockedContentData]);
+
+    if (!isLoading && (isError || (!factoryAddress && !isErrorFactory))) {
+        return (
+            <div className="min-h-screen bg-[#05070f] flex flex-col items-center justify-center p-4">
+                <BrandLockup markSize={42} wordmarkClassName="text-3xl font-bold mb-8" />
+                <div className="text-center bg-white/[0.02] border border-white/[0.05] p-12 rounded-3xl max-w-md w-full shadow-2xl backdrop-blur-xl">
+                    <div className="flex justify-center mb-6 text-slate-500">
+                        <svg viewBox="0 0 24 24" className="h-16 w-16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>
+                    </div>
+                    <h1 className="text-2xl font-bold text-white mb-3">Drop Not Found</h1>
+                    <p className="text-slate-400 text-sm mb-8 leading-relaxed">The contract address provided is invalid, does not exist on {selectedChain.name}, or there was an error communicating with the blockchain.</p>
+                    <Link href="/" className="inline-block px-8 py-3 rounded-full bg-white text-black font-bold hover:scale-105 transition-transform">Return Home</Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
@@ -549,14 +593,20 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                         <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
                             {isLoading ? "Loading Drop..." : drop.title}
                         </h1>
-                        <div className="flex items-center gap-3 text-sm text-slate-400 mb-6">
-                            <span className="font-mono rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 text-slate-300">
+                        <div className="flex items-center gap-3 text-sm text-slate-400 mb-6 flex-wrap">
+                            <span className="font-mono rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 text-slate-300 flex items-center">
                                 Created by {isLoading ? "Loading..." : creatorDisplay}
                             </span>
+                            {hasOnchainCommitment && (
+                                <span title="A cryptographic commitment to the locked content is recorded onchain proving it exists" className="font-mono rounded-lg border border-[#16a34a]/30 bg-[#16a34a]/10 px-2.5 py-1 text-[#4ade80] flex items-center gap-1.5 cursor-help">
+                                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+                                    Commitment verified
+                                </span>
+                            )}
                             {isCreatorViewer && (
                                 <Link
                                     href={`/drop/base/${contractAddress}/stats`}
-                                    className="font-mono rounded-lg border border-[#0052FF]/20 bg-[#0052FF]/10 px-2.5 py-1 text-[#22D3EE] hover:bg-[#0052FF]/20 transition-colors"
+                                    className="font-mono rounded-lg border border-[#0052FF]/20 bg-[#0052FF]/10 px-2.5 py-1 text-[#22D3EE] hover:bg-[#0052FF]/20 transition-colors flex items-center"
                                 >
                                     View Stats
                                 </Link>
@@ -684,30 +734,81 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                             </div>
                         )}
 
-                        <button
-                            onClick={handleMint}
-                            disabled={!isMintEnabledForSelectedChain || isSoldOut || isMinting || hasMinted || isLoading || isPending || isConfirming}
-                            className={`w-full py-4 rounded-full font-bold text-lg transition-all ${hasMinted
-                                ? "bg-green-500/20 text-green-400 border border-green-500/50"
-                                : isSoldOut
-                                    ? "bg-red-500/20 text-red-500 border border-red-500/50 cursor-not-allowed"
-                                    : (isMinting || isLoading || isPending || isConfirming || !isMintEnabledForSelectedChain)
-                                        ? "bg-white/10 text-white/50 cursor-not-allowed"
-                                        : "bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(0,82,255,0.35)]"
-                                }`}
-                        >
-                            {!isMintEnabledForSelectedChain
-                                ? "Chain Config Missing"
-                                : isLoading
-                                    ? "Loading..."
-                                    : hasMinted
-                                        ? "Minted Successfully"
-                                        : isSoldOut
-                                            ? "Sold Out"
-                                            : (isMinting || isPending || isConfirming)
-                                                ? "Confirming..."
-                                                : "Mint Drop"}
-                        </button>
+                        {hasMinted && receiptHref && receipt ? (
+                            <div className="mb-4 p-5 rounded-3xl border border-green-500/30 bg-green-500/10 flex flex-col gap-4 animate-in fade-in slide-in-from-top-4">
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mb-3">
+                                        <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-green-400 font-bold text-lg">Mint Successful!</h3>
+                                    <p className="text-green-400/80 text-sm mt-1">Your drop is now in your wallet.</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 mt-2">
+                                    <a
+                                        href={receiptHref}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-sm font-semibold transition-colors"
+                                    >
+                                        🧾 View Receipt
+                                    </a>
+                                    <a
+                                        href={`${explorerUrl}/tx/${receipt.transactionHash}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-sm font-semibold transition-colors text-slate-300"
+                                    >
+                                        🔍 Explorer
+                                    </a>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <a
+                                        href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`I just collected "${drop.title}" on @droppit!\n\nView my receipt:`)}&embeds[]=${encodeURIComponent(new URL(receiptHref, window.location.origin).toString())}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-[#8A63D2]/20 hover:bg-[#8A63D2]/30 border border-[#8A63D2]/40 text-[#8A63D2] text-sm font-semibold transition-colors"
+                                    >
+                                        Farcaster
+                                    </a>
+                                    <a
+                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just collected "${drop.title}" on Droppit!\n\nView my receipt:\n${new URL(receiptHref, window.location.origin).toString()}`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-sm font-semibold transition-colors"
+                                    >
+                                        <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg> Post
+                                    </a>
+                                </div>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={handleMint}
+                                disabled={!isMintEnabledForSelectedChain || isSoldOut || isMinting || hasMinted || isLoading || isPending || isConfirming}
+                                className={`w-full py-4 rounded-full font-bold text-lg transition-all ${hasMinted
+                                    ? "bg-green-500/20 text-green-400 border border-green-500/50"
+                                    : isSoldOut
+                                        ? "bg-red-500/20 text-red-500 border border-red-500/50 cursor-not-allowed"
+                                        : (isMinting || isLoading || isPending || isConfirming || !isMintEnabledForSelectedChain)
+                                            ? "bg-white/10 text-white/50 cursor-not-allowed"
+                                            : "bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(0,82,255,0.35)]"
+                                    }`}
+                            >
+                                {!isMintEnabledForSelectedChain
+                                    ? "Chain Config Missing"
+                                    : isLoading
+                                        ? "Loading..."
+                                        : hasMinted
+                                            ? "Minted Successfully"
+                                            : isSoldOut
+                                                ? "Sold Out"
+                                                : (isMinting || isPending || isConfirming)
+                                                    ? "Confirming..."
+                                                    : "Mint Drop"}
+                            </button>
+                        )}
 
 
 
@@ -931,6 +1032,11 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                             </div>
                         </div>
                         <p className="text-xs text-center text-slate-600 font-mono mt-4">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[#0052FF]/20 bg-[#0052FF]/10 text-[#22D3EE] font-semibold mb-2">
+                                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+                                Created via Droppit
+                            </span>
+                            <br />
                             Secured by Base L2. 100% Non-Custodial.
                             <br />
                             <span className="opacity-70 mt-1 inline-block">Names and wallet-linked social profiles are informational signals only and do not constitute Farcaster/Warpcast verification or KYC.</span>

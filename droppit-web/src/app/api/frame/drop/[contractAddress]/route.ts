@@ -67,6 +67,18 @@ export async function GET(
             );
         }
 
+        // --- Fire and forget view attribution for Frame render ---
+        // (Do not await to avoid slowing down frame rendering)
+        fetch(`${baseUrl}/api/attribution/view`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contractAddress: contractAddress.toLowerCase(),
+                wallet: null, // Frame bots don't have connected wallets
+                ref: 'farcaster_frame',
+            }),
+        }).catch(err => console.warn('Frame view attribution failed:', err));
+
         try {
             // Verify contract is live/valid by attempting to read its mintPrice
             await publicClient.readContract({
@@ -91,7 +103,8 @@ export async function GET(
             getFrameHtmlResponse({
                 buttons: [
                     { action: 'tx', label: 'Mint 1', target: urls.mintUrl },
-                    { action: 'link', label: 'Open mint page', target: urls.dropUrl }
+                    { action: 'link', label: 'Open mint page', target: urls.dropUrl },
+                    { action: 'link', label: 'Gift', target: `${urls.dropUrl}?gift=true` }
                 ],
                 image: { src: urls.ogImageUrl },
                 postUrl: urls.postUrl,

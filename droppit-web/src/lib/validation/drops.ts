@@ -109,6 +109,7 @@ const BLOCKED_PATTERNS = [
     /\b[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+\b/, // Bare domains
     /\b(\d{1,3}\.){3}\d{1,3}\b/, // IPv4 addresses
     /\[[^\]]+\]\([^)]+\)/, // Markdown links
+    /<[^>]*>/, // Any HTML-like tags, including <http...>
 ];
 
 export function validateLockedContent(raw: unknown): { valid: true; value: string | null } | { valid: false; error: string } {

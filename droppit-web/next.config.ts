@@ -23,7 +23,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src * blob: data:; font-src 'self' data: https:; connect-src *;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' blob: data: https://*.supabase.co https://*.mypinata.cloud; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.alchemy.com https://*.neynar.com;",
           },
         ],
       },
@@ -50,10 +50,10 @@ const nextConfig = {
     return config;
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 };
 

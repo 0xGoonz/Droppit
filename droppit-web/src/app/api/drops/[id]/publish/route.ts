@@ -9,6 +9,7 @@ import {
     validateTxHash,
     validateLockedContent,
 } from "@/lib/validation/drops";
+import { logOperationalEvent } from "@/lib/monitoring";
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ export async function POST(
 
         const { data: draft, error: draftError } = await supabaseAdmin
             .from('drops')
-            .select('id, status, locked_content_draft, creator_address')
+            .select('id, status, locked_content_draft, creator_address, edition_size, mint_price, payout_recipient, token_uri, tx_hash_deploy')
             .eq('id', draftId)
             .eq('status', 'DRAFT')
             .single();
@@ -110,9 +111,29 @@ export async function POST(
                 return NextResponse.json({ error: "Draft not found." }, { status: 404 });
             }
             if (existing.status === 'LIVE') {
+                logOperationalEvent("publish_conflict", "already_live", { draftId });
                 return NextResponse.json({ error: "Drop is already live. Published drops are immutable." }, { status: 409 });
             }
+            logOperationalEvent("publish_conflict", "invalid_state", { draftId, status: existing.status });
             return NextResponse.json({ error: "Cannot publish drop in current state." }, { status: 400 });
+        }
+
+        // ── Task 7 & 8: TxHash Unique Guard & Immutability ────────
+        // Prevent hijacking by taking an already published txHash and submitting it for a different draft.
+        if (draft.tx_hash_deploy && draft.tx_hash_deploy.toLowerCase() !== txHashCheck.value.toLowerCase()) {
+            return NextResponse.json({ error: "This draft is already bound to a different deployment transaction." }, { status: 409 });
+        }
+
+        const { data: txHashConflict } = await supabaseAdmin
+            .from('drops')
+            .select('id')
+            .eq('tx_hash_deploy', txHashCheck.value)
+            .neq('id', draftId)
+            .maybeSingle();
+
+        if (txHashConflict) {
+            logOperationalEvent("publish_conflict", "tx_hash_reuse", { draftId, txHash: txHashCheck.value, conflictingId: txHashConflict.id });
+            return NextResponse.json({ error: "This deployment transaction has already been used to publish another drop." }, { status: 409 });
         }
 
         const walletScopedLimited = await checkRateLimit(
@@ -192,6 +213,32 @@ export async function POST(
                 });
                 const drop = decoded.args.drop;
                 if (typeof drop === "string" && isAddress(drop)) {
+                    // ── Task 5: Verify DropCreated Event Fields Against Draft ────────
+                    // This prevents malicious actors from deploying altered drops (e.g. wrong price, wrong recipient)
+                    // and attaching them to a valid draft ID on Droppit.
+
+                    // ── Task 6: Bind Farcaster-created Drops to Creator Wallet ───────
+                    // If the draft lacks a creator (i.e. created via Farcaster Frame), we use the farcasterWallet payload.
+                    const finalCreatorAddress = draft.creator_address || body.farcasterWallet;
+
+                    if (!finalCreatorAddress || decoded.args.creator.toLowerCase() !== finalCreatorAddress.toLowerCase()) {
+                        return NextResponse.json({ error: "Drop creation event creator does not match draft or verified Farcaster creator." }, { status: 422 });
+                    }
+                    if (decoded.args.editionSize.toString() !== draft.edition_size.toString()) {
+                        return NextResponse.json({ error: "Drop creation event edition size does not match draft." }, { status: 422 });
+                    }
+                    if (decoded.args.mintPrice.toString() !== draft.mint_price.toString()) {
+                        return NextResponse.json({ error: "Drop creation event mint price does not match draft." }, { status: 422 });
+                    }
+                    // Validate payout_recipient falls back to creator_address if not strictly set in the draft
+                    const expectedPayout = (draft.payout_recipient || finalCreatorAddress)?.toLowerCase();
+                    if (decoded.args.payoutRecipient.toLowerCase() !== expectedPayout) {
+                        return NextResponse.json({ error: "Drop creation event payout recipient does not match draft expected payout recipient." }, { status: 422 });
+                    }
+                    if (decoded.args.tokenUri !== (tokenUri || draft.token_uri)) {
+                        return NextResponse.json({ error: "Drop creation event token URI does not match provided or draft token URI." }, { status: 422 });
+                    }
+
                     onchainDropAddress = drop;
                     break;
                 }
@@ -227,6 +274,10 @@ export async function POST(
             deploy_salt: null,          // Clear staged deploy metadata once published
             deploy_commitment: null,
         };
+
+        if (body.farcasterWallet && !draft.creator_address) {
+            updatePayload.creator_address = body.farcasterWallet;
+        }
 
         if (tokenUri) updatePayload.token_uri = tokenUri;
         if (imageUrl) updatePayload.image_url = imageUrl;
@@ -286,6 +337,7 @@ export async function POST(
 
         // If no rows were updated, a race condition resolved against us
         if (!data || data.length === 0) {
+            logOperationalEvent("publish_conflict", "race_condition", { draftId });
             return NextResponse.json({ error: "Drop was already published or no longer in DRAFT state." }, { status: 409 });
         }
 

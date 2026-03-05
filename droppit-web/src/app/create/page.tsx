@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatEther, parseEther, keccak256, encodePacked, isAddress } from "viem";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL, ALLOWED_MIME_ACCEPT } from "@/lib/constants/upload";
 import { validateLockedContent } from "@/lib/validation/drops";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, usePublicClient } from "wagmi";
 import {
     ConnectWallet,
     Wallet,
@@ -49,6 +49,8 @@ export default function CreateDrop() {
     const [draftImageUrl, setDraftImageUrl] = useState<string | null>(null);
     const [draftTokenUri, setDraftTokenUri] = useState<string | null>(null);
 
+    const [deployGasEstimate, setDeployGasEstimate] = useState<string | null>(null);
+
     // One-shot deploy guard: prevents accidental repeated deploy triggers
     const deployFiredRef = useRef(false);
     const {
@@ -59,6 +61,7 @@ export default function CreateDrop() {
         chainContracts,
     } = useChainPreference();
     const selectedFactoryAddress = chainContracts?.factoryAddress || "";
+    const publicClient = usePublicClient({ chainId: selectedChainId });
 
     const { address, chainId } = useAccount();
     const router = useRouter();
@@ -83,7 +86,9 @@ export default function CreateDrop() {
         setDraftId(dId);
         if (auto === '1') setAutoDeploy(true);
 
-        fetch(`/api/drops/${dId}`)
+        fetch(`/api/drops/${dId}`, {
+            headers: address ? { "x-creator-address": address } : {},
+        })
             .then(async (res) => {
                 if (!res.ok) {
                     const body = await res.json().catch(() => ({}));
@@ -151,6 +156,50 @@ export default function CreateDrop() {
             }
         }
     }, [isSuccess, receipt, router, deployedState, formData.lockedContent, selectedFactoryAddress]);
+
+    // Estimate deployment gas when entering Step 4
+    useEffect(() => {
+        if (step !== 4 || !publicClient || !address || !hasSelectedChainContractConfig || !selectedFactoryAddress) return;
+
+        let isMounted = true;
+        async function estimate() {
+            try {
+                const dummyTokenUri = draftTokenUri || "ipfs://QmDummyHash12345678901234567890123456789012345678901234567";
+                const dummyCommitment = "0x" + "00".repeat(32);
+                let finalPayoutRecipient: `0x${string}` = address as `0x${string}`;
+
+                if (formData.payoutRecipient.trim() && isAddress(formData.payoutRecipient.trim())) {
+                    finalPayoutRecipient = formData.payoutRecipient.trim() as `0x${string}`;
+                }
+
+                const gas = await publicClient!.estimateContractGas({
+                    address: selectedFactoryAddress as `0x${string}`,
+                    abi: FACTORY_ABI,
+                    functionName: "createDrop",
+                    account: address as `0x${string}`,
+                    args: [
+                        BigInt(formData.editionSize || "1"),
+                        parseEther(formData.mintPrice || "0"),
+                        finalPayoutRecipient,
+                        dummyTokenUri,
+                        dummyCommitment as `0x${string}`
+                    ]
+                });
+
+                const gasPrice = await publicClient!.getGasPrice();
+                const costWei = gas * gasPrice;
+                if (isMounted) {
+                    // Small buffer added (+10%) for safety margin in UX
+                    setDeployGasEstimate(formatEther(costWei + (costWei / BigInt(10))));
+                }
+            } catch (err) {
+                console.warn("Gas estimation failed:", err);
+                if (isMounted) setDeployGasEstimate("Unknown");
+            }
+        }
+        estimate();
+        return () => { isMounted = false; };
+    }, [step, publicClient, address, formData, draftTokenUri, hasSelectedChainContractConfig, selectedFactoryAddress]);
 
     const handleNext = () => setStep((s) => Math.min(s + 1, 4));
     const handlePrev = () => setStep((s) => Math.max(s - 1, 1));
@@ -723,9 +772,49 @@ export default function CreateDrop() {
                                             <span className="text-slate-500">Price</span>
                                             <span className={Number(formData.mintPrice) === 0 ? "text-[#22D3EE] font-bold" : "text-white"}>{Number(formData.mintPrice) === 0 ? "Free mint" : `${formData.mintPrice} ETH`}</span>
                                         </div>
-                                        <div className="flex justify-between py-4">
+                                        <div className="flex justify-between border-b border-white/[0.06] py-4">
                                             <span className="text-slate-500">Recipient</span>
                                             <span className="text-white truncate max-w-[150px] sm:max-w-xs">{formData.payoutRecipient.trim() ? formData.payoutRecipient.trim() : address}</span>
+                                        </div>
+                                        <div className="flex justify-between py-4">
+                                            <span className="text-slate-500">Est. Deploy Gas</span>
+                                            <span className="text-[#22D3EE] font-medium">{deployGasEstimate ? (deployGasEstimate === "Unknown" ? "Unknown" : `~${parseFloat(deployGasEstimate).toFixed(4)} ETH`) : "Estimating..."}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Share-Card Preview */}
+                                    <div className="rounded-2xl border border-white/[0.06] bg-[#05070f] overflow-hidden">
+                                        <div className="px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
+                                            <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
+                                            <p className="text-xs text-slate-500">This is how your drop will look when shared on Warpcast or X.</p>
+                                        </div>
+                                        <div className="p-6 flex justify-center bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)]">
+                                            <div className="w-full max-w-[500px] aspect-[1.91/1] rounded-xl border border-white/10 flex p-6 relative overflow-hidden bg-black/40 backdrop-blur-md shadow-2xl">
+                                                <div className="w-[40%] rounded-lg overflow-hidden border border-white/10 shrink-0 bg-[#0B1020] flex items-center justify-center">
+                                                    {file ? (
+                                                        <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                                                    ) : draftImageUrl ? (
+                                                        <img src={draftImageUrl.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')} alt="" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="text-4xl font-bold text-white/50">{formData.title.charAt(0).toUpperCase() || "D"}</div>
+                                                    )}
+                                                </div>
+                                                <div className="ml-6 flex-1 flex flex-col justify-between py-1">
+                                                    <div>
+                                                        <div className="flex gap-2 text-[10px] font-bold uppercase tracking-wider mb-2">
+                                                            <span className="px-2 py-1 rounded-full bg-[#16a34a]/20 text-[#4ade80] border border-[#16a34a]/30">LIVE</span>
+                                                            <span className="px-2 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">{selectedChain.name}</span>
+                                                        </div>
+                                                        <h1 className="text-xl font-bold text-white leading-tight line-clamp-2">{formData.title || "Untitled Drop"}</h1>
+                                                        <div className="mt-2 text-sm text-[#22D3EE] font-medium bg-[#0B1020]/80 border border-[#22D3EE]/30 rounded-lg px-3 py-1.5 inline-block">
+                                                            {Number(formData.mintPrice) === 0 ? "Free" : `${formData.mintPrice} ETH`}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-xs text-slate-400">
+                                                        <div className="mb-1">Creator: {formData.farcasterHandle ? `@${formData.farcasterHandle}` : (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Unknown")}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

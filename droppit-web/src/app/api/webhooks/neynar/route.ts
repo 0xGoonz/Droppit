@@ -5,6 +5,10 @@ import { parseDeployIntent } from "@/lib/intent-parser";
 import { pinata } from "@/lib/pinata";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { validateImageMedia } from "@/lib/media-validation";
+import { createDraftRecord } from "@/lib/draft";
+
+/** Only process these Neynar webhook event types. */
+const SUPPORTED_EVENT_TYPES = new Set(["cast.created"]);
 
 export async function POST(req: NextRequest) {
     try {
@@ -54,6 +58,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
         }
 
+        // Item 35: Event-type filtering — only process supported types
+        const eventType: string | undefined = body?.type;
+        if (!eventType || !SUPPORTED_EVENT_TYPES.has(eventType)) {
+            return NextResponse.json(
+                { message: `Event type '${eventType || "unknown"}' not supported` },
+                { status: 200 }
+            );
+        }
+
         const castText = body?.data?.text;
         const authorFid = body?.data?.author?.fid;
         const castHash = body?.data?.hash;
@@ -64,13 +77,15 @@ export async function POST(req: NextRequest) {
 
         // 6. Idempotency Check (Replay Protection)
         const supabaseAdmin = getServiceRoleClient();
+        // Item 34: Extended idempotency key — castHash + eventType
+        const idempotencyKey = `${castHash}:${eventType}`;
         const { error: idempotencyError } = await supabaseAdmin
-            .from('webhook_events') // Assumes the user provisions this tracking table with `event_id` unique constraint
-            .insert({ event_id: castHash });
+            .from('webhook_events')
+            .insert({ event_id: idempotencyKey, event_type: eventType });
 
         if (idempotencyError) {
             if (idempotencyError.code === '23505') { // Postgres Unique Violation
-                console.log(`[Webhook] Duplicate event ${castHash} safely ignored.`);
+                console.log(`[Webhook] Duplicate event ${idempotencyKey} safely ignored.`);
                 // Short-circuit safely with 200 OK
                 return NextResponse.json({ message: "Duplicate" }, { status: 200 });
             }
@@ -178,36 +193,30 @@ export async function POST(req: NextRequest) {
             console.log("[Webhook] No media found in cast or parsed intents.");
         }
 
-        // Generate backend Draft Status
-        const { data: dbInsert, error: dbError } = await supabaseAdmin
-            .from('drops')
-            .insert({
-                creator_fid: authorFid,
-                title: parsed.title,
-                edition_size: parsed.editionSize,
-                // parsed.mintPrice is a canonical wei string (e.g. "1000000000000000")
-                // produced by normalizeEthToWei + validateMintPriceWei — no float drift.
-                mint_price: parsed.mintPrice,
-                status: 'DRAFT',
-                cast_hash: castHash,
-                image_url: imageUrl,
-                token_uri: tokenUri
-            })
-            .select('id')
-            .single();
+        // Item 33: Use shared draft-creation helper (same validation as web flow)
+        const draftResult = await createDraftRecord({
+            creatorFid: authorFid,
+            title: parsed.title || "Untitled Drop",
+            editionSize: parsed.editionSize ?? 100,
+            mintPrice: parsed.mintPrice ?? "0",
+            castHash,
+            imageUrl,
+            tokenUri,
+        });
 
-        if (dbError) {
-            console.error("[Webhook] Failed to generate DRAFT representation in DB:", dbError);
+        if (!draftResult.success) {
+            console.error("[Webhook] Draft creation failed:", draftResult.error);
             return NextResponse.json({ error: "Failed to allocate drop" }, { status: 500 });
         }
 
-        console.log(`[Webhook] Successfully drafted Drop ID: ${dbInsert.id}`);
+        const draftId = draftResult.id;
+        console.log(`[Webhook] Successfully drafted Drop ID: ${draftId}`);
 
         // Construct deployment Frame Payload to send directly back to the user
         const primaryLabel = mediaExtractionSuccess ? "Deploy to Base" : "⚠️ Missing Art: Upload High-Res";
         const frameResponse = {
             version: "vNext",
-            image: `${baseUrl}/api/og/draft/${dbInsert.id}`,
+            image: `${baseUrl}/api/og/draft/${draftId}`,
             buttons: [
                 {
                     label: primaryLabel,

@@ -52,7 +52,7 @@ export async function POST(
             return renderInvalidDraftFrame({ baseUrl, postUrl, target: createUrl, imageSrc: ogImageUrl });
         }
 
-        await stageDraftSecretFromFrameInput(draftId, body);
+        await stageDraftSecretFromFrameInput(draftId, draft.creator_address || "", body);
 
         return buildDeployTxFrameResponse({
             baseUrl,

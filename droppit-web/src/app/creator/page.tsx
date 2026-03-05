@@ -49,7 +49,9 @@ export default function CreatorHubPage() {
             setLoading(true);
             setError(null);
             try {
-                const res = await fetch(`/api/creator/drops?wallet=${address}`);
+                const res = await fetch(`/api/creator/drops?wallet=${address}`, {
+                    headers: { "x-creator-address": address },
+                });
                 const payload = await res.json().catch(() => ({}));
                 if (!res.ok) {
                     setError(payload?.error || "Failed to load your drops.");

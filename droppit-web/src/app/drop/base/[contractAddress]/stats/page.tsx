@@ -44,6 +44,38 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
     const [error, setError] = useState<string | null>(null);
     const isFetchingRef = useRef(false);
 
+    const [referralCode, setReferralCode] = useState<string | null>(null);
+    const [isGeneratingRef, setIsGeneratingRef] = useState(false);
+    const [copiedRefLink, setCopiedRefLink] = useState(false);
+
+    const handleGenerateReferral = async () => {
+        if (!address) return;
+        setIsGeneratingRef(true);
+        try {
+            const res = await fetch('/api/referrals', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contractAddress, creatorAddress: address })
+            });
+            const data = await res.json();
+            if (data.code) {
+                setReferralCode(data.code);
+            } else {
+                alert(data.error || "Failed to generate referral code.");
+            }
+        } catch (e) {
+            alert("Error generating referral link.");
+        } finally {
+            setIsGeneratingRef(false);
+        }
+    };
+
+    const handleCopyLink = async (link: string) => {
+        await navigator.clipboard.writeText(link);
+        setCopiedRefLink(true);
+        setTimeout(() => setCopiedRefLink(false), 2000);
+    };
+
     useEffect(() => {
         if (isConnecting) return;
 
@@ -166,7 +198,10 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
                         <p className="text-slate-400">Analytics for Drop {stats.drop.id.slice(0, 8)}... &middot; <span className="text-cyan-300 font-medium">{stats.drop.status}</span> &middot; {selectedChain.name}</p>
                     </div>
                     <div className="flex items-center gap-3">
-
+                        <div className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-mono text-slate-400">
+                            <div className="h-2 w-2 rounded-full bg-[#22D3EE] animate-pulse" />
+                            {selectedChain.name}
+                        </div>
                     </div>
                 </div>
 
@@ -212,7 +247,37 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
                             <span className={Number(stats.drop.mintPriceEth) === 0 ? "text-green-400 font-bold font-mono-brand" : "font-mono-brand"}>{Number(stats.drop.mintPriceEth) === 0 ? "Free mint" : `${stats.drop.mintPriceEth} ETH`}</span>
                         </div>
                     </div>
+                </div>
 
+                <div className="bg-white/[0.04] border border-[#22D3EE]/20 rounded-2xl p-6 mb-8 shadow-[0_0_0_1px_rgba(34,211,238,0.1),0_14px_38px_rgba(2,8,23,0.32)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 className="font-display text-xl font-bold mb-2 text-white">Creator Referral Link</h2>
+                        <p className="text-sm text-slate-400">Generate a unique short-link to track mints driven by your shares.</p>
+                        {referralCode && (
+                            <div className="mt-4 flex items-center gap-3">
+                                <code className="bg-black/50 border border-white/10 rounded-lg px-3 py-1.5 text-[#22D3EE] font-mono text-sm self-start break-all">
+                                    {window.location.origin}/r/{referralCode}
+                                </code>
+                                <button
+                                    onClick={() => handleCopyLink(`${window.location.origin}/r/${referralCode}`)}
+                                    className="text-xs font-semibold px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors shrink-0"
+                                >
+                                    {copiedRefLink ? "Copied!" : "Copy"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        {!referralCode && (
+                            <button
+                                onClick={handleGenerateReferral}
+                                disabled={isGeneratingRef}
+                                className="px-5 py-2.5 rounded-full bg-[#22D3EE]/20 hover:bg-[#22D3EE]/30 text-[#22D3EE] border border-[#22D3EE]/30 font-semibold text-sm transition-colors disabled:opacity-50 shrink-0"
+                            >
+                                {isGeneratingRef ? "Generating..." : "Generate Link"}
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-6 overflow-hidden shadow-[0_0_0_1px_rgba(124,58,237,0.08),0_14px_38px_rgba(2,8,23,0.32)]">

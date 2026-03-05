@@ -66,7 +66,10 @@ function renderFrame({ buttons, imageSrc, postUrl, inputText, status }: RenderFr
             postUrl,
             inputText,
         }),
-        status ? { status } : undefined
+        {
+            status: status || 200,
+            headers: { "Content-Type": "text/html" },
+        }
     );
 }
 
@@ -184,18 +187,54 @@ export function renderDeploySuccessFrame({
     });
 }
 
-export async function stageDraftSecretFromFrameInput(draftId: string, body: unknown): Promise<boolean> {
+export async function stageDraftSecretFromFrameInput(draftId: string, creatorAddress: string, body: unknown): Promise<boolean> {
     const inputText = extractInputText(body);
     if (!inputText) return false;
 
+    const messageBytes = extractMessageBytes(body);
+    if (!messageBytes) {
+        // Item 10: scrub — never log the inputText value
+        console.error("[Frame Deploy] Staging failed: missing messageBytes for draft", draftId);
+        return false;
+    }
+
+    try {
+        const validation = await validateFramePayloadWithNeynar(messageBytes);
+        if (!validation.valid || !validation.wallet) {
+            console.error("[Frame Deploy] Staging failed: invalid Neynar signature for draft", draftId);
+            return false;
+        }
+
+        // Ensure only the creator can stage the secret
+        if (validation.wallet.toLowerCase() !== creatorAddress.toLowerCase()) {
+            // Item 10: log only the wallet mismatch, never the secret content
+            console.error(`[Frame Deploy] Staging failed: wallet mismatch for draft ${draftId}`);
+            return false;
+        }
+    } catch (error) {
+        // Item 10: do not log the raw error which may contain secret fields
+        console.error("[Frame Deploy] Staging failed: Neynar validation error for draft", draftId);
+        return false;
+    }
+
     const lockedCheck = validateLockedContent(inputText);
     if (!lockedCheck.valid || !lockedCheck.value) return false;
+
+    // Item 9: Encrypt the secret before persisting to DB
+    let encryptedValue: string;
+    try {
+        const { encryptSecret } = await import("@/lib/encryption");
+        encryptedValue = encryptSecret(lockedCheck.value);
+    } catch (encErr) {
+        console.error("[Frame Deploy] Encryption failed for draft", draftId);
+        return false;
+    }
 
     const supabaseAdmin = getServiceRoleClient();
     await supabaseAdmin
         .from("drops")
         .update({
-            locked_content_draft: lockedCheck.value,
+            locked_content_draft: encryptedValue,
             deploy_salt: null,
             deploy_commitment: null,
         })
@@ -396,6 +435,7 @@ export async function finalizeDeployFromFrameCallback({
         contractAddress,
         tokenUri: prepared.value.tokenUri,
         imageUrl: prepared.value.imageUrl,
+        farcasterWallet: validationResult.wallet,
     };
     if (prepared.value.salt) {
         publishPayload.salt = prepared.value.salt;

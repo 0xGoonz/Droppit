@@ -49,11 +49,42 @@ export function truncateMiddle(input: string, start = 6, end = 4): string {
     return `${input.slice(0, start)}...${input.slice(-end)}`;
 }
 
+/**
+ * SSRF-safe URL allowlist patterns for image src in OG renders.
+ * Only HTTPS URLs from known gateways are allowed; private/internal IPs are blocked.
+ */
+const BLOCKED_HOSTNAMES = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "169.254.169.254",
+    "[::1]",
+    "metadata.google.internal",
+];
+
+function isSafeImageUrl(url: string): boolean {
+    try {
+        const parsed = new URL(url);
+        // Only allow HTTPS
+        if (parsed.protocol !== "https:") return false;
+        // Block known internal/cloud metadata hosts
+        const hostname = parsed.hostname.toLowerCase();
+        if (BLOCKED_HOSTNAMES.includes(hostname)) return false;
+        // Block private IP ranges (10.x, 172.16-31.x, 192.168.x)
+        if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)) return false;
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export function normalizeIpfsToHttp(raw: string | null | undefined): string | null {
     if (!raw || typeof raw !== "string") return null;
     if (raw.startsWith("ipfs://")) {
         return raw.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/");
     }
+    // Item 36: SSRF protection — reject unsafe URLs
+    if (!isSafeImageUrl(raw)) return null;
     return raw;
 }
 

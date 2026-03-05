@@ -854,7 +854,7 @@ Three-step visual flow:
 ### Transparent Pricing
 
 - Creator pays gas to deploy (approx. $0.50)
-- Platform fee: 0.00005 ETH per mint
+- Platform fee: 0.0001 ETH per mint
 - Creator keeps 100% of mint price
 
 ### Footer

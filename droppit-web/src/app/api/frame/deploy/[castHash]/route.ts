@@ -31,6 +31,16 @@ export async function POST(
             return renderInvalidDraftFrame({ baseUrl, postUrl });
         }
 
+        // Item 23: Track frame button click for impression/CTR analytics
+        void supabaseAdmin.from("analytics_events").insert({
+            event: "frame_button_click",
+            drop_id: draft.id,
+            contract_address: draft.contract_address || null,
+            metadata: { cast_hash: castHash, status: draft.status },
+        }).then(({ error: analyticsError }) => {
+            if (analyticsError) console.warn("[Frame Analytics] Insert failed:", analyticsError.message);
+        });
+
         const draftId = draft.id;
         const createUrl = `${baseUrl}/create?draftId=${draftId}`;
         const ogImageUrl = `${baseUrl}/api/og/draft/${draftId}`;
@@ -70,7 +80,7 @@ export async function POST(
             if (finalizedResponse) return finalizedResponse;
         }
 
-        const secretHandled = body ? await stageDraftSecretFromFrameInput(draftId, body) : false;
+        const secretHandled = body ? await stageDraftSecretFromFrameInput(draftId, draft.creator_address || "", body) : false;
 
         return renderDraftPreviewFrame({
             baseUrl,
@@ -86,3 +96,4 @@ export async function POST(
         return renderInvalidDraftFrame({ baseUrl, postUrl, target: `${baseUrl}/create` });
     }
 }
+

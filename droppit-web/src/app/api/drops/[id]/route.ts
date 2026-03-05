@@ -32,7 +32,7 @@ export async function GET(
 
         const { data, error } = await supabaseAdmin
             .from('drops')
-            .select('id, title, description, edition_size, mint_price, payout_recipient, image_url, token_uri, locked_content_draft, status, contract_address')
+            .select('id, title, description, edition_size, mint_price, image_url, token_uri, status, contract_address, creator_address')
             .eq('id', dropId)
             .single();
 
@@ -111,14 +111,25 @@ export async function GET(
             );
         }
 
+        // ── Item 1: Creator auth guard for DRAFT reads ──
+        // Only the creator who owns this draft can read it.
+        const callerWallet = req.headers.get("x-creator-address")?.toLowerCase();
+        if (!callerWallet || !isAddress(callerWallet)) {
+            return NextResponse.json({ error: "Missing or invalid x-creator-address header." }, { status: 401 });
+        }
+        if (data.creator_address && callerWallet !== data.creator_address.toLowerCase()) {
+            return NextResponse.json({ error: "Unauthorized: wallet does not own this draft." }, { status: 403 });
+        }
+
         // ── Return all fields the create page needs for hydration ──
         return NextResponse.json({
             title: data.title || "",
             description: data.description || "",
             editionSize: data.edition_size?.toString() || "100",
             mintPriceWei: data.mint_price ? data.mint_price.toString() : "0",
-            payoutRecipient: data.payout_recipient || "",
-            lockedContent: data.locked_content_draft || "",
+            payoutRecipient: "",
+            // Locked content is intentionally omitted from DRAFT reads to prevent leakage
+            lockedContent: "",
             imageUrl: data.image_url || null,
             tokenUri: data.token_uri || null,
             status: data.status,
