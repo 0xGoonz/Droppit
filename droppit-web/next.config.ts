@@ -44,9 +44,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  serverActions: {
-    bodySizeLimit: '20mb',
-  },
   experimental: {
     serverActions: {
       bodySizeLimit: '20mb',

@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formatEther, parseEther, keccak256, encodePacked, isAddress } from "viem";
-import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL, ALLOWED_MIME_ACCEPT } from "@/lib/constants/upload";
+import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL, ALLOWED_MIME_ACCEPT, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT, MAX_IMAGE_PIXELS } from "@/lib/constants/upload";
+import { validateImageMedia, extractImageDimensions } from "@/lib/media-validation";
 import { validateLockedContent } from "@/lib/validation/drops";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, usePublicClient } from "wagmi";
 import {
@@ -342,36 +343,47 @@ export default function CreateDrop() {
                 tokenUri = draftTokenUri;
                 imageUri = draftImageUrl;
             } else if (file) {
+                // 1. Fetch Temporary JWT from backend (Vercel payload bypass)
+                const tokenRes = await fetch("/api/upload/token", { method: "POST" });
+                if (!tokenRes.ok) throw new Error("Failed to secure upload token. Please try again.");
+                const tokenData = await tokenRes.json();
+
+                // 2. Upload Image Directly to Pinata
                 const uploadData = new FormData();
                 uploadData.append("file", file);
-                uploadData.append("title", formData.title);
-                uploadData.append("description", formData.description);
 
-                const res = await fetch("/api/upload", {
+                const pinataUploadRes = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
                     method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${tokenData.JWT}`,
+                    },
                     body: uploadData,
                 });
 
-                if (!res.ok) {
-                    let errMsg = "IPFS Upload failed";
-                    if (res.status === 413) {
-                        errMsg = "Artwork file is too large (maximum allowed size: 20MB).";
-                    } else {
-                        try {
-                            const errData = await res.json();
-                            errMsg = errData.error || errMsg;
-                        } catch {
-                            errMsg = `Upload failed with status ${res.status}`;
-                        }
-                    }
-                    throw new Error(errMsg);
-                }
+                if (!pinataUploadRes.ok) throw new Error("Artwork upload to IPFS failed.");
+                const imageUploadResult = await pinataUploadRes.json();
+                imageUri = `ipfs://${imageUploadResult.IpfsHash}`;
 
-                const uploadResult = await res.json();
-                if (uploadResult.error) throw new Error(uploadResult.error);
+                // 3. Upload Metadata directly to Pinata
+                const metadata = {
+                    name: formData.title || "Untitled Drop",
+                    description: formData.description || "Created via Droppit",
+                    image: imageUri,
+                    properties: { generator: "Droppit AgentKit" },
+                };
 
-                tokenUri = uploadResult.tokenUri;
-                imageUri = uploadResult.imageUri;
+                const metadataRes = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${tokenData.JWT}`,
+                    },
+                    body: JSON.stringify({ pinataContent: metadata }),
+                });
+
+                if (!metadataRes.ok) throw new Error("Metadata upload to IPFS failed.");
+                const jsonUploadResult = await metadataRes.json();
+                tokenUri = `ipfs://${jsonUploadResult.IpfsHash}`;
             } else {
                 throw new Error("No artwork file or existing IPFS URIs available.");
             }
@@ -592,14 +604,62 @@ export default function CreateDrop() {
                                                 accept={ALLOWED_MIME_ACCEPT}
                                                 className="hidden"
                                                 id="file-upload"
-                                                onChange={(e) => {
+                                                onChange={async (e) => {
                                                     const selectedFile = e.target.files?.[0] || null;
-                                                    if (selectedFile && selectedFile.size > MAX_UPLOAD_SIZE_BYTES) {
-                                                        setFormError(`Artwork media exceeds the ${MAX_UPLOAD_SIZE_LABEL} size limit.`);
+                                                    setFormError(null);
+
+                                                    if (!selectedFile) {
+                                                        setFile(null);
                                                         return;
                                                     }
-                                                    setFormError(null);
-                                                    setFile(selectedFile);
+
+                                                    if (selectedFile.size > MAX_UPLOAD_SIZE_BYTES) {
+                                                        setFormError(`Artwork media exceeds the ${MAX_UPLOAD_SIZE_LABEL} size limit.`);
+                                                        setFile(null);
+                                                        return;
+                                                    }
+
+                                                    try {
+                                                        // Convert file to Uint8Array for validation
+                                                        const buffer = await selectedFile.arrayBuffer();
+                                                        const bytes = new Uint8Array(buffer);
+
+                                                        // 1. Validate Media Type (Magic Bytes Sniffing)
+                                                        const mediaValidation = validateImageMedia(bytes, selectedFile.type);
+                                                        if (!mediaValidation.ok) {
+                                                            setFormError(mediaValidation.error);
+                                                            setFile(null);
+                                                            return;
+                                                        }
+
+                                                        // 2. Validate Image Dimensions (Decompression Bomb Protection)
+                                                        const dimensions = extractImageDimensions(mediaValidation.normalizedMime, bytes);
+                                                        if (!dimensions) {
+                                                            setFormError("Could not read image dimensions from uploaded file.");
+                                                            setFile(null);
+                                                            return;
+                                                        }
+
+                                                        if (dimensions.width > MAX_IMAGE_WIDTH || dimensions.height > MAX_IMAGE_HEIGHT) {
+                                                            setFormError(`Image dimensions exceed limit (${MAX_IMAGE_WIDTH}x${MAX_IMAGE_HEIGHT} max).`);
+                                                            setFile(null);
+                                                            return;
+                                                        }
+
+                                                        const totalPixels = dimensions.width * dimensions.height;
+                                                        if (totalPixels > MAX_IMAGE_PIXELS) {
+                                                            setFormError("Image is too large to process safely.");
+                                                            setFile(null);
+                                                            return;
+                                                        }
+
+                                                        // Validation passed
+                                                        setFile(selectedFile);
+                                                    } catch (err) {
+                                                        console.error("Client-side validation failed:", err);
+                                                        setFormError("Failed to validate artwork file.");
+                                                        setFile(null);
+                                                    }
                                                 }}
                                             />
                                             <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center w-full">

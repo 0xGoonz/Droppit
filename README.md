@@ -315,7 +315,7 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
 | `/api/og/drop/[dropIdOrAddress]` | GET | Dynamic OG image generation |
 | `/api/receipt/...` | GET  | View receipt rendering and logic |
 | `/api/stats/...` | GET  | Creator analytics and drop statistics |
-| `/api/upload/...` | POST | Direct file upload handlers |
+| `/api/upload/token` | POST | Generate temporary Pinata JWT for client-side IPFS upload |
 | `/api/webhooks/neynar` | POST | Ingest Farcaster casts (HMAC-verified) |
 | `/r/[code]` | GET | Referral shortlink resolution and redirect |
 

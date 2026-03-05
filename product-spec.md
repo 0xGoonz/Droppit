@@ -724,7 +724,7 @@
 
 - Validate file type/size
   - **MVP supported media:** PNG/JPG/WebP only (no GIF/video)
-  - Enforce max upload size (e.g., 20MB) and sniff MIME/type server-side
+  - Enforce max upload size (e.g., 20MB) and sniff MIME/type **client-side** before requesting a temporary Pinata JWT to upload directly to IPFS, bypassing Vercel payload limits.
 - Sanitize title/description
 - **Locked Message safety (Mint-to-Unlock):**
   - **Block URLs/links at input validation (MVP minimum rules):** enforce on **both client + server** using conservative detection:
