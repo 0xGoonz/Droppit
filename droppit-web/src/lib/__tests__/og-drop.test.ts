@@ -98,6 +98,21 @@ function collectText(node: unknown): string {
     return "";
 }
 
+function findNodeByProp(node: unknown, prop: string, expected: string): { props?: Record<string, unknown> } | null {
+    if (!node || typeof node !== "object") return null;
+    if (Array.isArray(node)) {
+        for (const child of node) {
+            const nested = findNodeByProp(child, prop, expected);
+            if (nested) return nested;
+        }
+        return null;
+    }
+
+    const element = node as { props?: Record<string, unknown> };
+    if (element.props?.[prop] === expected) return element;
+    return findNodeByProp(element.props?.children ?? null, prop, expected);
+}
+
 describe("OG Drop Rendering", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -177,6 +192,40 @@ describe("OG Drop Rendering", () => {
         const renderedText = collectText(renderedTree);
         expect(renderedText).toContain("Founder's Key");
         expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmArtwork");
+    });
+
+    it("renders the miniapp variant with contained artwork and no in-card CTA", async () => {
+        mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+            if (functionName === "owner") return ADDRESS;
+            if (functionName === "uri") return "ipfs://QmMetadata";
+            if (functionName === "mintPrice") return BigInt(0);
+            if (functionName === "editionSize") return BigInt(100);
+            if (functionName === "totalMinted") return BigInt(12);
+            throw new Error("Unexpected function " + functionName);
+        });
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                name: "Founder's Key",
+                image: "ipfs://QmArtwork",
+            }),
+        });
+
+        const res = await GET(new NextRequest("https://droppitonbase.xyz/api/og/drop/" + ADDRESS + "?variant=miniapp"), {
+            params: Promise.resolve({ dropIdOrAddress: ADDRESS }),
+        });
+
+        expect(res.status).toBe(200);
+
+        const renderedTree = mockImageResponse.mock.calls[0][0];
+        const renderedText = collectText(renderedTree);
+        const miniappImage = findNodeByProp(renderedTree, "data-share-card-artwork", "miniapp");
+        const artFrame = findNodeByProp(renderedTree, "data-share-card-art-frame", "miniapp");
+
+        expect(renderedText).toContain("Founder's Key");
+        expect(renderedText).not.toContain("Open in Farcaster Mini App");
+        expect(miniappImage?.props?.style).toMatchObject({ objectFit: "contain" });
+        expect(artFrame?.props?.style).toMatchObject({ borderRadius: 28 });
     });
 
     it("marks fallback OG renders as no-store when metadata stays incomplete", async () => {

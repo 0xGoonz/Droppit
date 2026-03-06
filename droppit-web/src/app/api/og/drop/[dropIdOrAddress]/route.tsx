@@ -22,6 +22,7 @@ import {
     truncateText,
 } from "@/lib/og-utils";
 import { getAlchemyNetworkId, isProductionEnvironment } from "@/lib/chains";
+import { fitArtworkWithinBounds, MINIAPP_ARTWORK_BOUNDS, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -286,6 +287,11 @@ export async function GET(
             ? await readSupplyLabel(contractAddress as `0x${string}`)
             : null;
 
+        const miniappArtworkPlacement = fitArtworkWithinBounds({
+            maxWidth: MINIAPP_ARTWORK_BOUNDS.width,
+            maxHeight: MINIAPP_ARTWORK_BOUNDS.height,
+        });
+
         const hasCompleteCardData = Boolean(
             resolvedTitle?.trim() &&
             art &&
@@ -321,37 +327,62 @@ export async function GET(
                                 boxShadow: "0 28px 64px rgba(0,0,0,0.32)",
                             }}
                         >
-                            {/* LEFT: Full Bleed Artwork */}
                             <div
                                 style={{
-                                    width: "55%",
+                                    width: (MINIAPP_SHARE_CARD.artPanelWidthRatio * 100) + "%",
                                     height: "100%",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    background: art ? "#000" : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
+                                    padding: `${MINIAPP_SHARE_CARD.artPaddingY}px ${MINIAPP_SHARE_CARD.artPaddingX}px`,
+                                    background: "linear-gradient(160deg, rgba(2,6,23,0.96), rgba(8,15,32,0.92))",
                                     borderRight: "1px solid rgba(255,255,255,0.1)",
                                 }}
                             >
-                                {art ? (
-                                    <img
-                                        alt=""
-                                        src={art}
-                                        style={{
-                                            width: "100%",
-                                            height: "100%",
-                                            objectFit: "cover",
-                                        }}
-                                    />
-                                ) : (
-                                    <span style={{ fontSize: 240, fontWeight: 800, opacity: 0.9, color: "white" }}>{glyph}</span>
-                                )}
+                                <div
+                                    data-share-card-art-frame="miniapp"
+                                    style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        background: art ? "rgba(0,0,0,0.35)" : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        borderRadius: 28,
+                                        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.03)",
+                                    }}
+                                >
+                                    {art ? (
+                                        <div
+                                            style={{
+                                                width: miniappArtworkPlacement.width,
+                                                height: miniappArtworkPlacement.height,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                            }}
+                                        >
+                                            <img
+                                                alt=""
+                                                src={art}
+                                                data-share-card-artwork="miniapp"
+                                                style={{
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    objectFit: "contain",
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <span style={{ fontSize: 240, fontWeight: 800, opacity: 0.9, color: "white" }}>{glyph}</span>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* RIGHT: Details Panel */}
                             <div
                                 style={{
-                                    width: "45%",
+                                    width: ((1 - MINIAPP_SHARE_CARD.artPanelWidthRatio) * 100) + "%",
                                     height: "100%",
                                     display: "flex",
                                     flexDirection: "column",
@@ -360,7 +391,6 @@ export async function GET(
                                     background: "linear-gradient(180deg, rgba(2,6,23,0.92), rgba(3,7,18,0.84))",
                                 }}
                             >
-                                {/* Top Badges */}
                                 <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                                     <div style={{ display: "flex", gap: 12 }}>
                                         <span
@@ -389,7 +419,6 @@ export async function GET(
                                         </span>
                                     </div>
 
-                                    {/* Big Title */}
                                     <div
                                         style={{
                                             fontSize: 56,
@@ -402,8 +431,7 @@ export async function GET(
                                         {titleSafe}
                                     </div>
 
-                                    {/* Price and Supply */}
-                                    <div style={{ display: "flex", gap: 12 }}>
+                                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                                         <span
                                             style={{
                                                 fontSize: 26,
@@ -433,8 +461,7 @@ export async function GET(
                                     </div>
                                 </div>
 
-                                {/* Bottom Metadata */}
-                                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
                                     <span style={{ fontSize: 24, color: OG_BRAND.text1 }}>
                                         Creator: {creator}
                                     </span>
@@ -444,12 +471,6 @@ export async function GET(
                                     <span style={{ fontSize: 20, color: OG_BRAND.text2 }}>
                                         Contract: {contractSnippet}
                                     </span>
-
-                                    <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center" }}>
-                                        <span style={{ fontSize: 22, color: "#e2e8f0" }}>
-                                            Open in Farcaster Mini App ✦
-                                        </span>
-                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formatEther, parseEther, keccak256, encodePacked, isAddress } from "viem";
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL, ALLOWED_MIME_ACCEPT, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT, MAX_IMAGE_PIXELS } from "@/lib/constants/upload";
-import { validateImageMedia, extractImageDimensions } from "@/lib/media-validation";
+import { validateImageMedia, extractImageDimensions, type ImageDimensions } from "@/lib/media-validation";
 import { validateLockedContent } from "@/lib/validation/drops";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, usePublicClient } from "wagmi";
 import {
@@ -24,6 +24,8 @@ import { FACTORY_ABI } from "@/lib/contracts";
 import { useChainPreference } from "@/providers/OnchainKitProvider";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { publishDropDraft } from "@/lib/publish-drop";
+import { creatorAttribution, formatMintPriceWei, getChainLabel, normalizeIpfsToHttp } from "@/lib/og-utils";
+import { fitArtworkWithinBounds, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
 
 export default function CreateDrop() {
     const [step, setStep] = useState(1);
@@ -51,6 +53,9 @@ export default function CreateDrop() {
     // Pre-existing IPFS URIs hydrated from draft (skip re-upload when available)
     const [draftImageUrl, setDraftImageUrl] = useState<string | null>(null);
     const [draftTokenUri, setDraftTokenUri] = useState<string | null>(null);
+    const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+    const [fileImageDimensions, setFileImageDimensions] = useState<ImageDimensions | null>(null);
+    const [draftImageDimensions, setDraftImageDimensions] = useState<ImageDimensions | null>(null);
 
     const [deployGasEstimate, setDeployGasEstimate] = useState<string | null>(null);
 
@@ -70,6 +75,50 @@ export default function CreateDrop() {
     const { data: hash, writeContractAsync, isPending } = useWriteContract();
     const { switchChainAsync } = useSwitchChain();
     const { data: receipt, isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+    const normalizedDraftImageUrl = normalizeIpfsToHttp(draftImageUrl);
+
+    useEffect(() => {
+        if (!file) {
+            setFilePreviewUrl(null);
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        setFilePreviewUrl(objectUrl);
+
+        return () => {
+            URL.revokeObjectURL(objectUrl);
+        };
+    }, [file]);
+
+    useEffect(() => {
+        if (file || !normalizedDraftImageUrl) {
+            if (!file) setDraftImageDimensions(null);
+            return;
+        }
+
+        let isActive = true;
+        const image = new window.Image();
+
+        image.onload = () => {
+            if (!isActive) return;
+            setDraftImageDimensions({
+                width: image.naturalWidth || 1,
+                height: image.naturalHeight || 1,
+            });
+        };
+        image.onerror = () => {
+            if (!isActive) return;
+            setDraftImageDimensions(null);
+        };
+        image.src = normalizedDraftImageUrl;
+
+        return () => {
+            isActive = false;
+            image.onload = null;
+            image.onerror = null;
+        };
+    }, [file, normalizedDraftImageUrl]);
 
     // Parse draftId and auto from URL on mount, then hydrate formData from API
     useEffect(() => {
@@ -469,6 +518,43 @@ export default function CreateDrop() {
         }
     }, [autoDeploy, hasHydrated, hydrationError, address, file, chainId, formError, isUploading, isPending, isConfirming, isSuccess, handleDeploy, draftTokenUri, hasSelectedChainContractConfig, selectedFactoryAddress, selectedChain]);
 
+    const previewTitle = formData.title.trim() || "Untitled Drop";
+    const previewGlyph = previewTitle.charAt(0).toUpperCase() || "D";
+    const previewImageUrl = filePreviewUrl || normalizedDraftImageUrl;
+    const previewImageDimensions = file ? fileImageDimensions : draftImageDimensions;
+    const previewArtworkPlacement = fitArtworkWithinBounds({
+        imageWidth: previewImageDimensions?.width,
+        imageHeight: previewImageDimensions?.height,
+    });
+    const previewArtworkFrameStyle = previewImageUrl
+        ? previewImageDimensions
+            ? {
+                width: (previewArtworkPlacement.widthRatio * 100).toFixed(2) + "%",
+                height: (previewArtworkPlacement.heightRatio * 100).toFixed(2) + "%",
+            }
+            : { width: "100%", height: "100%" }
+        : null;
+    const previewCreator = creatorAttribution(address || null, null, formData.farcasterHandle || null);
+    const previewSourceLabel = formData.farcasterHandle
+        ? "Wallet-linked profile"
+        : address
+            ? "Creator wallet"
+            : "Pending creator";
+    const previewSupplyLabel = Number(formData.editionSize) > 0
+        ? formData.editionSize + " remaining"
+        : "Supply pending";
+    const previewMintInput = formData.mintPrice.trim();
+    const previewPriceLabel = !previewMintInput || Number(previewMintInput) === 0
+        ? "Free"
+        : (() => {
+            try {
+                return formatMintPriceWei(parseEther(previewMintInput).toString());
+            } catch {
+                return previewMintInput + " ETH";
+            }
+        })();
+    const previewChainLabel = getChainLabel();
+
     return (
         <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
             {/* Background gradient — matches all pages */}
@@ -631,12 +717,14 @@ export default function CreateDrop() {
 
                                                     if (!selectedFile) {
                                                         setFile(null);
+                                                        setFileImageDimensions(null);
                                                         return;
                                                     }
 
                                                     if (selectedFile.size > MAX_UPLOAD_SIZE_BYTES) {
                                                         setFormError(`Artwork media exceeds the ${MAX_UPLOAD_SIZE_LABEL} size limit.`);
                                                         setFile(null);
+                                                        setFileImageDimensions(null);
                                                         return;
                                                     }
 
@@ -650,6 +738,7 @@ export default function CreateDrop() {
                                                         if (!mediaValidation.ok) {
                                                             setFormError(mediaValidation.error);
                                                             setFile(null);
+                                                            setFileImageDimensions(null);
                                                             return;
                                                         }
 
@@ -658,12 +747,14 @@ export default function CreateDrop() {
                                                         if (!dimensions) {
                                                             setFormError("Could not read image dimensions from uploaded file.");
                                                             setFile(null);
+                                                            setFileImageDimensions(null);
                                                             return;
                                                         }
 
                                                         if (dimensions.width > MAX_IMAGE_WIDTH || dimensions.height > MAX_IMAGE_HEIGHT) {
                                                             setFormError(`Image dimensions exceed limit (${MAX_IMAGE_WIDTH}x${MAX_IMAGE_HEIGHT} max).`);
                                                             setFile(null);
+                                                            setFileImageDimensions(null);
                                                             return;
                                                         }
 
@@ -671,26 +762,33 @@ export default function CreateDrop() {
                                                         if (totalPixels > MAX_IMAGE_PIXELS) {
                                                             setFormError("Image is too large to process safely.");
                                                             setFile(null);
+                                                            setFileImageDimensions(null);
                                                             return;
                                                         }
 
                                                         // Validation passed
                                                         setFile(selectedFile);
+                                                        setFileImageDimensions(dimensions);
                                                     } catch (err) {
                                                         console.error("Client-side validation failed:", err);
                                                         setFormError("Failed to validate artwork file.");
                                                         setFile(null);
+                                                        setFileImageDimensions(null);
                                                     }
                                                 }}
                                             />
                                             <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center w-full">
                                                 {file ? (
                                                     <div className="relative flex justify-center w-full mb-4">
-                                                        <img
-                                                            src={URL.createObjectURL(file)}
-                                                            alt="Preview"
-                                                            className="max-h-[250px] max-w-full object-contain rounded-xl border border-white/[0.08] shadow-[0_0_30px_rgba(0,82,255,0.15)]"
-                                                        />
+                                                        {filePreviewUrl ? (
+                                                            <img
+                                                                src={filePreviewUrl}
+                                                                alt="Preview"
+                                                                className="max-h-[250px] max-w-full object-contain rounded-xl border border-white/[0.08] shadow-[0_0_30px_rgba(0,82,255,0.15)]"
+                                                            />
+                                                        ) : (
+                                                            <div className="h-[250px] w-full max-w-[420px] animate-pulse rounded-xl border border-white/[0.08] bg-white/[0.03]" />
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/8 text-[#22D3EE] transition-transform group-hover:scale-110">
@@ -878,57 +976,63 @@ export default function CreateDrop() {
                                     </div>
 
                                     {/* Share-Card Preview */}
-                                    <div className="rounded-2xl border border-white/[0.06] bg-[#05070f] overflow-hidden">
+                                    <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#05070f]">
                                         <div className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-6">
                                             <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
-                                            <p className="text-xs text-slate-500">This is the share artwork used in Warpcast or X. In Warpcast, the drop opens as a Mini App.</p>
+                                            <p className="text-xs text-slate-500">This previews the real 3:2 share image used in Warpcast or X. Warpcast renders the action button below the image.</p>
                                         </div>
-                                        <div className="flex justify-center bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
-                                            <div className="w-full max-w-[540px] rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.92),rgba(3,7,18,0.84))] p-4 shadow-2xl sm:rounded-[28px] sm:p-5">
-                                                <div className="flex flex-col items-start gap-3 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-                                                    <div className="flex gap-2">
-                                                        <span className="px-2.5 py-1 rounded-full bg-[#16a34a]/20 text-[#4ade80] border border-[#16a34a]/30">Live</span>
-                                                        <span className="px-2.5 py-1 rounded-full bg-[#0052FF]/20 text-[#cfe2ff] border border-[#0052FF]/30">Base</span>
+                                        <div className="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
+                                            <div className="mx-auto w-full" style={{ maxWidth: MINIAPP_SHARE_CARD.previewMaxWidth }}>
+                                                <div className="rounded-[28px] border border-white/10 bg-[#040916]/92 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:p-4">
+                                                    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(0,82,255,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(34,211,238,0.14),transparent_34%),linear-gradient(180deg,#020617,#081121)] shadow-[0_20px_48px_rgba(0,0,0,0.34)]" style={{ aspectRatio: "3 / 2" }}>
+                                                        <div className="flex h-full w-full p-[4.5%]">
+                                                            <div className="flex h-full w-[55%] items-center justify-center overflow-hidden rounded-l-[20px] border-r border-white/10 bg-[linear-gradient(160deg,rgba(2,6,23,0.96),rgba(8,15,32,0.92))] px-[6.5%] py-[5.5%]">
+                                                                <div className="flex h-full w-full items-center justify-center rounded-[22px] border border-white/10 bg-black/35 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+                                                                    {previewImageUrl ? (
+                                                                        <div className="flex items-center justify-center" style={previewArtworkFrameStyle || { width: "100%", height: "100%" }}>
+                                                                            <img src={previewImageUrl} alt="" className="h-full w-full object-contain object-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.4)]" />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="text-6xl font-bold text-white/50 sm:text-7xl">{previewGlyph}</div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex h-full w-[45%] flex-col justify-between bg-[linear-gradient(180deg,rgba(2,6,23,0.92),rgba(3,7,18,0.84))] px-[6.5%] py-[7.5%]">
+                                                                <div className="flex flex-col gap-3 sm:gap-4">
+                                                                    <div className="flex flex-wrap gap-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-300 sm:text-[10px]">
+                                                                        <span className="rounded-full border border-[#16a34a]/35 bg-[#16a34a]/18 px-2.5 py-1 text-[#86efac]">Live</span>
+                                                                        <span className="rounded-full border border-[#0052FF]/35 bg-[#0052FF]/18 px-2.5 py-1 text-[#cfe2ff]">{previewChainLabel}</span>
+                                                                    </div>
+                                                                    <h1 className="text-base font-bold leading-tight text-white sm:text-[28px] sm:leading-[1.05]">{previewTitle}</h1>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        <span className="rounded-2xl border border-[#22D3EE]/30 bg-[#0B1020]/80 px-3 py-1.5 text-xs font-medium text-white sm:text-sm">{previewPriceLabel}</span>
+                                                                        <span className="rounded-2xl border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 sm:text-sm">{previewSupplyLabel}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col gap-1.5 border-t border-white/10 pt-3 text-[10px] text-slate-300 sm:gap-2 sm:pt-4 sm:text-xs">
+                                                                    <div>Creator: {previewCreator}</div>
+                                                                    <div className="text-slate-400">Source: {previewSourceLabel}</div>
+                                                                    <div className="text-slate-500">Contract: After deploy</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <span className="text-[11px] normal-case tracking-normal text-slate-500">Mini App launch</span>
-                                                </div>
 
-                                                <div className="mt-4 rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(2,6,23,0.82))] p-4 shadow-[0_20px_52px_rgba(0,0,0,0.32)] sm:rounded-[24px] sm:p-5">
-                                                    <div className="flex h-[220px] items-center justify-center overflow-hidden rounded-[18px] bg-black/10 sm:h-[320px] sm:rounded-[20px]">
-                                                        {file ? (
-                                                            <img src={URL.createObjectURL(file)} alt="" className="max-w-full max-h-full object-contain object-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)]" />
-                                                        ) : draftImageUrl ? (
-                                                            <img src={draftImageUrl.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')} alt="" className="max-w-full max-h-full object-contain object-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)]" />
-                                                        ) : (
-                                                            <div className="text-7xl font-bold text-white/50">{formData.title.charAt(0).toUpperCase() || "D"}</div>
-                                                        )}
+                                                    <div className="mt-3 flex flex-col gap-3 rounded-[20px] border border-white/10 bg-[#07101f]/92 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                                                        <div>
+                                                            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Warpcast Post</div>
+                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image.</div>
+                                                        </div>
+                                                        <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,82,255,0.28)]">
+                                                            Mint 1
+                                                        </div>
                                                     </div>
-                                                </div>
-
-                                                <div className="mt-5 flex flex-col items-center text-center">
-                                                    <h1 className="max-w-full text-2xl font-bold leading-tight text-white line-clamp-2 sm:max-w-[420px] sm:text-[28px]">{formData.title || "Untitled Drop"}</h1>
-                                                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                                                        <span className="text-sm text-[#22D3EE] font-medium bg-[#0B1020]/80 border border-[#22D3EE]/30 rounded-xl px-3 py-1.5">
-                                                            {Number(formData.mintPrice) === 0 ? "Free" : `${formData.mintPrice} ETH`}
-                                                        </span>
-                                                        <span className="text-sm text-sky-100 font-medium bg-sky-500/10 border border-sky-400/20 rounded-xl px-3 py-1.5">
-                                                            {formData.editionSize ? `${formData.editionSize} supply` : "Open edition"}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-5 flex flex-col items-start gap-2 border-t border-white/10 pt-4 text-xs text-slate-400 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-                                                    <div>
-                                                        Creator: {formData.farcasterHandle ? `@${formData.farcasterHandle}` : (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Unknown")}
-                                                    </div>
-                                                    <div className="text-left text-slate-500 sm:text-right">Warpcast renders the launch button outside the artwork.</div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             )}
-
 
 
                             {/* Action Buttons */}
