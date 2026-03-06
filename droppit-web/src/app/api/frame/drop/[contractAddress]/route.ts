@@ -20,7 +20,7 @@ export async function GET(
             return new NextResponse(
                 getFrameHtmlResponse({
                     buttons: [{ action: "link", label: "View Drop", target: frame.dropUrl }],
-                    image: { src: frame.ogImageUrl },
+                    image: { src: frame.shareImageUrl },
                     postUrl: frame.postUrl,
                 })
             );
@@ -56,7 +56,7 @@ export async function GET(
             return new NextResponse(
                 getFrameHtmlResponse({
                     buttons: [{ action: "link", label: "View Drop to Mint", target: frame.dropUrl }],
-                    image: { src: frame.ogImageUrl },
+                    image: { src: frame.shareImageUrl },
                     postUrl: frame.postUrl,
                 })
             );
@@ -65,7 +65,7 @@ export async function GET(
         return new NextResponse(
             getFrameHtmlResponse({
                 buttons: frame.buttons,
-                image: { src: frame.ogImageUrl },
+                image: { src: frame.shareImageUrl },
                 postUrl: frame.postUrl,
             })
         );

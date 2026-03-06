@@ -40,7 +40,7 @@ function getFrameChainId() {
 function openMintPageFrame(contractAddress: string, frame = getDropFrameSpec(process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai", contractAddress)) {
     return getFrameHtmlResponse({
         buttons: [{ action: "link", label: "Open mint page", target: frame.dropUrl }],
-        image: { src: frame.ogImageUrl },
+        image: { src: frame.shareImageUrl },
         postUrl: frame.mintUrl,
     });
 }
@@ -146,7 +146,7 @@ export async function POST(
         return new NextResponse(
             getFrameHtmlResponse({
                 buttons: frame.buttons,
-                image: { src: frame.ogImageUrl },
+                image: { src: frame.shareImageUrl },
                 postUrl: frame.mintUrl,
             })
         );

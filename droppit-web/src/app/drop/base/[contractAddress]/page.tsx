@@ -22,6 +22,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useChainPreference } from "@/providers/OnchainKitProvider";
 import { PROTOCOL_FEE_PER_MINT_WEI, hasChainContractConfig } from "@/lib/contracts";
 import { BrandLockup } from "@/components/brand/BrandLockup";
+import { normalizeIpfsToHttp } from "@/lib/og-utils";
 import {
     type ReferralPayload,
     normalizeReferralPayloadFromSearchParams,
@@ -205,10 +206,8 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         if (!tokenUri) return;
         const fetchMetadata = async () => {
             try {
-                // Convert ipfs:// to https://
-                const url = tokenUri.startsWith("ipfs://")
-                    ? tokenUri.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/")
-                    : tokenUri;
+                const url = normalizeIpfsToHttp(tokenUri);
+                if (!url) return;
 
                 const response = await fetch(url);
                 const json = await response.json();
@@ -223,7 +222,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     const drop = {
         title: metadata?.name || (isLoading ? "Loading Drop..." : "Unknown Drop"),
         description: metadata?.description || (isLoading ? "..." : "No description provided."),
-        image: metadata?.image ? (metadata.image.startsWith("ipfs://") ? metadata.image.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/") : metadata.image) : null,
+        image: normalizeIpfsToHttp(metadata?.image) || null,
     };
     const canAttemptUnlock = !!userAddress && !!tokenUri;
     const receiptHref = receipt?.transactionHash ? `/r/receipt/${receipt.transactionHash}` : null;
@@ -475,7 +474,8 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
     const handleShare = async () => {
         try {
-            await navigator.clipboard.writeText(window.location.href);
+            const shareUrl = new URL(`/s/${contractAddress}`, window.location.origin).toString();
+            await navigator.clipboard.writeText(shareUrl);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
@@ -1069,4 +1069,5 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         </div >
     );
 }
+
 

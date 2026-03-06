@@ -12,6 +12,7 @@ import {
     fallbackTitle,
     formatMintPriceWei,
     formatStatusLabel,
+    getIpfsHttpCandidates,
     getChainLabel,
     normalizeIpfsToHttp,
     ogBackdrop,
@@ -82,25 +83,40 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
 }
 
 async function fetchTokenMetadata(tokenUri: string | null): Promise<{ name: string | null; image: string | null }> {
-    const metadataUrl = normalizeIpfsToHttp(tokenUri);
-    if (!metadataUrl) {
+    const metadataUrls = getIpfsHttpCandidates(tokenUri);
+    if (metadataUrls.length === 0) {
         return { name: null, image: null };
     }
 
-    try {
-        const response = await withTimeout(fetch(metadataUrl, { cache: "no-store" }), 1500, "Token metadata fetch");
-        if (!response.ok) {
-            return { name: null, image: null };
+    for (const metadataUrl of metadataUrls) {
+        try {
+            const response = await withTimeout(
+                fetch(metadataUrl, {
+                    cache: "no-store",
+                    headers: { Accept: "application/json" },
+                }),
+                4000,
+                "Token metadata fetch"
+            );
+            if (!response.ok) {
+                continue;
+            }
+
+            const metadata = await response.json().catch(() => null) as Record<string, unknown> | null;
+            const name = typeof metadata?.name === "string" && metadata.name.trim() ? metadata.name.trim() : null;
+            const gatewayBase = new URL(metadataUrl).origin;
+            const image = typeof metadata?.image === "string"
+                ? normalizeIpfsToHttp(metadata.image, gatewayBase)
+                : null;
+            if (name || image) {
+                return { name, image };
+            }
+        } catch (error) {
+            console.warn("[OG Drop] Failed to fetch token metadata:", error);
         }
-
-        const metadata = await response.json().catch(() => null) as Record<string, unknown> | null;
-        const name = typeof metadata?.name === "string" && metadata.name.trim() ? metadata.name.trim() : null;
-        const image = typeof metadata?.image === "string" ? normalizeIpfsToHttp(metadata.image) : null;
-        return { name, image };
-    } catch (error) {
-        console.warn("[OG Drop] Failed to fetch token metadata:", error);
-        return { name: null, image: null };
     }
+
+    return { name: null, image: null };
 }
 
 async function readOnchainSnapshot(contractAddress: `0x${string}`): Promise<OnchainSnapshot> {
@@ -246,6 +262,8 @@ export async function GET(
         const title = fallbackTitle(resolvedTitle, "Untitled Drop");
         const titleSafe = truncateText(title, 54);
         const art = normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
+        const isMiniAppVariant = req.nextUrl.searchParams.get("variant") === "miniapp";
+        const canvasHeight = isMiniAppVariant ? 800 : OG_TOKENS.height;
         const status = drop?.status || (onchain ? "LIVE" : "UNKNOWN");
         const price = formatMintPriceWei(drop?.mint_price || onchain?.mintPriceWei || "0");
         const creator = creatorAttribution(creatorAddress, drop?.creator_fid, creatorHandle);
@@ -270,6 +288,7 @@ export async function GET(
 
         const hasCompleteCardData = Boolean(
             resolvedTitle?.trim() &&
+            art &&
             (creatorAddress || drop?.creator_fid) &&
             contractAddress
         );
@@ -279,7 +298,7 @@ export async function GET(
                 <div
                     style={{
                         width: OG_TOKENS.width,
-                        height: OG_TOKENS.height,
+                        height: canvasHeight,
                         display: "flex",
                         backgroundColor: OG_BRAND.background,
                         backgroundImage: ogBackdrop(accent.glow),
@@ -404,7 +423,7 @@ export async function GET(
             ),
             {
                 width: OG_TOKENS.width,
-                height: OG_TOKENS.height,
+                height: canvasHeight,
                 headers: {
                     "Cache-Control": hasCompleteCardData
                         ? "public, max-age=60, stale-while-revalidate=300"

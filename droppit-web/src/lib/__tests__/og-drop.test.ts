@@ -69,6 +69,24 @@ import { GET } from "@/app/api/og/drop/[dropIdOrAddress]/route";
 
 const ADDRESS = "0x2222222222222222222222222222222222222222";
 
+function findFirstImageSrc(node: unknown): string | null {
+    if (!node || typeof node !== "object") return null;
+    if (Array.isArray(node)) {
+        for (const child of node) {
+            const nested = findFirstImageSrc(child);
+            if (nested) return nested;
+        }
+        return null;
+    }
+    if ("type" in node && (node as { type?: unknown }).type === "img") {
+        const props = (node as { props?: { src?: string } }).props;
+        return props?.src || null;
+    }
+    if ("props" in node) {
+        return findFirstImageSrc((node as { props?: { children?: unknown } }).props?.children ?? null);
+    }
+    return null;
+}
 function collectText(node: unknown): string {
     if (node == null || typeof node === "boolean") return "";
     if (typeof node === "string" || typeof node === "number") return String(node);
@@ -83,6 +101,7 @@ function collectText(node: unknown): string {
 describe("OG Drop Rendering", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        process.env.NEXT_PUBLIC_GATEWAY_URL = "droppit-gateway.mypinata.cloud";
         mockDropMaybeSingle.mockResolvedValue({ data: null, error: null });
         mockIdentityMaybeSingle.mockResolvedValue({ data: null, error: null });
     });
@@ -110,11 +129,54 @@ describe("OG Drop Rendering", () => {
 
         expect(res.status).toBe(200);
         expect(res.headers.get("Cache-Control")).toContain("public");
+        expect(mockFetch).toHaveBeenCalledWith("https://droppit-gateway.mypinata.cloud/ipfs/QmMetadata", {
+            cache: "no-store",
+            headers: { Accept: "application/json" },
+        });
 
         const renderedText = collectText(mockImageResponse.mock.calls[0][0]);
         expect(renderedText).toContain("Founder's Key");
         expect(renderedText).toContain("Onchain creator");
         expect(renderedText).not.toContain("Untitled Drop");
+    });
+
+    it("falls back to the public gateway when the configured gateway misses fresh metadata", async () => {
+        mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+            if (functionName === "owner") return ADDRESS;
+            if (functionName === "uri") return "ipfs://QmMetadata";
+            if (functionName === "mintPrice") return BigInt(0);
+            if (functionName === "editionSize") return BigInt(100);
+            if (functionName === "totalMinted") return BigInt(12);
+            throw new Error(`Unexpected function ${functionName}`);
+        });
+        mockFetch
+            .mockResolvedValueOnce({ ok: false })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({
+                    name: "Founder's Key",
+                    image: "ipfs://QmArtwork",
+                }),
+            });
+
+        const res = await GET(new NextRequest(`https://droppitonbase.xyz/api/og/drop/${ADDRESS}`), {
+            params: Promise.resolve({ dropIdOrAddress: ADDRESS }),
+        });
+
+        expect(res.status).toBe(200);
+        expect(mockFetch).toHaveBeenNthCalledWith(1, "https://droppit-gateway.mypinata.cloud/ipfs/QmMetadata", {
+            cache: "no-store",
+            headers: { Accept: "application/json" },
+        });
+        expect(mockFetch).toHaveBeenNthCalledWith(2, "https://gateway.pinata.cloud/ipfs/QmMetadata", {
+            cache: "no-store",
+            headers: { Accept: "application/json" },
+        });
+
+        const renderedTree = mockImageResponse.mock.calls[0][0];
+        const renderedText = collectText(renderedTree);
+        expect(renderedText).toContain("Founder's Key");
+        expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmArtwork");
     });
 
     it("marks fallback OG renders as no-store when metadata stays incomplete", async () => {
@@ -126,10 +188,10 @@ describe("OG Drop Rendering", () => {
 
         expect(res.status).toBe(200);
         expect(res.headers.get("Cache-Control")).toBe("no-store");
+        expect(mockFetch).not.toHaveBeenCalled();
 
         const renderedText = collectText(mockImageResponse.mock.calls[0][0]);
         expect(renderedText).toContain("Untitled Drop");
         expect(renderedText).toContain("Unknown source");
     });
 });
-

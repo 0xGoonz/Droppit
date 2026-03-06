@@ -49,10 +49,6 @@ export function truncateMiddle(input: string, start = 6, end = 4): string {
     return `${input.slice(0, start)}...${input.slice(-end)}`;
 }
 
-/**
- * SSRF-safe URL allowlist patterns for image src in OG renders.
- * Only HTTPS URLs from known gateways are allowed; private/internal IPs are blocked.
- */
 const BLOCKED_HOSTNAMES = [
     "localhost",
     "127.0.0.1",
@@ -65,12 +61,9 @@ const BLOCKED_HOSTNAMES = [
 function isSafeImageUrl(url: string): boolean {
     try {
         const parsed = new URL(url);
-        // Only allow HTTPS
         if (parsed.protocol !== "https:") return false;
-        // Block known internal/cloud metadata hosts
         const hostname = parsed.hostname.toLowerCase();
         if (BLOCKED_HOSTNAMES.includes(hostname)) return false;
-        // Block private IP ranges (10.x, 172.16-31.x, 192.168.x)
         if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname)) return false;
         return true;
     } catch {
@@ -78,14 +71,44 @@ function isSafeImageUrl(url: string): boolean {
     }
 }
 
-export function normalizeIpfsToHttp(raw: string | null | undefined): string | null {
-    if (!raw || typeof raw !== "string") return null;
+function normalizeGatewayBase(raw: string): string {
+    const trimmed = raw.trim().replace(/\/+$/, "");
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function getConfiguredIpfsGatewayBase(): string {
+    const configuredGateway = process.env.NEXT_PUBLIC_GATEWAY_URL?.trim();
+    if (!configuredGateway) return "https://gateway.pinata.cloud";
+    return normalizeGatewayBase(configuredGateway);
+}
+
+function getIpfsGatewayBases(preferredGatewayBase?: string | null): string[] {
+    const preferred = preferredGatewayBase ? normalizeGatewayBase(preferredGatewayBase) : null;
+    const configured = getConfiguredIpfsGatewayBase();
+    const defaults = ["https://gateway.pinata.cloud"];
+    return [preferred, configured, ...defaults].filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index);
+}
+
+function stripIpfsPrefix(raw: string): string {
+    return raw
+        .replace(/^ipfs:\/\//i, "")
+        .replace(/^ipfs\//i, "")
+        .replace(/^\/+/, "");
+}
+
+export function getIpfsHttpCandidates(raw: string | null | undefined, preferredGatewayBase?: string | null): string[] {
+    if (!raw || typeof raw !== "string") return [];
     if (raw.startsWith("ipfs://")) {
-        return raw.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/");
+        const path = stripIpfsPrefix(raw);
+        if (!path) return [];
+        return getIpfsGatewayBases(preferredGatewayBase).map((base) => `${base}/ipfs/${path}`);
     }
-    // Item 36: SSRF protection — reject unsafe URLs
-    if (!isSafeImageUrl(raw)) return null;
-    return raw;
+    if (!isSafeImageUrl(raw)) return [];
+    return [raw];
+}
+
+export function normalizeIpfsToHttp(raw: string | null | undefined, preferredGatewayBase?: string | null): string | null {
+    return getIpfsHttpCandidates(raw, preferredGatewayBase)[0] ?? null;
 }
 
 export function formatMintPriceWei(raw: string | null | undefined): string {
