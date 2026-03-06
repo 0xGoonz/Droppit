@@ -60,13 +60,13 @@ export function Providers({ children }: { children: ReactNode }) {
         async function bootstrapMiniApp() {
             try {
                 const { sdk } = await import('@farcaster/miniapp-sdk');
-                const inMiniApp = await sdk.isInMiniApp();
+                const inMiniApp = await sdk.isInMiniApp().catch(() => false);
                 if (!isActive) return;
 
                 setIsMiniAppEnvironment(inMiniApp);
-                if (inMiniApp) {
-                    await sdk.actions.ready();
-                }
+                await sdk.actions.ready().catch((error) => {
+                    console.warn('[Farcaster Mini App] ready() was not accepted:', error);
+                });
             } catch (error) {
                 console.warn('[Farcaster Mini App] Failed to initialize SDK:', error);
             }

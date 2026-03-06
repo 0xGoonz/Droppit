@@ -1,5 +1,20 @@
+import type { Metadata } from "next";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { BelowTheFold } from "@/components/landing/BelowTheFold";
+import { BRAND } from "@/lib/brand";
+import { getHomeMiniAppEmbeds } from "@/lib/miniapp-embed";
+
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+const homeEmbeds = getHomeMiniAppEmbeds(baseUrl);
+
+export const metadata: Metadata = {
+  title: BRAND.name,
+  description: BRAND.description,
+  other: {
+    "fc:miniapp": JSON.stringify(homeEmbeds.miniapp),
+    "fc:frame": JSON.stringify(homeEmbeds.frame),
+  },
+};
 
 export default function Home() {
   return (

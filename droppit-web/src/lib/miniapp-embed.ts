@@ -21,22 +21,32 @@ interface MiniAppEmbed {
     };
 }
 
-function getSplashImageUrl(frame: DropFrameSpec): string {
-    return new URL("/apple-touch-icon.png", frame.dropUrl).toString();
+function getSplashImageUrl(baseUrl: string): string {
+    return new URL("/apple-touch-icon.png", baseUrl).toString();
 }
 
-function createEmbed(frame: DropFrameSpec, actionType: MiniAppActionType): MiniAppEmbed {
+function normalizeBaseUrl(baseUrl: string): string {
+    return baseUrl.replace(/\/+$/, "");
+}
+
+function createEmbed(params: {
+    baseUrl: string;
+    imageUrl: string;
+    actionType: MiniAppActionType;
+    actionUrl: string;
+    buttonTitle: string;
+}): MiniAppEmbed {
     return {
         version: "1",
-        imageUrl: frame.shareImageUrl,
+        imageUrl: params.imageUrl,
         aspectRatio: "3:2",
         button: {
-            title: "Mint 1",
+            title: params.buttonTitle,
             action: {
-                type: actionType,
-                url: frame.launchUrl,
+                type: params.actionType,
+                url: params.actionUrl,
                 name: BRAND.name,
-                splashImageUrl: getSplashImageUrl(frame),
+                splashImageUrl: getSplashImageUrl(params.baseUrl),
                 splashBackgroundColor: BRAND.palette.bg0,
             },
         },
@@ -45,7 +55,41 @@ function createEmbed(frame: DropFrameSpec, actionType: MiniAppActionType): MiniA
 
 export function getDropShareEmbeds(frame: DropFrameSpec) {
     return {
-        miniapp: createEmbed(frame, "launch_miniapp"),
-        frame: createEmbed(frame, "launch_frame"),
+        miniapp: createEmbed({
+            baseUrl: frame.dropUrl,
+            imageUrl: frame.shareImageUrl,
+            actionType: "launch_miniapp",
+            actionUrl: frame.launchUrl,
+            buttonTitle: "Mint 1",
+        }),
+        frame: createEmbed({
+            baseUrl: frame.dropUrl,
+            imageUrl: frame.shareImageUrl,
+            actionType: "launch_frame",
+            actionUrl: frame.launchUrl,
+            buttonTitle: "Mint 1",
+        }),
+    };
+}
+
+export function getHomeMiniAppEmbeds(baseUrl: string) {
+    const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+    const imageUrl = new URL("/miniapp/metadata/hero-1200x630.png", normalizedBaseUrl).toString();
+
+    return {
+        miniapp: createEmbed({
+            baseUrl: normalizedBaseUrl,
+            imageUrl,
+            actionType: "launch_miniapp",
+            actionUrl: normalizedBaseUrl,
+            buttonTitle: "Open Droppit",
+        }),
+        frame: createEmbed({
+            baseUrl: normalizedBaseUrl,
+            imageUrl,
+            actionType: "launch_frame",
+            actionUrl: normalizedBaseUrl,
+            buttonTitle: "Open Droppit",
+        }),
     };
 }

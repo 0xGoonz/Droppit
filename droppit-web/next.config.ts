@@ -9,7 +9,7 @@ type WebpackConfigLike = {
   resolve?: ResolveConfig;
 };
 
-const standardSecurityHeaders = [
+const securityHeaders = [
   {
     key: 'X-Content-Type-Options',
     value: 'nosniff',
@@ -18,58 +18,18 @@ const standardSecurityHeaders = [
     key: 'Referrer-Policy',
     value: 'strict-origin-when-cross-origin',
   },
+  {
+    key: 'Content-Security-Policy',
+    value: "frame-ancestors 'self' https://warpcast.com https://*.warpcast.com https://farcaster.xyz https://*.farcaster.xyz https://base.app https://*.base.app https://base.org https://*.base.org https://base.dev https://*.base.dev;",
+  },
 ];
-
-const miniAppFrameAncestors = [
-  "'self'",
-  'https://warpcast.com',
-  'https://*.warpcast.com',
-  'https://farcaster.xyz',
-  'https://*.farcaster.xyz',
-  'https://base.app',
-  'https://*.base.app',
-  'https://base.org',
-  'https://*.base.org',
-  'https://base.dev',
-  'https://*.base.dev',
-].join(' ');
 
 const nextConfig: NextConfig = {
   async headers() {
     return [
       {
         source: '/:path*',
-        missing: [
-          {
-            type: 'query',
-            key: 'miniApp',
-            value: 'true',
-          },
-        ],
-        headers: [
-          ...standardSecurityHeaders,
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-        ],
-      },
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'query',
-            key: 'miniApp',
-            value: 'true',
-          },
-        ],
-        headers: [
-          ...standardSecurityHeaders,
-          {
-            key: 'Content-Security-Policy',
-            value: `frame-ancestors ${miniAppFrameAncestors};`,
-          },
-        ],
+        headers: securityHeaders,
       },
     ];
   },
