@@ -23,12 +23,17 @@ import { base } from 'viem/chains';
 import { getAlchemyRpcUrl } from '@/lib/chains';
 
 // ── Environment-aware chain config ──────────────────────────────
-// Matches the same NEXT_PUBLIC_ENVIRONMENT switch used across the app
-// (create/page.tsx, drop/locked/route.ts, receipt/[txHash]/route.tsx, etc.)
-// Frame MVP is pinned to Base mainnet.
-const activeChain = base;
-const FRAME_MVP_CHAIN_ID = "eip155:8453";
-const rpcUrl = getAlchemyRpcUrl('base-mainnet');
+// Check if the environment is explicitly set to production, otherwise default to baseSepolia
+const isProduction = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production';
+const activeChain = isProduction ? base : require('viem/chains').baseSepolia;
+const FRAME_MVP_CHAIN_ID = isProduction ? "eip155:8453" : "eip155:84532";
+const rpcUrlStr = isProduction ? 'base-mainnet' : 'base-sepolia';
+
+// Provide a reliable fallback if Alchemy env var is not loaded
+const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+const rpcUrl = alchemyKey
+    ? `https://${rpcUrlStr}.g.alchemy.com/v2/${alchemyKey}`
+    : (isProduction ? 'https://mainnet.base.org' : 'https://sepolia.base.org');
 
 // Minimum ABI for minting and reading price
 const DROP_ABI = [
@@ -62,7 +67,7 @@ export async function POST(
 
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://droppit.ai';
 
-        if (!contractAddress || !isAddress(contractAddress)) {
+        if (!contractAddress || !isAddress(contractAddress, { strict: false })) {
             return new NextResponse(
                 getFrameHtmlResponse({
                     buttons: [{ action: 'link', label: 'Open mint page', target: `${baseUrl}/drop/base/${contractAddress}` }],

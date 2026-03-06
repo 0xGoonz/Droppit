@@ -35,11 +35,16 @@ const DROP_ABI = [
 ] as const;
 
 // ── Environment-aware chain config ──────────────────────────────
-// Matches the same NEXT_PUBLIC_ENVIRONMENT switch used across the app
-// (create/page.tsx, drop/locked/route.ts, mint/route.ts, stats/route.ts, etc.)
-// Frame MVP is pinned to Base mainnet.
-const activeChain = base;
-const rpcUrl = getAlchemyRpcUrl('base-mainnet');
+// Check if the environment is explicitly set to production, otherwise default to baseSepolia
+const isProduction = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production';
+const activeChain = isProduction ? base : require('viem/chains').baseSepolia;
+const rpcUrlStr = isProduction ? 'base-mainnet' : 'base-sepolia';
+
+// Provide a reliable fallback if Alchemy env var is not loaded
+const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+const rpcUrl = alchemyKey
+    ? `https://${rpcUrlStr}.g.alchemy.com/v2/${alchemyKey}`
+    : (isProduction ? 'https://mainnet.base.org' : 'https://sepolia.base.org');
 
 const publicClient = createPublicClient({
     chain: activeChain,
@@ -57,7 +62,7 @@ export async function GET(
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://droppit.ai';
         const urls = buildFrameUrls(baseUrl, contractAddress);
 
-        if (!contractAddress || !isAddress(contractAddress)) {
+        if (!contractAddress || !isAddress(contractAddress, { strict: false })) {
             return new NextResponse(
                 getFrameHtmlResponse({
                     buttons: [{ action: 'link', label: 'View Drop', target: urls.dropUrl }],
@@ -80,15 +85,26 @@ export async function GET(
         }).catch(err => console.warn('Frame view attribution failed:', err));
 
         try {
-            // Verify contract is live/valid by attempting to read its mintPrice
-            await publicClient.readContract({
-                address: contractAddress as `0x${string}`,
-                abi: DROP_ABI,
-                functionName: 'mintPrice'
-            });
+            // Instead of querying the blockchain (which fails for uninstantiated proxies or wrong networks),
+            // we query the database to verify the drop exists and is ready for minting.
+            const { createClient } = require('@supabase/supabase-js');
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+
+            const { data: drop, error } = await supabase
+                .from('drops')
+                .select('status')
+                .ilike('contract_address', contractAddress)
+                .maybeSingle();
+
+            if (error || !drop || (drop.status !== 'LIVE' && drop.status !== 'PUBLISHED')) {
+                throw new Error("Drop not found or not LIVE/PUBLISHED in database");
+            }
         } catch (error) {
-            console.error("Failed to verify contract for GET frame:", error);
-            // Fallback to link frame if we can't prove canonical data from contract
+            console.error("Failed to verify contract for GET frame via DB:", error);
+            // Fallback to link frame if we can't prove data from DB
             return new NextResponse(
                 getFrameHtmlResponse({
                     buttons: [{ action: 'link', label: 'View Drop to Mint', target: urls.dropUrl }],
