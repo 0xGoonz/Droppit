@@ -313,119 +313,105 @@ export async function GET(
                                 width: "100%",
                                 height: "100%",
                                 display: "flex",
-                                flexDirection: "column",
-                                justifyContent: "space-between",
-                                borderRadius: 34,
-                                padding: 34,
-                                background: "linear-gradient(180deg, rgba(2,6,23,0.92), rgba(3,7,18,0.84))",
-                                border: "1px solid rgba(255,255,255,0.08)",
+                                flexDirection: "row",
+                                background: "linear-gradient(135deg, #020617 0%, #0B1021 100%)",
+                                borderRadius: 24,
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                overflow: "hidden",
                                 boxShadow: "0 28px 64px rgba(0,0,0,0.32)",
                             }}
                         >
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                <div style={{ display: "flex", gap: 12 }}>
-                                    <span
-                                        style={{
-                                            fontSize: OG_TOKENS.badgeSize,
-                                            padding: "7px 14px",
-                                            borderRadius: 999,
-                                            border: `1px solid ${statusColors.border}`,
-                                            color: statusColors.fg,
-                                            background: statusColors.bg,
-                                        }}
-                                    >
-                                        {statusLabel}
-                                    </span>
-                                    <span
-                                        style={{
-                                            fontSize: OG_TOKENS.badgeSize,
-                                            padding: "7px 14px",
-                                            borderRadius: 999,
-                                            border: `1px solid ${OG_BRAND.blue}66`,
-                                            color: "#cfe2ff",
-                                            background: `${OG_BRAND.blue}2e`,
-                                        }}
-                                    >
-                                        {chainLabel}
-                                    </span>
-                                </div>
-                                <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>Open in Farcaster Mini App</span>
-                            </div>
-
+                            {/* LEFT: Full Bleed Artwork */}
                             <div
                                 style={{
-                                    flex: 1,
+                                    width: "55%",
+                                    height: "100%",
                                     display: "flex",
-                                    flexDirection: "column",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    gap: 26,
+                                    background: art ? "#000" : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
+                                    borderRight: "1px solid rgba(255,255,255,0.1)",
                                 }}
                             >
-                                <div
-                                    style={{
-                                        width: "100%",
-                                        height: 420,
-                                        borderRadius: 28,
-                                        background: art
-                                            ? "linear-gradient(180deg, rgba(15,23,42,0.7), rgba(2,6,23,0.82))"
-                                            : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
-                                        border: "1px solid rgba(255,255,255,0.1)",
-                                        overflow: "hidden",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        padding: 28,
-                                        boxShadow: "0 20px 52px rgba(0,0,0,0.32)",
-                                    }}
-                                >
-                                    {art ? (
-                                        <img
-                                            alt=""
-                                            src={art}
-                                            style={{
-                                                width: "100%",
-                                                height: "100%",
-                                                objectFit: "contain",
-                                                objectPosition: "center",
-                                            }}
-                                        />
-                                    ) : (
-                                        <span style={{ fontSize: 164, fontWeight: 800, opacity: 0.9 }}>{glyph}</span>
-                                    )}
-                                </div>
+                                {art ? (
+                                    <img
+                                        alt=""
+                                        src={art}
+                                        style={{
+                                            width: "100%",
+                                            height: "100%",
+                                            objectFit: "cover",
+                                        }}
+                                    />
+                                ) : (
+                                    <span style={{ fontSize: 240, fontWeight: 800, opacity: 0.9, color: "white" }}>{glyph}</span>
+                                )}
+                            </div>
 
-                                <div
-                                    style={{
-                                        width: "100%",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        alignItems: "center",
-                                        gap: 14,
-                                    }}
-                                >
+                            {/* RIGHT: Details Panel */}
+                            <div
+                                style={{
+                                    width: "45%",
+                                    height: "100%",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "space-between",
+                                    padding: "60px 48px",
+                                    background: "linear-gradient(180deg, rgba(2,6,23,0.92), rgba(3,7,18,0.84))",
+                                }}
+                            >
+                                {/* Top Badges */}
+                                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                                    <div style={{ display: "flex", gap: 12 }}>
+                                        <span
+                                            style={{
+                                                fontSize: 22,
+                                                padding: "8px 16px",
+                                                borderRadius: 999,
+                                                border: `1px solid ${statusColors.border}`,
+                                                color: statusColors.fg,
+                                                background: statusColors.bg,
+                                            }}
+                                        >
+                                            {statusLabel}
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: 22,
+                                                padding: "8px 16px",
+                                                borderRadius: 999,
+                                                border: `1px solid ${OG_BRAND.blue}66`,
+                                                color: "#cfe2ff",
+                                                background: `${OG_BRAND.blue}2e`,
+                                            }}
+                                        >
+                                            {chainLabel}
+                                        </span>
+                                    </div>
+
+                                    {/* Big Title */}
                                     <div
                                         style={{
-                                            fontSize: 68,
-                                            lineHeight: 1.02,
+                                            fontSize: 56,
+                                            lineHeight: 1.05,
                                             fontWeight: 800,
                                             letterSpacing: "-0.03em",
-                                            textAlign: "center",
-                                            maxWidth: 920,
+                                            color: OG_BRAND.text0,
                                         }}
                                     >
                                         {titleSafe}
                                     </div>
 
+                                    {/* Price and Supply */}
                                     <div style={{ display: "flex", gap: 12 }}>
                                         <span
                                             style={{
-                                                fontSize: 24,
+                                                fontSize: 26,
                                                 color: OG_BRAND.text0,
                                                 background: "rgba(11,16,32,0.78)",
                                                 border: "1px solid rgba(34,211,238,0.28)",
                                                 borderRadius: 16,
-                                                padding: "8px 16px",
+                                                padding: "10px 20px",
                                             }}
                                         >
                                             {price}
@@ -433,12 +419,12 @@ export async function GET(
                                         {supplyLabel && (
                                             <span
                                                 style={{
-                                                    fontSize: 24,
+                                                    fontSize: 26,
                                                     color: supplyLabel === "Sold Out" ? "#ef4444" : "#bae6fd",
                                                     background: supplyLabel === "Sold Out" ? "rgba(239,68,68,0.1)" : "rgba(14,165,233,0.1)",
                                                     border: `1px solid ${supplyLabel === "Sold Out" ? "rgba(239,68,68,0.3)" : "rgba(14,165,233,0.3)"}`,
                                                     borderRadius: 16,
-                                                    padding: "8px 16px",
+                                                    padding: "10px 20px",
                                                 }}
                                             >
                                                 {supplyLabel}
@@ -446,20 +432,25 @@ export async function GET(
                                         )}
                                     </div>
                                 </div>
-                            </div>
 
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 24 }}>
-                                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                                    <span style={{ fontSize: 22, color: OG_BRAND.text1 }}>
+                                {/* Bottom Metadata */}
+                                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                                    <span style={{ fontSize: 24, color: OG_BRAND.text1 }}>
                                         Creator: {creator}
                                     </span>
-                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>
+                                    <span style={{ fontSize: 20, color: OG_BRAND.text2 }}>
                                         Source: {creatorSource}
                                     </span>
+                                    <span style={{ fontSize: 20, color: OG_BRAND.text2 }}>
+                                        Contract: {contractSnippet}
+                                    </span>
+
+                                    <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center" }}>
+                                        <span style={{ fontSize: 22, color: "#e2e8f0" }}>
+                                            Open in Farcaster Mini App ✦
+                                        </span>
+                                    </div>
                                 </div>
-                                <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>
-                                    Contract: {contractSnippet}
-                                </span>
                             </div>
                         </div>
                     ) : (
