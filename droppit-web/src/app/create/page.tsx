@@ -881,46 +881,47 @@ export default function CreateDrop() {
                                     <div className="rounded-2xl border border-white/[0.06] bg-[#05070f] overflow-hidden">
                                         <div className="px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
                                             <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
-                                            <p className="text-xs text-slate-500">This is how your drop will look when shared on Warpcast or X.</p>
+                                            <p className="text-xs text-slate-500">This is the share artwork used in Warpcast or X. In Warpcast, the drop opens as a Mini App.</p>
                                         </div>
                                         <div className="p-6 flex justify-center bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)]">
-                                            <div className="w-full max-w-[500px] flex flex-col items-center">
-                                                <div className="w-full aspect-[1.91/1] rounded-t-xl border border-white/10 border-b-0 flex p-6 relative overflow-hidden bg-black/40 backdrop-blur-md shadow-2xl">
-                                                    <div className="w-[40%] rounded-xl overflow-hidden border border-white/10 shrink-0 bg-[#0B1020] flex items-center justify-center p-1 relative shadow-inner">
+                                            <div className="w-full max-w-[540px] rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.92),rgba(3,7,18,0.84))] p-5 shadow-2xl">
+                                                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                                                    <div className="flex gap-2">
+                                                        <span className="px-2.5 py-1 rounded-full bg-[#16a34a]/20 text-[#4ade80] border border-[#16a34a]/30">Live</span>
+                                                        <span className="px-2.5 py-1 rounded-full bg-[#0052FF]/20 text-[#cfe2ff] border border-[#0052FF]/30">Base</span>
+                                                    </div>
+                                                    <span className="text-[11px] normal-case tracking-normal text-slate-500">Mini App launch</span>
+                                                </div>
+
+                                                <div className="mt-4 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(2,6,23,0.82))] p-5 shadow-[0_20px_52px_rgba(0,0,0,0.32)]">
+                                                    <div className="h-[280px] sm:h-[320px] flex items-center justify-center overflow-hidden rounded-[20px] bg-black/10">
                                                         {file ? (
-                                                            <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-contain rounded-lg drop-shadow-md" />
+                                                            <img src={URL.createObjectURL(file)} alt="" className="max-w-full max-h-full object-contain object-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)]" />
                                                         ) : draftImageUrl ? (
-                                                            <img src={draftImageUrl.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')} alt="" className="w-full h-full object-contain rounded-lg drop-shadow-md" />
+                                                            <img src={draftImageUrl.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')} alt="" className="max-w-full max-h-full object-contain object-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)]" />
                                                         ) : (
-                                                            <div className="text-4xl font-bold text-white/50">{formData.title.charAt(0).toUpperCase() || "D"}</div>
+                                                            <div className="text-7xl font-bold text-white/50">{formData.title.charAt(0).toUpperCase() || "D"}</div>
                                                         )}
                                                     </div>
-                                                    <div className="ml-6 flex-1 flex flex-col justify-between py-1">
-                                                        <div>
-                                                            <div className="flex gap-2 text-[10px] font-bold uppercase tracking-wider mb-2">
-                                                                <span className="px-2 py-1 rounded-full bg-[#16a34a]/20 text-[#4ade80] border border-[#16a34a]/30">LIVE</span>
-                                                            </div>
-                                                            <h1 className="text-xl font-bold text-white leading-tight line-clamp-2">{formData.title || "Untitled Drop"}</h1>
-                                                            <div className="mt-2 text-sm text-[#22D3EE] font-medium bg-[#0B1020]/80 border border-[#22D3EE]/30 rounded-lg px-3 py-1.5 inline-block">
-                                                                {Number(formData.mintPrice) === 0 ? "Free" : `${formData.mintPrice} ETH`}
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-xs text-slate-400">
-                                                            <div className="mb-1">Creator: {formData.farcasterHandle ? `@${formData.farcasterHandle}` : (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Unknown")}</div>
-                                                        </div>
+                                                </div>
+
+                                                <div className="mt-5 flex flex-col items-center text-center">
+                                                    <h1 className="text-[28px] font-bold leading-tight text-white line-clamp-2 max-w-[420px]">{formData.title || "Untitled Drop"}</h1>
+                                                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                                                        <span className="text-sm text-[#22D3EE] font-medium bg-[#0B1020]/80 border border-[#22D3EE]/30 rounded-xl px-3 py-1.5">
+                                                            {Number(formData.mintPrice) === 0 ? "Free" : `${formData.mintPrice} ETH`}
+                                                        </span>
+                                                        <span className="text-sm text-sky-100 font-medium bg-sky-500/10 border border-sky-400/20 rounded-xl px-3 py-1.5">
+                                                            {formData.editionSize ? `${formData.editionSize} supply` : "Open edition"}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                                {/* Frame Buttons Mockup */}
-                                                <div className="w-full flex gap-2 pt-2 border border-white/10 border-t-0 bg-black/40 px-2 pb-2 rounded-b-xl shadow-2xl">
-                                                    <div className="flex-1 relative group cursor-default">
-                                                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] opacity-60 blur-md" />
-                                                        <div className="relative h-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] text-center py-2.5 rounded-lg border border-white/20 text-sm font-bold text-white transition-transform hover:scale-[1.02]">
-                                                            Mint 1
-                                                        </div>
+
+                                                <div className="mt-5 flex items-end justify-between gap-4 border-t border-white/10 pt-4 text-xs text-slate-400">
+                                                    <div>
+                                                        Creator: {formData.farcasterHandle ? `@${formData.farcasterHandle}` : (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Unknown")}
                                                     </div>
-                                                    <div className="flex-1 bg-gradient-to-r from-[#0052FF]/20 to-[#22D3EE]/20 hover:from-[#0052FF]/30 hover:to-[#22D3EE]/30 text-center py-2.5 rounded-lg border border-[#22D3EE]/30 text-sm font-semibold text-white cursor-default transition-all shadow-[0_0_15px_rgba(34,211,238,0.1)]">
-                                                        Open mint page
-                                                    </div>
+                                                    <div className="text-right text-slate-500">Warpcast renders the launch button outside the artwork.</div>
                                                 </div>
                                             </div>
                                         </div>

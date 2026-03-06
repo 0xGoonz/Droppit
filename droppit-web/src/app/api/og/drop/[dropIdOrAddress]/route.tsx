@@ -307,118 +307,277 @@ export async function GET(
                         padding: `${OG_TOKENS.safeY}px ${OG_TOKENS.safeX}px`,
                     }}
                 >
-                    <div
-                        style={{
-                            width: OG_TOKENS.artSize,
-                            height: OG_TOKENS.artSize,
-                            borderRadius: OG_TOKENS.radius,
-                            marginRight: 38,
-                            alignSelf: "center",
-                            background: art ? "rgba(255,255,255,0.02)" : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            overflow: "hidden",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            boxShadow: "0 20px 44px rgba(0,0,0,0.35)",
-                        }}
-                    >
-                        {art ? (
-                            <img
-                                alt=""
-                                src={art}
-                                width={OG_TOKENS.artSize}
-                                height={OG_TOKENS.artSize}
-                                style={{ objectFit: "cover" }}
-                            />
-                        ) : (
-                            <span style={{ fontSize: 124, fontWeight: 800, opacity: 0.9 }}>{glyph}</span>
-                        )}
-                    </div>
-
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                            <div style={{ display: "flex", gap: 12 }}>
-                                <span
-                                    style={{
-                                        fontSize: OG_TOKENS.badgeSize,
-                                        padding: "7px 14px",
-                                        borderRadius: 999,
-                                        border: `1px solid ${statusColors.border}`,
-                                        color: statusColors.fg,
-                                        background: statusColors.bg,
-                                    }}
-                                >
-                                    {statusLabel}
-                                </span>
-                                <span
-                                    style={{
-                                        fontSize: OG_TOKENS.badgeSize,
-                                        padding: "7px 14px",
-                                        borderRadius: 999,
-                                        border: `1px solid ${OG_BRAND.blue}66`,
-                                        color: "#cfe2ff",
-                                        background: `${OG_BRAND.blue}2e`,
-                                    }}
-                                >
-                                    {chainLabel}
-                                </span>
+                    {isMiniAppVariant ? (
+                        <div
+                            style={{
+                                width: "100%",
+                                height: "100%",
+                                display: "flex",
+                                flexDirection: "column",
+                                justifyContent: "space-between",
+                                borderRadius: 34,
+                                padding: 34,
+                                background: "linear-gradient(180deg, rgba(2,6,23,0.92), rgba(3,7,18,0.84))",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                boxShadow: "0 28px 64px rgba(0,0,0,0.32)",
+                            }}
+                        >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div style={{ display: "flex", gap: 12 }}>
+                                    <span
+                                        style={{
+                                            fontSize: OG_TOKENS.badgeSize,
+                                            padding: "7px 14px",
+                                            borderRadius: 999,
+                                            border: `1px solid ${statusColors.border}`,
+                                            color: statusColors.fg,
+                                            background: statusColors.bg,
+                                        }}
+                                    >
+                                        {statusLabel}
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: OG_TOKENS.badgeSize,
+                                            padding: "7px 14px",
+                                            borderRadius: 999,
+                                            border: `1px solid ${OG_BRAND.blue}66`,
+                                            color: "#cfe2ff",
+                                            background: `${OG_BRAND.blue}2e`,
+                                        }}
+                                    >
+                                        {chainLabel}
+                                    </span>
+                                </div>
+                                <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>Open in Farcaster Mini App</span>
                             </div>
 
                             <div
                                 style={{
-                                    fontSize: OG_TOKENS.titleSize,
-                                    lineHeight: 1.04,
-                                    fontWeight: 800,
-                                    letterSpacing: "-0.025em",
-                                    maxWidth: 730,
+                                    flex: 1,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 26,
                                 }}
                             >
-                                {titleSafe}
-                            </div>
-
-                            <div style={{ display: "flex", gap: 12 }}>
-                                <span
+                                <div
                                     style={{
-                                        fontSize: OG_TOKENS.subtitleSize,
-                                        color: OG_BRAND.text0,
-                                        background: "rgba(11,16,32,0.78)",
-                                        border: "1px solid rgba(34,211,238,0.28)",
-                                        borderRadius: 16,
-                                        padding: "8px 16px",
+                                        width: "100%",
+                                        height: 420,
+                                        borderRadius: 28,
+                                        background: art
+                                            ? "linear-gradient(180deg, rgba(15,23,42,0.7), rgba(2,6,23,0.82))"
+                                            : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
+                                        border: "1px solid rgba(255,255,255,0.1)",
+                                        overflow: "hidden",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        padding: 28,
+                                        boxShadow: "0 20px 52px rgba(0,0,0,0.32)",
                                     }}
                                 >
-                                    {price}
-                                </span>
-                                {supplyLabel && (
-                                    <span
+                                    {art ? (
+                                        <img
+                                            alt=""
+                                            src={art}
+                                            style={{
+                                                width: "100%",
+                                                height: "100%",
+                                                objectFit: "contain",
+                                                objectPosition: "center",
+                                            }}
+                                        />
+                                    ) : (
+                                        <span style={{ fontSize: 164, fontWeight: 800, opacity: 0.9 }}>{glyph}</span>
+                                    )}
+                                </div>
+
+                                <div
+                                    style={{
+                                        width: "100%",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        gap: 14,
+                                    }}
+                                >
+                                    <div
                                         style={{
-                                            fontSize: OG_TOKENS.subtitleSize,
-                                            color: supplyLabel === "Sold Out" ? "#ef4444" : "#bae6fd",
-                                            background: supplyLabel === "Sold Out" ? "rgba(239,68,68,0.1)" : "rgba(14,165,233,0.1)",
-                                            border: `1px solid ${supplyLabel === "Sold Out" ? "rgba(239,68,68,0.3)" : "rgba(14,165,233,0.3)"}`,
-                                            borderRadius: 16,
-                                            padding: "8px 16px",
+                                            fontSize: 68,
+                                            lineHeight: 1.02,
+                                            fontWeight: 800,
+                                            letterSpacing: "-0.03em",
+                                            textAlign: "center",
+                                            maxWidth: 920,
                                         }}
                                     >
-                                        {supplyLabel}
+                                        {titleSafe}
+                                    </div>
+
+                                    <div style={{ display: "flex", gap: 12 }}>
+                                        <span
+                                            style={{
+                                                fontSize: 24,
+                                                color: OG_BRAND.text0,
+                                                background: "rgba(11,16,32,0.78)",
+                                                border: "1px solid rgba(34,211,238,0.28)",
+                                                borderRadius: 16,
+                                                padding: "8px 16px",
+                                            }}
+                                        >
+                                            {price}
+                                        </span>
+                                        {supplyLabel && (
+                                            <span
+                                                style={{
+                                                    fontSize: 24,
+                                                    color: supplyLabel === "Sold Out" ? "#ef4444" : "#bae6fd",
+                                                    background: supplyLabel === "Sold Out" ? "rgba(239,68,68,0.1)" : "rgba(14,165,233,0.1)",
+                                                    border: `1px solid ${supplyLabel === "Sold Out" ? "rgba(239,68,68,0.3)" : "rgba(14,165,233,0.3)"}`,
+                                                    borderRadius: 16,
+                                                    padding: "8px 16px",
+                                                }}
+                                            >
+                                                {supplyLabel}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 24 }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                    <span style={{ fontSize: 22, color: OG_BRAND.text1 }}>
+                                        Creator: {creator}
                                     </span>
-                                )}
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>
+                                        Source: {creatorSource}
+                                    </span>
+                                </div>
+                                <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>
+                                    Contract: {contractSnippet}
+                                </span>
                             </div>
                         </div>
+                    ) : (
+                        <>
+                            <div
+                                style={{
+                                    width: OG_TOKENS.artSize,
+                                    height: OG_TOKENS.artSize,
+                                    borderRadius: OG_TOKENS.radius,
+                                    marginRight: 38,
+                                    alignSelf: "center",
+                                    background: art ? "rgba(255,255,255,0.02)" : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
+                                    border: "1px solid rgba(255,255,255,0.12)",
+                                    overflow: "hidden",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    boxShadow: "0 20px 44px rgba(0,0,0,0.35)",
+                                }}
+                            >
+                                {art ? (
+                                    <img
+                                        alt=""
+                                        src={art}
+                                        width={OG_TOKENS.artSize}
+                                        height={OG_TOKENS.artSize}
+                                        style={{ objectFit: "cover" }}
+                                    />
+                                ) : (
+                                    <span style={{ fontSize: 124, fontWeight: 800, opacity: 0.9 }}>{glyph}</span>
+                                )}
+                            </div>
 
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            <span style={{ fontSize: OG_TOKENS.bodySize, color: OG_BRAND.text1 }}>
-                                Creator: {creator}
-                            </span>
-                            <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>
-                                Source: {creatorSource}
-                            </span>
-                            <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>
-                                Contract: {contractSnippet}
-                            </span>
-                        </div>
-                    </div>
+                            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                                    <div style={{ display: "flex", gap: 12 }}>
+                                        <span
+                                            style={{
+                                                fontSize: OG_TOKENS.badgeSize,
+                                                padding: "7px 14px",
+                                                borderRadius: 999,
+                                                border: `1px solid ${statusColors.border}`,
+                                                color: statusColors.fg,
+                                                background: statusColors.bg,
+                                            }}
+                                        >
+                                            {statusLabel}
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: OG_TOKENS.badgeSize,
+                                                padding: "7px 14px",
+                                                borderRadius: 999,
+                                                border: `1px solid ${OG_BRAND.blue}66`,
+                                                color: "#cfe2ff",
+                                                background: `${OG_BRAND.blue}2e`,
+                                            }}
+                                        >
+                                            {chainLabel}
+                                        </span>
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            fontSize: OG_TOKENS.titleSize,
+                                            lineHeight: 1.04,
+                                            fontWeight: 800,
+                                            letterSpacing: "-0.025em",
+                                            maxWidth: 730,
+                                        }}
+                                    >
+                                        {titleSafe}
+                                    </div>
+
+                                    <div style={{ display: "flex", gap: 12 }}>
+                                        <span
+                                            style={{
+                                                fontSize: OG_TOKENS.subtitleSize,
+                                                color: OG_BRAND.text0,
+                                                background: "rgba(11,16,32,0.78)",
+                                                border: "1px solid rgba(34,211,238,0.28)",
+                                                borderRadius: 16,
+                                                padding: "8px 16px",
+                                            }}
+                                        >
+                                            {price}
+                                        </span>
+                                        {supplyLabel && (
+                                            <span
+                                                style={{
+                                                    fontSize: OG_TOKENS.subtitleSize,
+                                                    color: supplyLabel === "Sold Out" ? "#ef4444" : "#bae6fd",
+                                                    background: supplyLabel === "Sold Out" ? "rgba(239,68,68,0.1)" : "rgba(14,165,233,0.1)",
+                                                    border: `1px solid ${supplyLabel === "Sold Out" ? "rgba(239,68,68,0.3)" : "rgba(14,165,233,0.3)"}`,
+                                                    borderRadius: 16,
+                                                    padding: "8px 16px",
+                                                }}
+                                            >
+                                                {supplyLabel}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                    <span style={{ fontSize: OG_TOKENS.bodySize, color: OG_BRAND.text1 }}>
+                                        Creator: {creator}
+                                    </span>
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>
+                                        Source: {creatorSource}
+                                    </span>
+                                    <span style={{ fontSize: 18, color: OG_BRAND.text2 }}>
+                                        Contract: {contractSnippet}
+                                    </span>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             ),
             {
