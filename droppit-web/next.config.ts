@@ -1,5 +1,13 @@
 import type { NextConfig } from 'next';
-import type { Configuration } from 'webpack';
+
+type ResolveConfig = {
+  fallback?: Record<string, unknown>;
+  alias?: Record<string, unknown>;
+};
+
+type WebpackConfigLike = {
+  resolve?: ResolveConfig;
+};
 
 const standardSecurityHeaders = [
   {
@@ -66,7 +74,7 @@ const nextConfig: NextConfig = {
     ];
   },
   serverExternalPackages: ["@coinbase/agentkit", "@coinbase/cdp-sdk", "@langchain/google-genai", "@coinbase/agentkit-langchain"],
-  webpack: (config: Configuration, { isServer }: { isServer: boolean }) => {
+  webpack: (config: WebpackConfigLike, { isServer }: { isServer: boolean }) => {
     if (!isServer) {
       config.resolve = {
         ...config.resolve,

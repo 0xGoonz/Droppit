@@ -44,5 +44,9 @@ next-env.d.ts
 check_schema*.js
 tsc-errors.txt
 supabase/.temp/
+dev-cmd.log
+dev-server.log
+dev-server.err
+dev-server.out
 
 .vercel
