@@ -2,7 +2,7 @@ export const BRAND = {
     name: "Droppit",
     shortName: "Droppit",
     tagline: "Launch drops at feed speed.",
-    description: "Create ERC-1155 drops on Base, then share via links and Farcaster Frames.",
+    description: "Create and mint ERC-1155 drops on Base, then share them across Farcaster and the web.",
     palette: {
         bg0: "#05070F",
         bg1: "#0B1020",

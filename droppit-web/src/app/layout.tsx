@@ -23,6 +23,7 @@ const monoFont = IBM_Plex_Mono({
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
 const baseAppId = process.env.NEXT_PUBLIC_BASE_APP_ID?.trim();
+const promoImagePath = "/miniapp/metadata/hero-1200x630.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
@@ -42,13 +43,13 @@ export const metadata: Metadata = {
     siteName: BRAND.name,
     type: "website",
     url: baseUrl,
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: BRAND.name }],
+    images: [{ url: promoImagePath, width: 1200, height: 630, alt: `${BRAND.name} hero image` }],
   },
   twitter: {
     card: "summary_large_image",
     title: BRAND.name,
     description: BRAND.description,
-    images: ["/og-image.png"],
+    images: [promoImagePath],
   },
   other: baseAppId ? {
     "base:app_id": baseAppId,
