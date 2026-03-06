@@ -24,7 +24,7 @@ Droppit is an **agentic web platform for Base** that lets creators launch single
 1. **Web Wizard** — A 4-step guided flow: metadata → economics → identity → deploy.
 2. **Farcaster AI Agent** — Cast an image and tag `@droppit` with natural-language instructions. The AI parses your intent, drafts the drop, and returns a deploy frame — all without leaving Warpcast.
 
-Every drop gets its own **smart contract address** on Base (gas-optimized via EIP-1167 minimal proxy clones), a **canonical mint page**, and a **Farcaster Frame** for zero-UI minting directly in-feed.
+Every drop gets its own **smart contract address** on Base (gas-optimized via EIP-1167 minimal proxy clones), a **canonical mint page**, and a **Farcaster Mini App** for zero-UI interactive minting directly in-feed.
 
 ---
 
@@ -39,8 +39,8 @@ Every drop deploys its own ERC-1155 contract via the `DropFactory` using [EIP-11
 ### 🔐 Mint-to-Unlock / Encrypted Content
 Creators can attach a secret message (passwords, alpha, event codes) that is **encrypted at rest** (AES-256-GCM) and revealed only to wallets that own the NFT. Decryption requires a signed nonce challenge + onchain ownership proof.
 
-### 🖼️ Farcaster Frames
-Every drop has interactive Frame endpoints. Collectors can mint directly in Warpcast. Creators get deploy frames with secret input, high-res upload, and auto-deploy support.
+### 🖼️ Farcaster Mini Apps
+Every drop has interactive Mini App endpoints. Collectors can mint richly directly in Warpcast. Creators get deploy Mini Apps with secret input, high-res upload, and auto-deploy support.
 
 ### 🛡️ Trust-First Minting
 The mint page prominently displays the creator identity (wallet-linked handle), drop contract address, factory address, implementation address, and network — all verifiable on the Base explorer.
@@ -72,7 +72,7 @@ droppit/
 │   │   │       ├── creator/    # Creator profiles
 │   │   │       ├── drop/       # Locked content unlock
 │   │   │       ├── drops/      # CRUD + publish lifecycle
-│   │   │       ├── frame/      # Farcaster Frame endpoints
+│   │   │       ├── frame/      # Farcaster Frame & Mini App endpoints
 │   │   │       ├── identity/   # Identity and auth
 │   │   │       ├── og/         # Dynamic OG image generation
 │   │   │       ├── receipt/    # View receipt endpoints
@@ -105,7 +105,7 @@ droppit/
 | **Frontend** | Next.js 16 (App Router), React 19, TailwindCSS 4 |
 | **Web3** | viem, Wagmi, Coinbase OnchainKit (Smart Wallet + Passkeys) |
 | **AI Agent** | CDP AgentKit, LangChain, Google Gemini 2.5 Flash |
-| **Farcaster** | Neynar (webhooks + HMAC verification), custom Frame builder |
+| **Farcaster** | Neynar (webhooks + HMAC verification), Farcaster Mini Apps, custom Frame builder |
 | **Database** | Supabase (PostgreSQL) — 7 tables, schema-checked in CI |
 | **Storage** | Pinata (IPFS pinning for artwork + metadata) |
 | **Security** | AES-256-GCM locked content encryption, challenge nonces, commitment validation |
@@ -287,7 +287,7 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
                                     │
                     ┌───────────────▼────────────────┐
                     │  Draft Created + Media Pinned   │
-                    │  Deploy Frame returned to cast  │
+                    │  Deploy Mini App returned to cast │
                     └────────────────────────────────┘
 ```
 
@@ -307,10 +307,10 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
 | `/api/drops/[id]` | GET | Lifecycle-aware fetch (DRAFT or LIVE non-editable) |
 | `/api/drops/[id]/publish` | POST | Publish: encrypt + transition DRAFT → LIVE |
 | `/api/drops/by-address/[address]` | GET | Lookup drop by contract address |
-| `/api/frame/deploy/[castHash]` | POST | Deploy frame for webhook-originated drafts |
-| `/api/frame/draft/[draftId]/deploy` | POST | Deploy frame for direct drafts |
-| `/api/frame/drop/[contractAddress]` | GET | Collector mint frame metadata |
-| `/api/frame/drop/[contractAddress]/mint` | POST | Frame mint transaction data |
+| `/api/frame/deploy/[castHash]` | POST | Deploy Mini App for webhook-originated drafts |
+| `/api/frame/draft/[draftId]/deploy` | POST | Deploy Mini App for direct drafts |
+| `/api/frame/drop/[contractAddress]` | GET | Collector mint Mini App metadata |
+| `/api/frame/drop/[contractAddress]/mint` | POST | Mini App mint transaction data |
 | `/api/identity/...` | GET/POST| Identity resolution and management |
 | `/api/og/drop/[dropIdOrAddress]` | GET | Dynamic OG image generation |
 | `/api/receipt/...` | GET  | View receipt rendering and logic |

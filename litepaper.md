@@ -9,9 +9,9 @@ Launching digital collectibles today requires navigating heavy smart contract pl
 ## The Solution
 Droppit abstracts away the deployment complexity by acting as an intelligent orchestration layer. It provides two creation paths:
 1. **The Web Wizard:** A guided four-step flow—Metadata, Economics, Identity, Deploy—that distills the traditional drop process into its simplest form.
-2. **The Farcaster AI Agent:** A completely frictionless path. An author casts an image on Warpcast and tags `@droppit` with instructions (e.g., *"@droppit deploy this, 100 editions, 0.001 ETH"*). The AI parses the intent, pins the media, and responds with a seamless Deploy Frame.
+2. **The Farcaster AI Agent:** A completely frictionless path. An author casts an image on Warpcast and tags `@droppit` with instructions (e.g., *"@droppit deploy this, 100 editions, 0.001 ETH"*). The AI parses the intent, pins the media, and responds with a seamless Deploy Mini App.
 
-Every drop generates a canonical mint page, robust Open Graph cards, and a fully interactive Farcaster Frame, ensuring discovery and minting happen natively.
+Every drop generates a canonical mint page, robust Open Graph cards, and a fully interactive Farcaster Mini App, ensuring discovery and minting happen natively.
 
 ## Core Mechanics
 

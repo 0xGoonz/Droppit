@@ -665,19 +665,19 @@ function CtaBanner() {
                 <div className="absolute inset-0 bg-gradient-to-br from-[#0052FF]/20 via-[#7C3AED]/15 to-[#FF4D8D]/10" />
                 <div className="pointer-events-none absolute -top-20 right-20 h-60 w-60 rounded-full bg-[#22D3EE]/10 blur-[80px]" />
 
-                <div className="relative z-10 flex flex-col items-center px-8 py-16 text-center sm:py-20">
+                <div className="relative z-10 flex flex-col items-center px-5 py-14 text-center sm:px-8 sm:py-20">
                     <motion.h2 variants={fadeUp} className="font-display text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
                         Ready to Drop?
                     </motion.h2>
-                    <motion.p variants={fadeUp} className="mx-auto mt-4 max-w-xl text-lg text-slate-300">
+                    <motion.p variants={fadeUp} className="mx-auto mt-4 max-w-xl text-base text-slate-300 sm:text-lg">
                         Join creators, event organizers, and collectors on Base. Launch your first drop in under 3 minutes.
                     </motion.p>
-                    <motion.div variants={fadeUp} className="mt-8 flex flex-col items-center gap-4 sm:flex-row">
+                    <motion.div variants={fadeUp} className="mt-8 flex w-full max-w-sm flex-col items-stretch gap-3 sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-4">
                         <div className="relative group">
                             <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] opacity-80 blur-md transition-opacity group-hover:opacity-100 cta-glow" />
                             <Link
                                 href="/create"
-                                className="relative rounded-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] px-8 py-3.5 text-base font-bold text-white transition-transform hover:scale-[1.02]"
+                                className="relative inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] px-6 py-3.5 text-base font-bold text-white transition-transform hover:scale-[1.02] sm:w-auto sm:px-8"
                             >
                                 Start a Drop
                             </Link>
@@ -686,7 +686,7 @@ function CtaBanner() {
                             href={BRAND_LINKS.warpcast}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 transition-colors hover:border-white/40 hover:text-white"
+                            className="inline-flex w-full items-center justify-center rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/80 transition-colors hover:border-white/40 hover:text-white sm:w-auto"
                         >
                             Follow on Warpcast
                         </a>
@@ -709,7 +709,7 @@ function Footer() {
             transition={{ duration: 0.6 }}
             className="border-t border-white/[0.06] bg-[#03050d]/90"
         >
-            <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[2fr_1fr_1fr] lg:px-8">
+            <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-12 text-center sm:gap-10 sm:px-6 sm:py-14 sm:text-left lg:grid-cols-[2fr_1fr_1fr] lg:px-8">
                 {/* Brand Column */}
                 <div>
                     <div className="flex items-center gap-2">
@@ -730,7 +730,7 @@ function Footer() {
                     <p className="mt-3 max-w-sm text-sm leading-relaxed text-slate-500">
                         Agentic drop infrastructure on Base. Launch NFT drops via Farcaster AI or the web — no code required.
                     </p>
-                    <div className="mt-5 flex items-center gap-3">
+                    <div className="mt-5 flex flex-wrap items-center justify-center gap-3 sm:justify-start">
                         <a href={BRAND_LINKS.warpcast} target="_blank" rel="noreferrer" className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-white/40 transition-colors hover:border-white/20 hover:text-white/70" aria-label="Warpcast">
                             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M4 3h16l-2 8h2l-2 8H6L4 11h2L4 3z" /></svg>
                         </a>
@@ -767,11 +767,11 @@ function Footer() {
 
             {/* Bottom bar */}
             <div className="border-t border-white/[0.04]">
-                <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+                <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-5 text-center sm:px-6 lg:flex-row lg:justify-between lg:px-8 lg:text-left">
                     <p className="text-xs text-slate-600">
                         © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
                     </p>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-600">
+                    <div className="flex items-center justify-center gap-2 text-[10px] text-slate-600 lg:justify-end">
                         <span className="rounded-full border border-[#0052FF]/30 bg-[#0052FF]/10 px-2.5 py-0.5 text-[#0052FF] font-medium">
                             Built on Base
                         </span>

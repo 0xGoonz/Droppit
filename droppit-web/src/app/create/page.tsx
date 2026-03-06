@@ -59,7 +59,6 @@ export default function CreateDrop() {
     const {
         selectedChain,
         selectedChainId,
-        setSelectedChainId,
         hasSelectedChainContractConfig,
         chainContracts,
     } = useChainPreference();
@@ -476,13 +475,14 @@ export default function CreateDrop() {
             <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
 
             {/* Nav */}
-            <nav className="relative z-20 flex items-center justify-between px-4 py-5 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-                <BrandLockup markSize={28} wordmarkClassName="text-xl font-bold tracking-tight" />
+            <nav className="relative z-30 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+                <BrandLockup markSize={28} wordmarkClassName="text-lg font-bold tracking-tight sm:text-xl" />
 
-                <div className="flex items-center gap-3">
+                <div className="relative z-30 flex items-center gap-2 sm:gap-3">
                     <button
+                        type="button"
                         onClick={() => router.push('/creator')}
-                        className="hidden sm:inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm font-medium text-slate-400 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white"
+                        className="relative z-20 inline-flex shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white sm:px-4 sm:text-sm"
                     >
                         My Drops
                     </button>
@@ -491,7 +491,7 @@ export default function CreateDrop() {
                         {selectedChain.name}
                     </div>
                     <Wallet>
-                        <ConnectWallet className="rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">
+                        <ConnectWallet className="relative z-10 shrink-0 rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">
                             <Avatar className="h-7 w-7 ring-2 ring-[#0052FF]/30" />
                         </ConnectWallet>
                         <WalletDropdown className="border border-white/[0.08] bg-[#0B1020] rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
@@ -508,7 +508,7 @@ export default function CreateDrop() {
                 </div>
             </nav>
 
-            <main className="relative z-10 mx-auto max-w-3xl px-4 sm:px-6 pt-12">
+            <main className="relative z-10 mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
                 {/* Hydration loading / error indicators */}
                 {draftId && !hasHydrated && (
                     <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
@@ -536,14 +536,14 @@ export default function CreateDrop() {
                     </div>
                 )}
                 {!address ? (
-                    <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex min-h-[320px] flex-col items-center justify-center space-y-5 text-center animate-in fade-in slide-in-from-bottom-4 duration-500 sm:min-h-[400px] sm:space-y-6">
                         <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10 mb-2">
                             <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                         </div>
-                        <h1 className="font-display text-4xl font-extrabold tracking-tight">Connect your Wallet</h1>
-                        <p className="text-slate-400 max-w-md mx-auto">Connect your wallet to configure and deploy an ERC-1155 Drop on {selectedChain.name}.</p>
+                        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Connect your Wallet</h1>
+                        <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">Connect your wallet to configure and deploy an ERC-1155 Drop on {selectedChain.name}.</p>
                         <Wallet>
-                            <ConnectWallet className="bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white font-bold hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_30px_rgba(0,82,255,0.35)] px-8 py-3 rounded-full !min-w-[200px]">
+                            <ConnectWallet className="w-full max-w-xs rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-3 text-white !min-w-[200px] font-bold transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.35)]">
                                 <Avatar className="h-6 w-6" />
                                 <Name />
                             </ConnectWallet>
@@ -551,20 +551,20 @@ export default function CreateDrop() {
                     </div>
                 ) : (
                     <>
-                        <div className="mb-12">
+                        <div className="mb-10 sm:mb-12">
                             <div className="mb-3 inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/70">
                                 Create Drop
                             </div>
-                            <h1 className="font-display text-4xl font-extrabold tracking-tight mb-3">Launch your Drop</h1>
+                            <h1 className="mb-3 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Launch your Drop</h1>
                             <p className="text-slate-400">Configure your {selectedChain.name} ERC-1155 contract and unlockable content.</p>
                         </div>
 
                         {/* Stepper */}
-                        <div className="flex items-center gap-3 mb-12">
+                        <div className="mb-8 flex items-center gap-2 sm:mb-12 sm:gap-3">
                             {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="flex items-center gap-3 flex-1">
+                                <div key={i} className="flex flex-1 items-center gap-2 sm:gap-3">
                                     <div
-                                        className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-all duration-300 ${step >= i
+                                        className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 sm:h-10 sm:w-10 sm:text-sm ${step >= i
                                             ? "bg-gradient-to-br from-[#0052FF] to-[#22D3EE] text-white shadow-[0_0_20px_rgba(0,82,255,0.35)]"
                                             : step === i - 1
                                                 ? "border border-[#0052FF]/30 bg-[#0052FF]/10 text-[#22D3EE]"
@@ -575,13 +575,13 @@ export default function CreateDrop() {
                                             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" /></svg>
                                         ) : i}
                                     </div>
-                                    {i !== 4 && <div className={`h-[2px] w-full rounded-full transition-all duration-300 ${step > i ? "bg-gradient-to-r from-[#0052FF] to-[#22D3EE]/50" : "bg-white/[0.04]"}`} />}
+                                    {i !== 4 && <div className={`h-px w-full rounded-full transition-all duration-300 sm:h-[2px] ${step > i ? "bg-gradient-to-r from-[#0052FF] to-[#22D3EE]/50" : "bg-white/[0.04]"}`} />}
                                 </div>
                             ))}
                         </div>
 
                         {/* Form Container */}
-                        <div className="rounded-3xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent p-8 shadow-[0_0_0_1px_rgba(0,82,255,0.04),0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+                        <div className="rounded-3xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent p-5 shadow-[0_0_0_1px_rgba(0,82,255,0.04),0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl sm:p-8">
                             {/* Error Message Display */}
                             {formError && (
                                 <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
@@ -712,7 +712,7 @@ export default function CreateDrop() {
                                         <h3 className="font-display text-lg font-bold text-white">Pricing & Config</h3>
                                         <p className="text-sm text-slate-500">Set your edition size, mint price, and optional locked content.</p>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-5">
+                                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                                         <div>
                                             <label className="block text-sm font-medium text-slate-300 mb-2">Edition Size</label>
                                             <input
@@ -756,7 +756,7 @@ export default function CreateDrop() {
                                         <p className="text-xs text-slate-600 mt-2">Defaults to your connected wallet.</p>
                                     </div>
 
-                                    <div className="rounded-2xl border border-[#7C3AED]/15 bg-gradient-to-b from-[#7C3AED]/[0.06] to-transparent p-5">
+                                    <div className="rounded-2xl border border-[#7C3AED]/15 bg-gradient-to-b from-[#7C3AED]/[0.06] to-transparent p-4 sm:p-5">
                                         <div className="flex items-center gap-2 mb-1">
                                             <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#7C3AED]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></svg>
                                             <h4 className="font-semibold text-[#7C3AED] text-sm">Locked Content (Mint-to-Unlock)</h4>
@@ -854,38 +854,38 @@ export default function CreateDrop() {
                                         </div>
                                     )}
 
-                                    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 space-y-0 font-mono text-sm">
-                                        <div className="flex justify-between border-b border-white/[0.06] py-4">
+                                    <div className="space-y-0 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 font-mono text-sm sm:p-6">
+                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                                             <span className="text-slate-500">Title</span>
-                                            <span className="text-white font-medium">{formData.title || "Untitled"}</span>
+                                            <span className="w-full break-words text-left font-medium text-white sm:w-auto sm:max-w-xs sm:text-right">{formData.title || "Untitled"}</span>
                                         </div>
-                                        <div className="flex justify-between border-b border-white/[0.06] py-4">
+                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                                             <span className="text-slate-500">Supply</span>
-                                            <span className="text-white">{formData.editionSize}</span>
+                                            <span className="w-full break-words text-left text-white sm:w-auto sm:text-right">{formData.editionSize}</span>
                                         </div>
-                                        <div className="flex justify-between border-b border-white/[0.06] py-4">
+                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                                             <span className="text-slate-500">Price</span>
-                                            <span className={Number(formData.mintPrice) === 0 ? "text-[#22D3EE] font-bold" : "text-white"}>{Number(formData.mintPrice) === 0 ? "Free mint" : `${formData.mintPrice} ETH`}</span>
+                                            <span className={`w-full break-words text-left sm:w-auto sm:text-right ${Number(formData.mintPrice) === 0 ? "font-bold text-[#22D3EE]" : "text-white"}`}>{Number(formData.mintPrice) === 0 ? "Free mint" : `${formData.mintPrice} ETH`}</span>
                                         </div>
-                                        <div className="flex justify-between border-b border-white/[0.06] py-4">
+                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                                             <span className="text-slate-500">Recipient</span>
-                                            <span className="text-white truncate max-w-[150px] sm:max-w-xs">{formData.payoutRecipient.trim() ? formData.payoutRecipient.trim() : address}</span>
+                                            <span className="w-full break-all text-left text-white sm:w-auto sm:max-w-xs sm:text-right">{formData.payoutRecipient.trim() ? formData.payoutRecipient.trim() : address}</span>
                                         </div>
-                                        <div className="flex justify-between py-4">
+                                        <div className="flex flex-col gap-1.5 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                                             <span className="text-slate-500">Est. Deploy Gas</span>
-                                            <span className="text-[#22D3EE] font-medium">{deployGasEstimate ? (deployGasEstimate === "Unknown" ? "Unknown" : `~${parseFloat(deployGasEstimate).toFixed(4)} ETH`) : "Estimating..."}</span>
+                                            <span className="w-full break-words text-left font-medium text-[#22D3EE] sm:w-auto sm:text-right">{deployGasEstimate ? (deployGasEstimate === "Unknown" ? "Unknown" : `~${parseFloat(deployGasEstimate).toFixed(4)} ETH`) : "Estimating..."}</span>
                                         </div>
                                     </div>
 
                                     {/* Share-Card Preview */}
                                     <div className="rounded-2xl border border-white/[0.06] bg-[#05070f] overflow-hidden">
-                                        <div className="px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
+                                        <div className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-6">
                                             <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
                                             <p className="text-xs text-slate-500">This is the share artwork used in Warpcast or X. In Warpcast, the drop opens as a Mini App.</p>
                                         </div>
-                                        <div className="p-6 flex justify-center bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)]">
-                                            <div className="w-full max-w-[540px] rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.92),rgba(3,7,18,0.84))] p-5 shadow-2xl">
-                                                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                                        <div className="flex justify-center bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
+                                            <div className="w-full max-w-[540px] rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.92),rgba(3,7,18,0.84))] p-4 shadow-2xl sm:rounded-[28px] sm:p-5">
+                                                <div className="flex flex-col items-start gap-3 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
                                                     <div className="flex gap-2">
                                                         <span className="px-2.5 py-1 rounded-full bg-[#16a34a]/20 text-[#4ade80] border border-[#16a34a]/30">Live</span>
                                                         <span className="px-2.5 py-1 rounded-full bg-[#0052FF]/20 text-[#cfe2ff] border border-[#0052FF]/30">Base</span>
@@ -893,8 +893,8 @@ export default function CreateDrop() {
                                                     <span className="text-[11px] normal-case tracking-normal text-slate-500">Mini App launch</span>
                                                 </div>
 
-                                                <div className="mt-4 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(2,6,23,0.82))] p-5 shadow-[0_20px_52px_rgba(0,0,0,0.32)]">
-                                                    <div className="h-[280px] sm:h-[320px] flex items-center justify-center overflow-hidden rounded-[20px] bg-black/10">
+                                                <div className="mt-4 rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.72),rgba(2,6,23,0.82))] p-4 shadow-[0_20px_52px_rgba(0,0,0,0.32)] sm:rounded-[24px] sm:p-5">
+                                                    <div className="flex h-[220px] items-center justify-center overflow-hidden rounded-[18px] bg-black/10 sm:h-[320px] sm:rounded-[20px]">
                                                         {file ? (
                                                             <img src={URL.createObjectURL(file)} alt="" className="max-w-full max-h-full object-contain object-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)]" />
                                                         ) : draftImageUrl ? (
@@ -906,7 +906,7 @@ export default function CreateDrop() {
                                                 </div>
 
                                                 <div className="mt-5 flex flex-col items-center text-center">
-                                                    <h1 className="text-[28px] font-bold leading-tight text-white line-clamp-2 max-w-[420px]">{formData.title || "Untitled Drop"}</h1>
+                                                    <h1 className="max-w-full text-2xl font-bold leading-tight text-white line-clamp-2 sm:max-w-[420px] sm:text-[28px]">{formData.title || "Untitled Drop"}</h1>
                                                     <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                                                         <span className="text-sm text-[#22D3EE] font-medium bg-[#0B1020]/80 border border-[#22D3EE]/30 rounded-xl px-3 py-1.5">
                                                             {Number(formData.mintPrice) === 0 ? "Free" : `${formData.mintPrice} ETH`}
@@ -917,11 +917,11 @@ export default function CreateDrop() {
                                                     </div>
                                                 </div>
 
-                                                <div className="mt-5 flex items-end justify-between gap-4 border-t border-white/10 pt-4 text-xs text-slate-400">
+                                                <div className="mt-5 flex flex-col items-start gap-2 border-t border-white/10 pt-4 text-xs text-slate-400 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
                                                     <div>
                                                         Creator: {formData.farcasterHandle ? `@${formData.farcasterHandle}` : (address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "Unknown")}
                                                     </div>
-                                                    <div className="text-right text-slate-500">Warpcast renders the launch button outside the artwork.</div>
+                                                    <div className="text-left text-slate-500 sm:text-right">Warpcast renders the launch button outside the artwork.</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -932,11 +932,11 @@ export default function CreateDrop() {
 
 
                             {/* Action Buttons */}
-                            <div className="mt-10 flex justify-between items-center pt-6 border-t border-white/[0.06]">
+                            <div className="mt-10 flex flex-col gap-3 border-t border-white/[0.06] pt-6 sm:flex-row sm:items-center sm:justify-between">
                                 <button
                                     onClick={handlePrev}
                                     disabled={step === 1}
-                                    className={`px-6 py-2.5 rounded-full font-medium transition-all ${step === 1 ? "opacity-0 pointer-events-none" : "text-slate-400 hover:text-white border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/15"
+                                    className={`rounded-full px-6 py-2.5 font-medium transition-all ${step === 1 ? "hidden sm:inline-flex sm:opacity-0 sm:pointer-events-none" : "inline-flex w-full items-center justify-center border border-white/[0.06] bg-white/[0.02] text-slate-400 hover:border-white/15 hover:bg-white/[0.06] hover:text-white sm:w-auto"
                                         }`}
                                 >
                                     Back
@@ -983,7 +983,7 @@ export default function CreateDrop() {
                                             setFormError(null);
                                             handleNext();
                                         }}
-                                        className="px-8 py-2.5 rounded-full bg-white text-[#05070f] font-bold hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                                        className="inline-flex w-full items-center justify-center rounded-full bg-white px-8 py-2.5 font-bold text-[#05070f] transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)] sm:w-auto"
                                     >
                                         Next Step
                                     </button>
@@ -997,7 +997,7 @@ export default function CreateDrop() {
                                             handleDeploy();
                                         }}
                                         disabled={!hasSelectedChainContractConfig || !hasHydrated || !!hydrationError || isUploading || isPending || isConfirming || isSuccess || isPublishingDrop}
-                                        className="px-8 py-2.5 rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white font-bold hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_30px_rgba(0,82,255,0.4)] disabled:opacity-50 disabled:pointer-events-none"
+                                        className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-2.5 font-bold text-white transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.4)] disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
                                     >
                                         {!address
                                             ? "Connect to Deploy"

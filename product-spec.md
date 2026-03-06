@@ -25,7 +25,7 @@
 
 **Onchain architecture:** **One contract per drop** (each drop gets its own **contract address** on Base), deployed as an **EIP-1167 minimal proxy clone** via a **Factory** that points to a single **Master Implementation** contract.
 
-**Agentic distribution layer (MVP+):** A proactive Droppit persona on Farcaster handles natural-language drop creation, deployment confirmation frames, and milestone/curation posting powered by backend analytics signals.
+**Agentic distribution layer (MVP+):** A proactive Droppit persona on Farcaster handles natural-language drop creation, deploy confirmation Mini Apps, and milestone/curation posting powered by backend analytics signals.
 
 **Core invariants that remain unchanged:**
 - **EIP-1167 minimal proxy clones** (one contract per drop)
@@ -45,7 +45,7 @@
 
 ### Goals (MVP)
 
-- Let creators mint a drop from a single artwork with minimal steps, including a **zero-UI Farcaster path** via AI parsing + deploy frame.
+- Let creators mint a drop from a single artwork with minimal steps, including a **zero-UI Farcaster path** via AI parsing + deploy Mini App.
 - Provide a **shareable URL** that renders a clean preview card (Open Graph / social embeds).
 - Allow collectors to mint in **1–2 taps** (connect wallet → mint).
 - Make authenticity obvious on the mint page (creator wallet, contract address, Base network).
@@ -65,7 +65,7 @@
 - Auctions, Dutch auctions, and other advanced sale mechanics.
 - Creator profiles, followers, feeds.
 
-* **No public drop gallery / discovery UI** (homepage “collection,” browsing, search). **MVP is link-first:** discovery happens via **shared links and Farcaster Frames**.
+* **No public drop gallery / discovery UI** (homepage “collection,” browsing, search). **MVP is link-first:** discovery happens via **shared links and Farcaster Mini Apps**.
 
 ---
 
@@ -84,7 +84,7 @@
 ### Core Use Cases
 
 - **Standard Drop:** Creator uploads artwork, sets editions and price, publishes drop, shares link.
-- **Agentic Launch:** Creator casts an artwork on Warpcast and tags `@droppit` with deploy instructions; AI parses, drafts, and returns a deploy frame.
+- **Agentic Launch:** Creator casts an artwork on Warpcast and tags `@droppit` with deploy instructions; AI parses, drafts, and returns a deploy Mini App.
 - **Immortalized Events:** Creator sets up a Free Mint for an event (wedding/birthday), guests scan a QR code to claim their "Modern Onchain Souvenir".
 - **Frictionless Minting:** Collector opens link, sees art + authenticity, mints in 1–2 taps.
 
@@ -181,14 +181,14 @@
 
 ### 4.2 Collector Flow (MVP)
 
-1. Open **share link** (or Frame → open mint page fallback)
+1. Open **share link** (or Mini App → open mint page fallback)
 2. View mint page:
    - Artwork, title, editions remaining, price
    - Trust section: creator + contract info + network
 3. Tap **Connect** (if not connected)
 4. Optional: set **Mint to address** (gift)
    - **Quantity rules (MVP):**
-     - **Frame:** always `quantity = 1` (no selector).
+   - **Mini App:** always `quantity = 1` (no selector).
      - **Mint page:** user can choose `quantity` **1–5** (default 1), subject to remaining supply.
 5. Tap **Mint** *(collector signs the transaction and pays Base network gas in MVP)*
 6. Receive confirmation (tx pending → success)
@@ -204,16 +204,16 @@
 2. Droppit backend ingests the cast via **Neynar webhook** (signature-verified).
 3. LLM parser (**Google Gemini 2.5 Flash** alongside **CDP AgentKit** using `responseMimeType: "application/json"` for structured output) extracts and normalizes `title`, `editionSize`, and `mintPrice` and validates MVP invariants (especially edition bounds `1–10,000`).
 4. Agent calls existing `POST /api/drops` to create a **Draft**, pins media to IPFS via **Pinata**, and receives `dropId`.
-5. Agent replies to the cast with a **Deploy Frame** showing: drop summary, estimated deploy gas, and action controls.
-6. Creator enters optional secret in Frame text input (`Enter secret unlockable message (optional)`), which is not posted publicly.
-7. Creator taps **Deploy Drop** in-frame; backend finalizes deployment through the standard publish path and freezes metadata + locked content policy state.
-8. If creator needs uncompressed media, they tap **Upload High-Res** in the deploy frame, which opens Droppit web upload (in-app browser) to replace source image (up to 20MB) before final deploy.
+5. Agent replies to the cast with a **Deploy Mini App** showing: drop summary, estimated deploy gas, and action controls.
+6. Creator enters optional secret in Mini App text input (`Enter secret unlockable message (optional)`), which is not posted publicly.
+7. Creator taps **Deploy Drop** in-app; backend finalizes deployment through the standard publish path and freezes metadata + locked content policy state.
+8. If creator needs uncompressed media, they tap **Upload High-Res** in the deploy Mini App, which opens Droppit web upload (in-app browser) to replace source image (up to 20MB) before final deploy.
 
 ---
 
 ## 5) MVP Feature Requirements
 
-**MVP must-have note (Base-native):** Farcaster Frame support is required to deliver true “drop-in-feed” minting on Base while keeping the universal share link as the canonical artifact.
+**MVP must-have note (Base-native):** Farcaster Mini App support is required to deliver true “drop-in-feed” minting on Base while keeping the universal share link as the canonical artifact.
 
 **MVP growth note (safe):** Referral support is included as **attribution-only** in MVP (no onchain payouts). Affiliate revenue splits can be added in V1 after validation.
 
@@ -306,24 +306,24 @@
 
 - Add affiliate payouts via withdraw accounting + guardrails (cap %, optional allowlist).
 
-### 5.4 Farcaster Frame Support (Base-native distribution + deploy layer) (Decision baked in)
+### 5.4 Farcaster Mini App Support (Base-native distribution + deploy layer) (Decision baked in)
 
 **Must have (MVP)**
 
-- **Gas model (MVP):** Frame minting triggers a wallet signature flow; the **collector signs and pays network gas**. No relayed/sponsored transactions in MVP.
-- **Non-custodial (MVP):** The server **never submits transactions** and holds **no signing keys**. Frame actions return transaction request/calldata only.
-- A Farcaster Frame for each drop that renders inside Warpcast (mint frame) and a creator-facing **deploy frame** for AI-assisted launches.
-- **Deploy Frame content:** parsed title/editions/price summary, estimated deploy gas, trust context, and mutable draft state indicator.
-- **Deploy Frame actions:**
+- **Gas model (MVP):** Mini App minting triggers a wallet signature flow; the **collector signs and pays network gas**. No relayed/sponsored transactions in MVP.
+- **Non-custodial (MVP):** The server **never submits transactions** and holds **no signing keys**. Mini App actions return transaction request/calldata only.
+- A Farcaster Mini App for each drop that renders inside Warpcast (mint context) and a creator-facing **deploy Mini App** for AI-assisted launches.
+- **Deploy Mini App content:** parsed title/editions/price summary, estimated deploy gas, trust context, and mutable draft state indicator.
+- **Deploy Mini App actions:**
   - Primary: **Deploy Drop**
   - Secondary: **Upload High-Res** (opens Droppit web uploader in-app browser; supports raw file upload up to 20MB before final deploy)
   - Text Input: **`Enter secret unlockable message (optional)`**
-- **Privacy guarantee for secret input:** message is submitted from frame input (not public cast body), then encrypted server-side and frozen at deployment.
+- **Privacy guarantee for secret input:** message is submitted from Mini App input (not public cast body), then encrypted server-side and frozen at deployment.
 - **High-res source support:** natural-language prompt parser must accept `ipfs://...` and Arweave links so creators can bypass Farcaster image compression.
-- **Collector mint frame actions (minimal MVP):**
-  - Primary: **Mint 1** (to self) — in-frame minting always uses `mint(1)` and never supports quantity selection in MVP.
+- **Collector mint Mini App actions (minimal MVP):**
+  - Primary: **Mint 1** (to self) — in-app minting always uses `mint(1)` and never supports quantity selection in MVP.
   - Secondary: **Open mint page** (universal link fallback)
-  - Optional: **Gift** → opens mint page with recipient prefill UX (handled off-frame)
+  - Optional: **Gift** → opens mint page with recipient prefill UX (handled off-app)
 
 **Why**
 

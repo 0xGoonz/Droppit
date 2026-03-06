@@ -67,7 +67,7 @@ function CyclingText() {
     }, []);
 
     return (
-        <span className="relative inline-flex overflow-hidden align-bottom h-[1.15em] min-w-[200px] sm:min-w-[280px] lg:min-w-[340px]">
+        <span className="relative inline-flex h-[1.15em] min-w-[160px] overflow-hidden align-bottom sm:min-w-[280px] lg:min-w-[340px]">
             {CYCLE_WORDS.map((word, i) => (
                 <motion.span
                     key={word}
@@ -102,18 +102,18 @@ export function HeroSection() {
                     transition={{ duration: 0.6, ease: [0.2, 0.75, 0.2, 1] }}
                     className="relative z-40"
                 >
-                    <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
-                        <BrandLockup markSize={28} wordmarkClassName="text-2xl font-bold tracking-tight" />
-                        <div className="flex items-center gap-3">
+                    <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+                        <BrandLockup markSize={28} wordmarkClassName="text-lg font-bold tracking-tight sm:text-2xl" />
+                        <div className="flex items-center gap-2 sm:gap-3">
                             <Link
                                 href="#how-it-works"
-                                className="text-sm font-medium text-white/75 transition-colors hover:text-white"
+                                className="text-xs font-medium text-white/75 transition-colors hover:text-white sm:text-sm"
                             >
                                 How It Works
                             </Link>
                             <Link
                                 href="/create"
-                                className="lift-hover rounded-full border border-[#22D3EE]/40 bg-[#0052FF]/20 px-4 py-2 text-sm font-semibold text-blue-100 transition-colors hover:bg-[#0052FF]/35"
+                                className="lift-hover inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#22D3EE]/40 bg-[#0052FF]/20 px-3.5 py-2 text-xs font-semibold text-blue-100 transition-colors hover:bg-[#0052FF]/35 sm:px-4 sm:text-sm"
                             >
                                 Start a Drop
                             </Link>
@@ -143,8 +143,8 @@ export function HeroSection() {
                 </div>
 
                 {/* Content — constrained width, no overflow-hidden */}
-                <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pt-24">
-                    <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+                <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-16 pt-12 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8 lg:pt-24">
+                    <div className="grid grid-cols-1 items-center gap-10 sm:gap-12 lg:grid-cols-2 lg:gap-16">
                         {/* ── Left: Value Proposition ── */}
                         <motion.div
                             variants={containerVariants}
@@ -153,7 +153,7 @@ export function HeroSection() {
                         >
                             <motion.div
                                 variants={fadeUpVariants}
-                                className="mb-6 inline-flex items-center rounded-full border border-blue-300/35 bg-blue-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-blue-100"
+                                className="mb-5 inline-flex items-center rounded-full border border-blue-300/35 bg-blue-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-blue-100 sm:mb-6"
                             >
                                 <span className="relative flex h-2 w-2 mr-2">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#0052FF] opacity-75" />
@@ -164,7 +164,7 @@ export function HeroSection() {
 
                             <motion.h1
                                 variants={fadeUpVariants}
-                                className="font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl xl:text-[3.5rem]"
+                                className="font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl xl:text-[3.5rem]"
                             >
                                 Launch Drops for{" "}
                                 <br className="hidden sm:block" />
@@ -173,33 +173,33 @@ export function HeroSection() {
 
                             <motion.p
                                 variants={fadeUpVariants}
-                                className="mt-6 max-w-lg text-lg leading-relaxed text-slate-300 sm:text-xl"
+                                className="mt-5 max-w-lg text-base leading-relaxed text-slate-300 sm:mt-6 sm:text-xl"
                             >
                                 {BRAND.description}
                             </motion.p>
 
                             <motion.div
                                 variants={fadeUpVariants}
-                                className="mt-9 flex flex-col items-start gap-4 sm:flex-row sm:items-center"
+                                className="mt-8 flex w-full max-w-sm flex-col items-stretch gap-3 sm:mt-9 sm:max-w-none sm:flex-row sm:items-center sm:gap-4"
                             >
                                 <div className="relative group">
                                     <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] opacity-80 blur-md transition-opacity group-hover:opacity-100 cta-glow" />
                                     <Link
                                         href="/create"
-                                        className="relative rounded-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] px-7 py-3 text-base font-bold text-white transition-transform hover:scale-[1.02] hover:-translate-y-0.5"
+                                        className="relative inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] via-[#7C3AED] to-[#FF4D8D] px-6 py-3 text-sm font-bold text-white transition-transform hover:scale-[1.02] hover:-translate-y-0.5 sm:w-auto sm:px-7 sm:text-base"
                                     >
                                         Start a Drop
                                     </Link>
                                 </div>
                                 <a
                                     href="#how-it-works"
-                                    className="lift-hover rounded-full border border-white/20 px-7 py-3 text-base font-semibold text-white/90 transition-colors hover:border-white/40 hover:text-white"
+                                    className="lift-hover inline-flex w-full items-center justify-center rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/90 transition-colors hover:border-white/40 hover:text-white sm:w-auto sm:px-7 sm:text-base"
                                 >
                                     See How It Works
                                 </a>
                             </motion.div>
 
-                            <motion.div variants={fadeUpVariants} className="mt-6 space-y-2">
+                            <motion.div variants={fadeUpVariants} className="mt-5 space-y-2 sm:mt-6">
                                 <p className="font-mono-brand text-sm font-medium text-slate-300">
                                     {BRAND.tagline}
                                 </p>
