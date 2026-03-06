@@ -1,60 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { createPublicClient, encodeFunctionData, http, isAddress } from "viem";
+import { base, baseSepolia } from "viem/chains";
+import { getDropFrameSpec } from "@/lib/drop-frame";
+import { getFrameHtmlResponse } from "@/lib/frame-builder";
 
+const isProduction = process.env.NEXT_PUBLIC_ENVIRONMENT === "production";
+const activeChain = isProduction ? base : baseSepolia;
+const rpcUrlStr = isProduction ? "base-mainnet" : "base-sepolia";
 
-type FrameButton = { action: 'link' | 'tx'; label: string; target: string };
-interface FrameOptions { buttons: FrameButton[]; image: { src: string }; postUrl: string }
-
-function getFrameHtmlResponse(opts: FrameOptions): string {
-    const buttonsHtml = opts.buttons.map((b, i) => `
-        <meta property="fc:frame:button:${i + 1}" content="${b.label}" />
-        <meta property="fc:frame:button:${i + 1}:action" content="${b.action}" />
-        <meta property="fc:frame:button:${i + 1}:target" content="${b.target}" />
-    `).join('\\n');
-
-    return `<!DOCTYPE html><html><head>
-        <meta property="fc:frame" content="vNext" />
-        <meta property="fc:frame:image" content="${opts.image.src}" />
-        <meta property="fc:frame:post_url" content="${opts.postUrl}" />
-        ${buttonsHtml}
-    </head></html>`;
-}
-import { createPublicClient, http, encodeFunctionData, isAddress } from 'viem';
-import { base } from 'viem/chains';
-import { getAlchemyRpcUrl } from '@/lib/chains';
-
-// ── Environment-aware chain config ──────────────────────────────
-// Check if the environment is explicitly set to production, otherwise default to baseSepolia
-const isProduction = process.env.NEXT_PUBLIC_ENVIRONMENT === 'production';
-const activeChain = isProduction ? base : require('viem/chains').baseSepolia;
-const FRAME_MVP_CHAIN_ID = isProduction ? "eip155:8453" : "eip155:84532";
-const rpcUrlStr = isProduction ? 'base-mainnet' : 'base-sepolia';
-
-// Provide a reliable fallback if Alchemy env var is not loaded
 const alchemyKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
 const rpcUrl = alchemyKey
     ? `https://${rpcUrlStr}.g.alchemy.com/v2/${alchemyKey}`
-    : (isProduction ? 'https://mainnet.base.org' : 'https://sepolia.base.org');
+    : (isProduction ? "https://mainnet.base.org" : "https://sepolia.base.org");
 
-// Minimum ABI for minting and reading price
 const DROP_ABI = [
     {
         type: "function",
         name: "mint",
         inputs: [{ name: "quantity", type: "uint256" }],
-        stateMutability: "payable"
+        stateMutability: "payable",
     },
-    { type: 'function', name: 'mintPrice', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
-    { type: 'function', name: 'protocolFeePerMint', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
-    { type: 'error', name: 'IncorrectPayment', inputs: [] },
-    { type: 'error', name: 'SoldOut', inputs: [] },
-    { type: 'error', name: 'InvalidQuantity', inputs: [] },
-    { type: 'error', name: 'ProtocolFeeTransferFailed', inputs: [] }
+    { type: "function", name: "mintPrice", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { type: "function", name: "protocolFeePerMint", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { type: "error", name: "IncorrectPayment", inputs: [] },
+    { type: "error", name: "SoldOut", inputs: [] },
+    { type: "error", name: "InvalidQuantity", inputs: [] },
+    { type: "error", name: "ProtocolFeeTransferFailed", inputs: [] },
 ] as const;
 
 const publicClient = createPublicClient({
     chain: activeChain,
-    transport: http(rpcUrl)
+    transport: http(rpcUrl),
 });
+
+
+function getFrameChainId() {
+    return process.env.NEXT_PUBLIC_ENVIRONMENT === "production" ? "eip155:8453" : "eip155:84532";
+}
+function openMintPageFrame(contractAddress: string, frame = getDropFrameSpec(process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai", contractAddress)) {
+    return getFrameHtmlResponse({
+        buttons: [{ action: "link", label: "Open mint page", target: frame.dropUrl }],
+        image: { src: frame.ogImageUrl },
+        postUrl: frame.mintUrl,
+    });
+}
 
 export async function POST(
     req: NextRequest,
@@ -64,87 +53,54 @@ export async function POST(
         const body = await req.json();
         const resolvedParams = await params;
         const contractAddress = resolvedParams.contractAddress;
-
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://droppit.ai';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+        const frame = getDropFrameSpec(baseUrl, contractAddress);
 
         if (!contractAddress || !isAddress(contractAddress, { strict: false })) {
-            return new NextResponse(
-                getFrameHtmlResponse({
-                    buttons: [{ action: 'link', label: 'Open mint page', target: `${baseUrl}/drop/base/${contractAddress}` }],
-                    image: { src: `${baseUrl}/api/og/drop/${contractAddress}` },
-                    postUrl: `${baseUrl}/api/frame/drop/${contractAddress}/mint`,
-                })
-            );
+            return new NextResponse(openMintPageFrame(contractAddress, frame));
         }
 
-        // ── Validate frame payload shape ──────────────────────────
-        // trustedData.messageBytes must be present and a valid hex string
-        // before we send it to Neynar for signature verification.
         const trustedData = body?.trustedData;
         const messageBytes = trustedData?.messageBytes;
 
-        if (!trustedData || typeof messageBytes !== 'string' || !messageBytes.trim()) {
+        if (!trustedData || typeof messageBytes !== "string" || !messageBytes.trim()) {
             console.warn(
-                `[Frame Mint] Rejected: Missing or invalid trustedData.messageBytes.`,
+                "[Frame Mint] Rejected: Missing or invalid trustedData.messageBytes.",
                 { hasTrustedData: !!trustedData, messageBytesType: typeof messageBytes }
             );
-            return new NextResponse(
-                getFrameHtmlResponse({
-                    buttons: [{ action: 'link', label: 'Open mint page', target: `${baseUrl}/drop/base/${contractAddress}` }],
-                    image: { src: `${baseUrl}/api/og/drop/${contractAddress}` },
-                    postUrl: `${baseUrl}/api/frame/drop/${contractAddress}/mint`,
-                }),
-                { status: 400 }
-            );
+            return new NextResponse(openMintPageFrame(contractAddress, frame), { status: 400 });
         }
 
-        // messageBytes should be a hex string (with or without 0x prefix).
-        // Neynar expects hex; reject obviously non-hex data early.
         const trimmedBytes = messageBytes.trim();
-        if (!/^(0x)?[a-fA-F0-9]+$/.test(trimmedBytes) || trimmedBytes.replace(/^0x/, '').length < 2) {
+        if (!/^(0x)?[a-fA-F0-9]+$/.test(trimmedBytes) || trimmedBytes.replace(/^0x/, "").length < 2) {
             console.warn(
-                `[Frame Mint] Rejected: messageBytes is not valid hex.`,
-                { length: trimmedBytes.length, prefix: trimmedBytes.slice(0, 6) + '…' }
+                "[Frame Mint] Rejected: messageBytes is not valid hex.",
+                { length: trimmedBytes.length, prefix: `${trimmedBytes.slice(0, 6)}...` }
             );
-            return new NextResponse(
-                getFrameHtmlResponse({
-                    buttons: [{ action: 'link', label: 'Open mint page', target: `${baseUrl}/drop/base/${contractAddress}` }],
-                    image: { src: `${baseUrl}/api/og/drop/${contractAddress}` },
-                    postUrl: `${baseUrl}/api/frame/drop/${contractAddress}/mint`,
-                }),
-                { status: 400 }
-            );
+            return new NextResponse(openMintPageFrame(contractAddress, frame), { status: 400 });
         }
 
-        // ── Validate message signature with Neynar ──────────────
         let isValid = false;
-        let message = { button: 0 };
+        const message = { button: 0 };
         try {
             const neynarRes = await fetch("https://api.neynar.com/v2/farcaster/frame/validate", {
                 method: "POST",
-                headers: { "api_key": process.env.NEYNAR_API_KEY || "", "content-type": "application/json" },
-                body: JSON.stringify({ message_bytes_in_hex: trimmedBytes })
+                headers: { api_key: process.env.NEYNAR_API_KEY || "", "content-type": "application/json" },
+                body: JSON.stringify({ message_bytes_in_hex: trimmedBytes }),
             });
             const data = await neynarRes.json();
             isValid = data.valid;
             message.button = data.action?.tapped_button?.index || 0;
 
             if (!isValid) {
-                console.warn(`[Frame Mint] Neynar validation failed.`, { valid: data.valid, hasAction: !!data.action });
+                console.warn("[Frame Mint] Neynar validation failed.", { valid: data.valid, hasAction: !!data.action });
             }
-        } catch (e) {
-            console.error("[Frame Mint] Neynar validation error:", e instanceof Error ? e.message : 'Unknown error');
+        } catch (error) {
+            console.error("[Frame Mint] Neynar validation error:", error instanceof Error ? error.message : "Unknown error");
         }
 
         if (!isValid) {
-            return new NextResponse(
-                getFrameHtmlResponse({
-                    buttons: [{ action: 'link', label: 'Open mint page', target: `${baseUrl}/drop/base/${contractAddress}` }],
-                    image: { src: `${baseUrl}/api/og/drop/${contractAddress}` },
-                    postUrl: `${baseUrl}/api/frame/drop/${contractAddress}/mint`,
-                }),
-                { status: 400 }
-            );
+            return new NextResponse(openMintPageFrame(contractAddress, frame), { status: 400 });
         }
 
         let exactCostWei = "0";
@@ -153,64 +109,53 @@ export async function POST(
                 publicClient.readContract({
                     address: contractAddress as `0x${string}`,
                     abi: DROP_ABI,
-                    functionName: 'mintPrice'
+                    functionName: "mintPrice",
                 }),
                 publicClient.readContract({
                     address: contractAddress as `0x${string}`,
                     abi: DROP_ABI,
-                    functionName: 'protocolFeePerMint'
-                })
+                    functionName: "protocolFeePerMint",
+                }),
             ]);
             exactCostWei = ((mintPrice as bigint) + (protocolFee as bigint)).toString();
         } catch (error) {
             console.error("Failed to read contract data for frame:", error);
-            // Fallback to link frame if we can't get canonical data from contract
-            return new NextResponse(
-                getFrameHtmlResponse({
-                    buttons: [{ action: 'link', label: 'Open mint page', target: `${baseUrl}/drop/base/${contractAddress}` }],
-                    image: { src: `${baseUrl}/api/og/drop/${contractAddress}` },
-                    postUrl: `${baseUrl}/api/frame/drop/${contractAddress}/mint`,
-                })
-            );
+            return new NextResponse(openMintPageFrame(contractAddress, frame));
         }
 
-        // For Farcaster Transaction Frames, return a JSON tx payload
-        if (message.button === 1) { // Mint Button clicked
+        if (message.button === 1) {
             const txData = encodeFunctionData({
                 abi: DROP_ABI,
-                functionName: 'mint',
-                args: [BigInt(1)]
+                functionName: "mint",
+                args: [BigInt(1)],
             });
 
             return NextResponse.json({
-                chainId: FRAME_MVP_CHAIN_ID,
-                method: 'eth_sendTransaction',
+                chainId: getFrameChainId(),
+                method: "eth_sendTransaction",
                 attribution: true,
                 params: {
-                    abi: DROP_ABI as any,
+                    abi: DROP_ABI,
                     to: contractAddress as `0x${string}`,
                     data: txData,
                     value: exactCostWei,
-                }
+                },
             });
         }
 
         return new NextResponse(
             getFrameHtmlResponse({
-                buttons: [
-                    { action: 'tx', label: 'Mint 1', target: `${baseUrl}/api/frame/drop/${contractAddress}/mint` },
-                    { action: 'link', label: 'Open mint page', target: `${baseUrl}/drop/base/${contractAddress}` }
-                ],
-                image: { src: `${baseUrl}/api/og/drop/${contractAddress}` },
-                postUrl: `${baseUrl}/api/frame/drop/${contractAddress}/mint`,
+                buttons: frame.buttons,
+                image: { src: frame.ogImageUrl },
+                postUrl: frame.mintUrl,
             })
         );
     } catch (error) {
-        console.error("[Frame Mint] Unhandled error:", error instanceof Error ? error.message : 'Unknown error');
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://droppit.ai';
+        console.error("[Frame Mint] Unhandled error:", error instanceof Error ? error.message : "Unknown error");
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
         return new NextResponse(
             getFrameHtmlResponse({
-                buttons: [{ action: 'link', label: 'Open Droppit', target: `${baseUrl}/create` }],
+                buttons: [{ action: "link", label: "Open Droppit", target: `${baseUrl}/create` }],
                 image: { src: `${baseUrl}/api/og/drop/fallback` },
                 postUrl: `${baseUrl}/api/frame/drop/fallback/mint`,
             }),
@@ -218,3 +163,5 @@ export async function POST(
         );
     }
 }
+
+

@@ -13,14 +13,14 @@ const DROP_ABI = [
 ] as const;
 
 // Mock dependencies
-const mockReadContract = vi.fn();
+const mockReadContract = vi.fn<(args: { functionName: string }) => Promise<bigint>>();
 
 vi.mock("viem", async (importOriginal) => {
-    const actual = await importOriginal<any>();
+    const actual = await importOriginal<typeof import("viem")>();
     return {
         ...actual,
         createPublicClient: () => ({
-            readContract: (...args: any[]) => mockReadContract(...args)
+            readContract: (args: { functionName: string }) => mockReadContract(args)
         })
     };
 });
@@ -31,6 +31,8 @@ global.fetch = mockFetch;
 describe("Frame Mint API", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        process.env.NEXT_PUBLIC_ENVIRONMENT = "production";
+        process.env.NEXT_PUBLIC_BASE_URL = "https://droppitonbase.xyz";
 
         // Mock Neynar validation success by default (for button 1 = Tx)
         mockFetch.mockResolvedValue({
@@ -48,7 +50,7 @@ describe("Frame Mint API", () => {
         });
     });
 
-    const createReq = (body: any) => new NextRequest("http://localhost/api/frame/drop/0x1111111111111111111111111111111111111111/mint", {
+    const createReq = (body: unknown) => new NextRequest("http://localhost/api/frame/drop/0x1111111111111111111111111111111111111111/mint", {
         method: "POST",
         body: JSON.stringify(body)
     });
@@ -143,3 +145,4 @@ describe("Frame Mint API", () => {
         expect(json.params.data).toBe(expectedData);
     });
 });
+

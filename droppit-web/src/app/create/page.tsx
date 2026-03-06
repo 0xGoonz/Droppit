@@ -23,6 +23,7 @@ import {
 import { FACTORY_ABI } from "@/lib/contracts";
 import { useChainPreference } from "@/providers/OnchainKitProvider";
 import { BrandLockup } from "@/components/brand/BrandLockup";
+import { publishDropDraft } from "@/lib/publish-drop";
 
 export default function CreateDrop() {
     const [step, setStep] = useState(1);
@@ -45,6 +46,7 @@ export default function CreateDrop() {
     const [isUploading, setIsUploading] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [deployedState, setDeployedState] = useState<{ tokenUri: string, imageUri: string, draftId: string, salt: string, commitment: string } | null>(null);
+    const [isPublishingDrop, setIsPublishingDrop] = useState(false);
 
     // Pre-existing IPFS URIs hydrated from draft (skip re-upload when available)
     const [draftImageUrl, setDraftImageUrl] = useState<string | null>(null);
@@ -52,8 +54,8 @@ export default function CreateDrop() {
 
     const [deployGasEstimate, setDeployGasEstimate] = useState<string | null>(null);
 
-    // One-shot deploy guard: prevents accidental repeated deploy triggers
     const deployFiredRef = useRef(false);
+    const publishFiredRef = useRef<string | null>(null);
     const {
         selectedChain,
         selectedChainId,
@@ -124,38 +126,57 @@ export default function CreateDrop() {
                 setAutoDeploy(false);
                 setHasHydrated(true);
             });
-    }, [hasHydrated]);
+    }, [hasHydrated, address]);
 
     useEffect(() => {
-        if (isSuccess && receipt && deployedState && selectedFactoryAddress) {
-            const dropCreatedLog = receipt.logs.find(log => log.address.toLowerCase() === selectedFactoryAddress.toLowerCase());
+        if (!isSuccess || !receipt || !deployedState || !selectedFactoryAddress) return;
 
-            if (dropCreatedLog && dropCreatedLog.topics[2]) {
-                const rawAddress = dropCreatedLog.topics[2];
-                // Extract the last 40 characters (20 bytes) to get the clean address
-                const dropAddress = "0x" + rawAddress.slice(-40);
-
-                // Finalize to LIVE via draft ID mapping securely
-                fetch(`/api/drops/${deployedState.draftId}/publish`, {
-                    method: "POST",
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        txHash: receipt.transactionHash,
-                        contractAddress: dropAddress,
-                        tokenUri: deployedState.tokenUri,
-                        imageUrl: deployedState.imageUri,
-                        lockedContent: formData.lockedContent,
-                        salt: deployedState.salt,
-                        commitment: deployedState.commitment
-                    })
-                }).then(() => {
-                    router.push(`/drop/base/${dropAddress}`);
-                }).catch(err => {
-                    console.error("Publish failed:", err);
-                    router.push(`/drop/base/${dropAddress}`);
-                });
-            }
+        const dropCreatedLog = receipt.logs.find(log => log.address.toLowerCase() === selectedFactoryAddress.toLowerCase());
+        if (!dropCreatedLog || !dropCreatedLog.topics[2]) {
+            setFormError("Deployment confirmed, but Droppit could not resolve the deployed drop address.");
+            return;
         }
+
+        const rawAddress = dropCreatedLog.topics[2];
+        const dropAddress = "0x" + rawAddress.slice(-40);
+        const publishKey = `${deployedState.draftId}:${receipt.transactionHash}:${dropAddress.toLowerCase()}`;
+        if (publishFiredRef.current === publishKey) return;
+        publishFiredRef.current = publishKey;
+
+        let isActive = true;
+        const finalizePublish = async () => {
+            if (isActive) {
+                setIsPublishingDrop(true);
+                setFormError(null);
+            }
+
+            try {
+                await publishDropDraft({
+                    draftId: deployedState.draftId,
+                    txHash: receipt.transactionHash,
+                    contractAddress: dropAddress,
+                    tokenUri: deployedState.tokenUri,
+                    imageUrl: deployedState.imageUri,
+                    lockedContent: formData.lockedContent,
+                    salt: deployedState.salt,
+                    commitment: deployedState.commitment,
+                });
+                router.push(`/drop/base/${dropAddress}`);
+            } catch (err) {
+                console.error("Publish failed:", err);
+                publishFiredRef.current = null;
+                if (isActive) {
+                    setFormError(err instanceof Error ? err.message : "Publish failed. Please retry from the creator dashboard.");
+                }
+            } finally {
+                if (isActive) setIsPublishingDrop(false);
+            }
+        };
+
+        void finalizePublish();
+        return () => {
+            isActive = false;
+        };
     }, [isSuccess, receipt, router, deployedState, formData.lockedContent, selectedFactoryAddress]);
 
     // Estimate deployment gas when entering Step 4
@@ -974,7 +995,7 @@ export default function CreateDrop() {
                                             }
                                             handleDeploy();
                                         }}
-                                        disabled={!hasSelectedChainContractConfig || !hasHydrated || !!hydrationError || isUploading || isPending || isConfirming || isSuccess}
+                                        disabled={!hasSelectedChainContractConfig || !hasHydrated || !!hydrationError || isUploading || isPending || isConfirming || isSuccess || isPublishingDrop}
                                         className="px-8 py-2.5 rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white font-bold hover:scale-[1.03] active:scale-95 transition-all shadow-[0_0_30px_rgba(0,82,255,0.4)] disabled:opacity-50 disabled:pointer-events-none"
                                     >
                                         {!address
@@ -988,7 +1009,9 @@ export default function CreateDrop() {
                                                         : (isPending || isConfirming)
                                                             ? "Confirming tx..."
                                                             : isSuccess
-                                                                ? "Redirecting to Drop..."
+                                                                ? (isPublishingDrop
+                                                                    ? "Finalizing drop..."
+                                                                    : (formError ? "Publish incomplete" : "Awaiting publish..."))
                                                                 : "Sign & Deploy"}
                                     </button>
                                 )}
@@ -1000,3 +1023,5 @@ export default function CreateDrop() {
         </div>
     );
 }
+
+

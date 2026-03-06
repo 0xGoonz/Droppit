@@ -23,10 +23,14 @@ import {
 import { getAlchemyNetworkId, isProductionEnvironment } from "@/lib/chains";
 
 export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
 const dropAbi = [
     { type: "function", name: "editionSize", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
     { type: "function", name: "totalMinted", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { type: "function", name: "mintPrice", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+    { type: "function", name: "owner", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+    { type: "function", name: "uri", stateMutability: "view", inputs: [{ type: "uint256" }], outputs: [{ type: "string" }] },
 ] as const;
 
 const isProduction = isProductionEnvironment();
@@ -56,10 +60,136 @@ type IdentityRow = {
     handle: string | null;
 };
 
+type OnchainSnapshot = {
+    creatorAddress: string | null;
+    tokenUri: string | null;
+    mintPriceWei: string | null;
+    metadataName: string | null;
+    metadataImage: string | null;
+};
+
 function normalizeHandle(raw: string | null | undefined): string | null {
     if (!raw) return null;
     const cleaned = raw.trim().replace(/^@+/, "").toLowerCase();
     return cleaned || null;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs)),
+    ]);
+}
+
+async function fetchTokenMetadata(tokenUri: string | null): Promise<{ name: string | null; image: string | null }> {
+    const metadataUrl = normalizeIpfsToHttp(tokenUri);
+    if (!metadataUrl) {
+        return { name: null, image: null };
+    }
+
+    try {
+        const response = await withTimeout(fetch(metadataUrl, { cache: "no-store" }), 1500, "Token metadata fetch");
+        if (!response.ok) {
+            return { name: null, image: null };
+        }
+
+        const metadata = await response.json().catch(() => null) as Record<string, unknown> | null;
+        const name = typeof metadata?.name === "string" && metadata.name.trim() ? metadata.name.trim() : null;
+        const image = typeof metadata?.image === "string" ? normalizeIpfsToHttp(metadata.image) : null;
+        return { name, image };
+    } catch (error) {
+        console.warn("[OG Drop] Failed to fetch token metadata:", error);
+        return { name: null, image: null };
+    }
+}
+
+async function readOnchainSnapshot(contractAddress: `0x${string}`): Promise<OnchainSnapshot> {
+    try {
+        const [ownerResult, tokenUriResult, mintPriceResult] = await Promise.allSettled([
+            withTimeout(
+                publicClient.readContract({
+                    address: contractAddress,
+                    abi: dropAbi,
+                    functionName: "owner",
+                }),
+                1500,
+                "Drop owner read"
+            ),
+            withTimeout(
+                publicClient.readContract({
+                    address: contractAddress,
+                    abi: dropAbi,
+                    functionName: "uri",
+                    args: [BigInt(1)],
+                }),
+                1500,
+                "Drop token URI read"
+            ),
+            withTimeout(
+                publicClient.readContract({
+                    address: contractAddress,
+                    abi: dropAbi,
+                    functionName: "mintPrice",
+                }),
+                1500,
+                "Drop mint price read"
+            ),
+        ]);
+
+        const creatorAddress = ownerResult.status === "fulfilled" && typeof ownerResult.value === "string"
+            ? ownerResult.value
+            : null;
+        const tokenUri = tokenUriResult.status === "fulfilled" && typeof tokenUriResult.value === "string"
+            ? tokenUriResult.value
+            : null;
+        const mintPriceWei = mintPriceResult.status === "fulfilled"
+            ? mintPriceResult.value.toString()
+            : null;
+        const metadata = await fetchTokenMetadata(tokenUri);
+
+        return {
+            creatorAddress,
+            tokenUri,
+            mintPriceWei,
+            metadataName: metadata.name,
+            metadataImage: metadata.image,
+        };
+    } catch (error) {
+        console.warn("[OG Drop] Failed to read onchain snapshot:", error);
+        return {
+            creatorAddress: null,
+            tokenUri: null,
+            mintPriceWei: null,
+            metadataName: null,
+            metadataImage: null,
+        };
+    }
+}
+
+async function readSupplyLabel(contractAddress: `0x${string}`): Promise<string | null> {
+    try {
+        const [editionSize, totalMinted] = await withTimeout(
+            Promise.all([
+                publicClient.readContract({
+                    address: contractAddress,
+                    abi: dropAbi,
+                    functionName: "editionSize",
+                }),
+                publicClient.readContract({
+                    address: contractAddress,
+                    abi: dropAbi,
+                    functionName: "totalMinted",
+                }),
+            ]),
+            1500,
+            "Drop supply read"
+        );
+        const remaining = Math.max(0, Number(editionSize) - Number(totalMinted));
+        return remaining === 0 ? "Sold Out" : `${remaining} remaining`;
+    } catch (error) {
+        console.warn("[OG Drop] Failed to fetch onchain supply:", error);
+        return null;
+    }
 }
 
 export async function GET(
@@ -69,8 +199,7 @@ export async function GET(
     try {
         const limited = await checkRateLimit(req, "ogRender", "[OG Render]");
         if (limited) return limited;
-        const resolvedParams = await params;
-        const identifier = resolvedParams.dropIdOrAddress;
+        const { dropIdOrAddress: identifier } = await params;
 
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -87,71 +216,63 @@ export async function GET(
             : await dropQuery.eq("id", identifier).maybeSingle();
 
         const drop = (data || null) as DropRow | null;
-        const title = fallbackTitle(drop?.title, "Untitled Drop");
-        const titleSafe = truncateText(title, 54);
-        const chainLabel = getChainLabel();
-        const statusLabel = formatStatusLabel(drop?.status || "UNKNOWN");
-        const statusColors = statusBadgeColors(drop?.status);
-        const price = formatMintPriceWei(drop?.mint_price || "0");
-        const art = normalizeIpfsToHttp(drop?.image_url);
-        const accent = deterministicAccent(drop?.id || identifier);
+        const contractAddress = drop?.contract_address || (isContractLookup ? identifier : null);
 
+        const needsOnchainBackfill = !!contractAddress && (
+            !drop ||
+            !drop.title?.trim() ||
+            !drop.image_url ||
+            !drop.creator_address ||
+            drop.mint_price == null
+        );
+        const onchain = needsOnchainBackfill && contractAddress
+            ? await readOnchainSnapshot(contractAddress as `0x${string}`)
+            : null;
+
+        const creatorAddress = drop?.creator_address || onchain?.creatorAddress || null;
         let creatorHandle: string | null = null;
-        if (drop?.creator_address) {
+        if (creatorAddress) {
             const { data: identity } = await supabase
                 .from("identity_links")
                 .select("handle")
-                .eq("creator_address", drop.creator_address.toLowerCase())
+                .eq("creator_address", creatorAddress.toLowerCase())
                 .order("verified_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
             creatorHandle = normalizeHandle((identity as IdentityRow | null)?.handle);
         }
 
-        const creator = creatorAttribution(drop?.creator_address, drop?.creator_fid, creatorHandle);
+        const resolvedTitle = drop?.title || onchain?.metadataName || null;
+        const title = fallbackTitle(resolvedTitle, "Untitled Drop");
+        const titleSafe = truncateText(title, 54);
+        const art = normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
+        const status = drop?.status || (onchain ? "LIVE" : "UNKNOWN");
+        const price = formatMintPriceWei(drop?.mint_price || onchain?.mintPriceWei || "0");
+        const creator = creatorAttribution(creatorAddress, drop?.creator_fid, creatorHandle);
         const creatorSource = creatorHandle
             ? "Wallet-linked profile"
-            : drop?.creator_address
+            : creatorAddress
                 ? "Onchain creator"
                 : drop?.creator_fid
                     ? "Farcaster source"
                     : "Unknown source";
-        const contractSnippet = drop?.contract_address
-            ? truncateMiddle(drop.contract_address, 10, 8)
-            : isContractLookup
-                ? truncateMiddle(identifier, 10, 8)
-                : "Not deployed";
+        const contractSnippet = contractAddress
+            ? truncateMiddle(contractAddress, 10, 8)
+            : "Not deployed";
         const glyph = titleSafe.charAt(0).toUpperCase() || "D";
+        const accent = deterministicAccent(drop?.id || contractAddress || identifier);
+        const chainLabel = getChainLabel();
+        const statusLabel = formatStatusLabel(status);
+        const statusColors = statusBadgeColors(status);
+        const supplyLabel = contractAddress && (status === "LIVE" || status === "PUBLISHED")
+            ? await readSupplyLabel(contractAddress as `0x${string}`)
+            : null;
 
-        let supplyLabel: string | null = null;
-        if (drop?.contract_address && (drop.status === 'LIVE' || drop.status === 'PUBLISHED')) {
-            try {
-                // Add a timeout to onchain calls so they don't block OG generation
-                const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Onchain query timeout')), 1500));
-
-                const onchainData = Promise.all([
-                    publicClient.readContract({
-                        address: drop.contract_address as `0x${string}`,
-                        abi: dropAbi,
-                        functionName: "editionSize",
-                    }),
-                    publicClient.readContract({
-                        address: drop.contract_address as `0x${string}`,
-                        abi: dropAbi,
-                        functionName: "totalMinted",
-                    }),
-                ]);
-
-                const [editionSize, totalMinted] = await Promise.race([onchainData, timeoutPromise]);
-                const editionSizeNum = Number(editionSize);
-                const totalMintedNum = Number(totalMinted);
-                const remaining = Math.max(0, editionSizeNum - totalMintedNum);
-                supplyLabel = `${remaining} remaining`;
-                if (remaining === 0) supplyLabel = `Sold Out`;
-            } catch (err) {
-                console.warn("[OG Drop] Failed to fetch onchain supply:", err);
-            }
-        }
+        const hasCompleteCardData = Boolean(
+            resolvedTitle?.trim() &&
+            (creatorAddress || drop?.creator_fid) &&
+            contractAddress
+        );
 
         return new ImageResponse(
             (
@@ -285,7 +406,9 @@ export async function GET(
                 width: OG_TOKENS.width,
                 height: OG_TOKENS.height,
                 headers: {
-                    "Cache-Control": "public, max-age=60, stale-while-revalidate=86400",
+                    "Cache-Control": hasCompleteCardData
+                        ? "public, max-age=60, stale-while-revalidate=300"
+                        : "no-store",
                 },
             }
         );
