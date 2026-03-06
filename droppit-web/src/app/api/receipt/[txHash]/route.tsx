@@ -91,29 +91,31 @@ export async function GET(
         let txData: `0x${string}` | null = null;
         let txDate: string | null = null;
 
+        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Onchain query timeout')), 3500));
+
         try {
-            const receipt = await publicClient.getTransactionReceipt({
+            const receipt = await Promise.race([publicClient.getTransactionReceipt({
                 hash: hash as `0x${string}`,
-            });
+            }), timeoutPromise]);
             txStatus = receipt.status;
             contractAddress = receipt.to?.toLowerCase() ?? null;
             minterAddress = receipt.from?.toLowerCase() ?? null;
 
             try {
-                const block = await publicClient.getBlock({ blockHash: receipt.blockHash });
+                const block = await Promise.race([publicClient.getBlock({ blockHash: receipt.blockHash }), timeoutPromise]);
                 txDate = new Date(Number(block.timestamp) * 1000).toLocaleDateString();
             } catch { }
 
             try {
-                const tx = await publicClient.getTransaction({ hash: hash as `0x${string}` });
+                const tx = await Promise.race([publicClient.getTransaction({ hash: hash as `0x${string}` }), timeoutPromise]);
                 txValue = tx.value;
                 txData = tx.input;
             } catch { }
         } catch {
             try {
-                const tx = await publicClient.getTransaction({
+                const tx = await Promise.race([publicClient.getTransaction({
                     hash: hash as `0x${string}`,
-                });
+                }), timeoutPromise]);
                 contractAddress = tx.to?.toLowerCase() ?? null;
                 minterAddress = tx.from?.toLowerCase() ?? null;
                 txValue = tx.value;
