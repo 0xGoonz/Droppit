@@ -77,13 +77,13 @@ export async function GET(
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
 
-        const isContractLookup = isAddress(identifier);
+        const isContractLookup = isAddress(identifier, { strict: false });
         const dropQuery = supabase
             .from("drops")
             .select("id, title, creator_address, creator_fid, mint_price, status, image_url, contract_address");
 
         const { data } = isContractLookup
-            ? await dropQuery.eq("contract_address", identifier.toLowerCase()).maybeSingle()
+            ? await dropQuery.ilike("contract_address", identifier).maybeSingle()
             : await dropQuery.eq("id", identifier).maybeSingle();
 
         const drop = (data || null) as DropRow | null;

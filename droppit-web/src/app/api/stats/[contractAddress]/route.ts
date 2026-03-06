@@ -21,7 +21,7 @@ export async function POST(
         const signature = body.signature;
         const nonce = body.nonce;
 
-        if (!rawContract || !isAddress(rawContract)) {
+        if (!rawContract || !isAddress(rawContract, { strict: false })) {
             return NextResponse.json({ error: "Missing or invalid contract address." }, { status: 400 });
         }
 
@@ -198,7 +198,7 @@ export async function POST(
         let actualTotalMinted = dbTotalMinted;
         let protocolFeePerMintStr = PROTOCOL_FEE_PER_MINT_WEI.toString();
 
-        if (drop.status === "LIVE" && drop.contract_address && isAddress(drop.contract_address)) {
+        if (drop.status === "LIVE" && drop.contract_address && isAddress(drop.contract_address as string, { strict: false })) {
             const chain = process.env.NEXT_PUBLIC_ENVIRONMENT === "sandbox" ? baseSepolia : base;
             const alchemyNetwork = process.env.NEXT_PUBLIC_ENVIRONMENT === "sandbox" ? "base-sepolia" : "base-mainnet";
             const rpcUrl = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
