@@ -32,7 +32,7 @@ export function ogFontFamily(): string {
 }
 
 export function ogBackdrop(accentGlow: string): string {
-    return `radial-gradient(circle at 12% 0%, ${accentGlow}, transparent 48%), radial-gradient(circle at 88% 0%, rgba(34,211,238,0.14), transparent 40%), ${OG_BRAND.background}`;
+    return `radial-gradient(circle at 12% 0%, ${accentGlow}, transparent 48%), radial-gradient(circle at 88% 0%, rgba(34,211,238,0.14), transparent 40%)`;
 }
 
 export function getChainLabel(): string {
