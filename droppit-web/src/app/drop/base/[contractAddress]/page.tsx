@@ -225,7 +225,12 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         image: normalizeIpfsToHttp(metadata?.image) || null,
     };
     const canAttemptUnlock = !!userAddress && !!tokenUri;
+    const appOrigin = typeof window !== "undefined"
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai");
+    const shareHref = new URL(`/s/${contractAddress}`, appOrigin).toString();
     const receiptHref = receipt?.transactionHash ? `/r/receipt/${receipt.transactionHash}` : null;
+    const absoluteReceiptUrl = receiptHref ? new URL(receiptHref, appOrigin).toString() : null;
     const metadataFrozenLabel = isLoading
         ? "Loading..."
         : isError
@@ -474,8 +479,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
     const handleShare = async () => {
         try {
-            const shareUrl = new URL(`/s/${contractAddress}`, window.location.origin).toString();
-            await navigator.clipboard.writeText(shareUrl);
+            await navigator.clipboard.writeText(shareHref);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
@@ -766,7 +770,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <a
-                                        href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`I just collected "${drop.title}" on @droppit!\n\nView my receipt:`)}&embeds[]=${encodeURIComponent(new URL(receiptHref, window.location.origin).toString())}`}
+                                        href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`I just collected "${drop.title}" on @droppit!\n\nCheck out the drop:`)}&embeds[]=${encodeURIComponent(shareHref)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl bg-[#8A63D2]/20 hover:bg-[#8A63D2]/30 border border-[#8A63D2]/40 text-[#8A63D2] text-sm font-semibold transition-colors"
@@ -774,7 +778,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         Farcaster
                                     </a>
                                     <a
-                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just collected "${drop.title}" on Droppit!\n\nView my receipt:\n${new URL(receiptHref, window.location.origin).toString()}`)}`}
+                                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just collected "${drop.title}" on Droppit!\n\nView my receipt:\n${absoluteReceiptUrl ?? receiptHref}`)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-sm font-semibold transition-colors"

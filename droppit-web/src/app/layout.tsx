@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/googl
 import "./globals.css";
 import "@coinbase/onchainkit/styles.css";
 import { BRAND } from "@/lib/brand";
+import { Providers } from "@/providers/OnchainKitProvider";
 
 const displayFont = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -20,9 +21,8 @@ const monoFont = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-import { Providers } from "@/providers/OnchainKitProvider";
-
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+const baseAppId = process.env.NEXT_PUBLIC_BASE_APP_ID?.trim();
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
@@ -50,6 +50,9 @@ export const metadata: Metadata = {
     description: BRAND.description,
     images: ["/og-image.png"],
   },
+  other: baseAppId ? {
+    "base:app_id": baseAppId,
+  } : undefined,
 };
 
 export default function RootLayout({

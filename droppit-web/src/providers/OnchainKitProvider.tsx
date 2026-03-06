@@ -5,6 +5,7 @@ import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { coinbaseWallet } from 'wagmi/connectors';
+import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
 import type { Chain } from 'viem';
 import { DEFAULT_CHAIN_ID, SUPPORTED_CHAINS, getSupportedChainById, isSupportedChainId, type SupportedChainId } from '@/lib/chains';
 import { persistPreferredChainId, readPreferredChainId } from '@/lib/chain-preference';
@@ -39,6 +40,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
     const [selectedChainId, setSelectedChainId] = useState<SupportedChainId>(DEFAULT_CHAIN_ID);
     const [isPreferenceHydrated, setIsPreferenceHydrated] = useState(false);
+    const [isMiniAppEnvironment, setIsMiniAppEnvironment] = useState(false);
 
     useEffect(() => {
         const preferredChainId = readPreferredChainId();
@@ -53,6 +55,31 @@ export function Providers({ children }: { children: ReactNode }) {
     }, []);
 
     useEffect(() => {
+        let isActive = true;
+
+        async function bootstrapMiniApp() {
+            try {
+                const { sdk } = await import('@farcaster/miniapp-sdk');
+                const inMiniApp = await sdk.isInMiniApp();
+                if (!isActive) return;
+
+                setIsMiniAppEnvironment(inMiniApp);
+                if (inMiniApp) {
+                    await sdk.actions.ready();
+                }
+            } catch (error) {
+                console.warn('[Farcaster Mini App] Failed to initialize SDK:', error);
+            }
+        }
+
+        void bootstrapMiniApp();
+
+        return () => {
+            isActive = false;
+        };
+    }, []);
+
+    useEffect(() => {
         if (!isPreferenceHydrated) return;
         persistPreferredChainId(selectedChainId);
     }, [isPreferenceHydrated, selectedChainId]);
@@ -61,21 +88,25 @@ export function Providers({ children }: { children: ReactNode }) {
     const chainContracts = getChainContracts(selectedChain.id);
     const hasSelectedChainContractConfig = hasChainContractConfig(selectedChain.id);
 
-    const [config] = useState(() =>
-        createConfig({
-            chains: [...SUPPORTED_CHAINS],
-            connectors: [
-                coinbaseWallet({
-                    appName: BRAND.name,
-                }),
-            ],
-            ssr: true,
-            transports: {
-                [SUPPORTED_CHAINS[0].id]: http(),
-                [SUPPORTED_CHAINS[1].id]: http(),
-            },
-        })
-    );
+    const connectors = useMemo(() => {
+        const defaultConnector = coinbaseWallet({
+            appName: BRAND.name,
+        });
+
+        return isMiniAppEnvironment
+            ? [farcasterMiniApp(), defaultConnector]
+            : [defaultConnector];
+    }, [isMiniAppEnvironment]);
+
+    const config = useMemo(() => createConfig({
+        chains: [...SUPPORTED_CHAINS],
+        connectors,
+        ssr: true,
+        transports: {
+            [SUPPORTED_CHAINS[0].id]: http(),
+            [SUPPORTED_CHAINS[1].id]: http(),
+        },
+    }), [connectors]);
 
     const [queryClient] = useState(() => new QueryClient());
 

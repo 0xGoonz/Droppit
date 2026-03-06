@@ -46,6 +46,7 @@ Create a `.env.local` in this directory. All variables below are used by at leas
 | `SUPABASE_SERVICE_ROLE_KEY` | All API routes (server-side) | Supabase service role key (bypasses RLS) |
 | `NEXT_PUBLIC_ENVIRONMENT` | All chain-aware routes | `production` → Base mainnet; anything else → Base Sepolia |
 | `NEXT_PUBLIC_BASE_URL` | Webhooks, frames, receipt pages | Canonical app URL (e.g. `https://droppit.ai`). Fallback: `https://droppit.ai` |
+| `NEXT_PUBLIC_BASE_APP_ID` | Root metadata | Base Build app identifier used for `base:app_id` ownership verification |
 | `NEXT_PUBLIC_FACTORY_ADDRESS` | Create page, deploy routes | EIP-1167 Factory contract address |
 | `NEXT_PUBLIC_IMPLEMENTATION_ADDRESS` | Mint page trust section | Master implementation contract address |
 | `PINATA_JWT` | Webhook, upload routes | Pinata API JWT for IPFS pinning |
