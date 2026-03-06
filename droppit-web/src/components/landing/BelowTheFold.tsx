@@ -243,7 +243,7 @@ function UseCasesSection() {
                     title="Launch Drops in Minutes"
                     points={[
                         "Upload art → set price & supply → publish on Base",
-                        "Farcaster Frames for in-feed minting",
+                        "Farcaster Mini Apps for in-feed minting",
                         "Or tag @droppit on Warpcast — the AI does the rest",
                     ]}
                 />
@@ -338,7 +338,7 @@ function FeaturesSection() {
                     className="md:col-span-4"
                     icon={<GlyphFeed />}
                     title="Feed-Native Distribution"
-                    description="Farcaster Frames and OG cards let collectors mint directly from the timeline. Share a link anywhere — it just works."
+                    description="Farcaster Mini Apps and OG cards let collectors mint directly from the timeline. Share a link anywhere — it just works."
                 />
                 <BentoCard
                     className="md:col-span-2"
@@ -417,7 +417,7 @@ function HowItWorksSection() {
                         From upload to mint link in under 3 minutes.
                     </motion.h2>
                     <motion.p variants={fadeUp} className="mt-4 max-w-lg text-lg text-slate-400">
-                        No dashboards. No complexity. Connect your wallet, upload your art, and share. Droppit handles OG cards, Farcaster Frames, and the smart contract.
+                        No dashboards. No complexity. Connect your wallet, upload your art, and share. Droppit handles OG cards, Farcaster Mini Apps, and the smart contract.
                     </motion.p>
                     <motion.div variants={fadeUp} className="mt-8">
                         <Link
@@ -450,7 +450,7 @@ function HowItWorksSection() {
                         num={3}
                         icon={<GlyphShare />}
                         title="Share the Link"
-                        description="Get a beautiful share link with auto-generated OG cards and Farcaster Frame — ready for every feed."
+                        description="Get a beautiful share link with auto-generated OG cards and Farcaster Mini App — ready for every feed."
                         isLast
                     />
                 </div>
@@ -481,13 +481,13 @@ function AgenticSection() {
                             Meet Your Sassy Hype-man.
                         </motion.h2>
                         <motion.p variants={fadeUp} className="mt-4 max-w-lg text-lg leading-relaxed text-slate-400">
-                            Tag <span className="font-semibold text-violet-300">@droppit</span> on Farcaster with your artwork and deploy instructions. Our AI agent parses your cast, drafts the drop, and returns a deploy frame — all from one cast.
+                            Tag <span className="font-semibold text-violet-300">@droppit</span> on Farcaster with your artwork and deploy instructions. Our AI agent parses your cast, drafts the drop, and returns a deploy Mini App — all from one cast.
                         </motion.p>
                         <motion.div variants={fadeUp} className="mt-8 space-y-3">
                             {[
                                 "Natural-language drop creation from Warpcast",
                                 "AI parses title, editions, price — validates everything",
-                                "Deploy frame right there in the feed",
+                                "Deploy Mini App right there in the feed",
                                 "Milestone celebration posts when drops take off",
                             ].map((item) => (
                                 <div key={item} className="flex items-start gap-2.5 text-sm text-slate-300">

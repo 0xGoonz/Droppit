@@ -9,7 +9,7 @@ import { AgentTerminal } from "./AgentTerminal";
 
 /* ── Cycling use-case words ── */
 const CYCLE_WORDS = [
-    "Farcaster Feeds",
+    "Farcaster Mini Apps",
     "IRL Events",
     "Digital Souvenirs",
     "Web3 Creators",
