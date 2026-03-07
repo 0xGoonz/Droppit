@@ -58,6 +58,7 @@ type DropRow = {
     status: string | null;
     image_url: string | null;
     contract_address: string | null;
+    edition_size: number | null;
 };
 
 type IdentityRow = {
@@ -239,7 +240,7 @@ export async function GET(
         const isContractLookup = isAddress(identifier, { strict: false });
         const dropQuery = supabase
             .from("drops")
-            .select("id, title, creator_address, creator_fid, mint_price, status, image_url, contract_address");
+            .select("id, title, creator_address, creator_fid, mint_price, status, image_url, contract_address, edition_size");
 
         const { data } = isContractLookup
             ? await dropQuery.ilike("contract_address", identifier).maybeSingle()
@@ -250,12 +251,9 @@ export async function GET(
         const isMiniAppVariant = req.nextUrl.searchParams.get("variant") === "miniapp";
 
         const needsOnchainBackfill = !!contractAddress && (
-            isMiniAppVariant ||
-            !drop ||
-            !drop.title?.trim() ||
-            !drop.image_url ||
-            !drop.creator_address ||
-            drop.mint_price == null
+            isMiniAppVariant
+                ? (!drop || !drop.title?.trim() || !drop.image_url || !drop.edition_size)
+                : (!drop || !drop.title?.trim() || !drop.image_url || !drop.creator_address || drop.mint_price == null)
         );
         const onchain = needsOnchainBackfill && contractAddress
             ? await readOnchainSnapshot(contractAddress as `0x${string}`)
@@ -263,7 +261,7 @@ export async function GET(
 
         const creatorAddress = drop?.creator_address || onchain?.creatorAddress || null;
         let creatorHandle: string | null = null;
-        if (creatorAddress) {
+        if (creatorAddress && !isMiniAppVariant) {
             const { data: identity } = await supabase
                 .from("identity_links")
                 .select("handle")
@@ -278,7 +276,7 @@ export async function GET(
         const title = fallbackTitle(resolvedTitle, "Untitled Drop");
         const titleSafe = truncateText(title, 54);
         const miniappTitleSafe = truncateText(title, 40);
-        const art = onchain?.metadataImage || normalizeIpfsToHttp(drop?.image_url) || null;
+        const art = normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
         const canvasHeight = isMiniAppVariant ? 800 : OG_TOKENS.height;
         const status = drop?.status || (onchain ? "LIVE" : "UNKNOWN");
         const price = formatMintPriceWei(drop?.mint_price || onchain?.mintPriceWei || "0");
@@ -298,20 +296,22 @@ export async function GET(
         const chainLabel = getChainLabel();
         const statusLabel = formatStatusLabel(status);
         const statusColors = statusBadgeColors(status);
-        const supplyLabels = contractAddress
+        const supplyLabels = contractAddress && (!isMiniAppVariant || !drop?.edition_size)
             ? await readSupplyLabels(contractAddress as `0x${string}`)
             : { remainingLabel: null, editionLabel: null };
-        const supplyLabel = contractAddress && (status === "LIVE" || status === "PUBLISHED")
+        const supplyLabel = !isMiniAppVariant && contractAddress && (status === "LIVE" || status === "PUBLISHED")
             ? supplyLabels.remainingLabel
             : null;
-        const miniappSupplyLabel = supplyLabels.editionLabel;
+        const miniappSupplyLabel = formatEditionSizeLabel(drop?.edition_size) || supplyLabels.editionLabel;
 
-        const hasCompleteCardData = Boolean(
-            resolvedTitle?.trim() &&
-            art &&
-            (creatorAddress || drop?.creator_fid) &&
-            contractAddress
-        );
+        const hasCompleteCardData = isMiniAppVariant
+            ? Boolean(resolvedTitle?.trim() && art && contractAddress)
+            : Boolean(
+                resolvedTitle?.trim() &&
+                art &&
+                (creatorAddress || drop?.creator_fid) &&
+                contractAddress
+            );
 
         return new ImageResponse(
             (
@@ -577,6 +577,8 @@ export async function GET(
         return new Response("Failed to generate image", { status: 500 });
     }
 }
+
+
 
 
 

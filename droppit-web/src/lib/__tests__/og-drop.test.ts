@@ -195,7 +195,7 @@ describe("OG Drop Rendering", () => {
         expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmArtwork");
     });
 
-    it("prefers onchain metadata artwork for the miniapp variant when the DB image is stale", async () => {
+    it("uses stored DB artwork for the miniapp variant when drop data is complete", async () => {
         mockDropMaybeSingle.mockResolvedValue({
             data: {
                 id: "drop-1",
@@ -204,25 +204,11 @@ describe("OG Drop Rendering", () => {
                 creator_fid: null,
                 mint_price: "0",
                 status: "LIVE",
-                image_url: "https://stale.example/ipfs/QmOldArtwork",
+                image_url: "https://gateway.pinata.cloud/ipfs/QmStoredArtwork",
                 contract_address: ADDRESS,
+                edition_size: 333,
             },
             error: null,
-        });
-        mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
-            if (functionName === "owner") return ADDRESS;
-            if (functionName === "uri") return "ipfs://QmMetadata";
-            if (functionName === "mintPrice") return BigInt(0);
-            if (functionName === "editionSize") return BigInt(100);
-            if (functionName === "totalMinted") return BigInt(12);
-            throw new Error("Unexpected function " + functionName);
-        });
-        mockFetch.mockResolvedValue({
-            ok: true,
-            json: async () => ({
-                name: "Founder's Key",
-                image: "ipfs://QmFreshArtwork",
-            }),
         });
 
         const res = await GET(new NextRequest(`https://droppitonbase.xyz/api/og/drop/${ADDRESS}?variant=miniapp`), {
@@ -230,9 +216,12 @@ describe("OG Drop Rendering", () => {
         });
 
         expect(res.status).toBe(200);
+        expect(mockFetch).not.toHaveBeenCalled();
 
         const renderedTree = mockImageResponse.mock.calls[0][0];
-        expect(findFirstImageSrc(renderedTree)).toBe("https://droppit-gateway.mypinata.cloud/ipfs/QmFreshArtwork");
+        const renderedText = collectText(renderedTree);
+        expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmStoredArtwork");
+        expect(renderedText).toContain("333 editions");
     });
     it("renders the miniapp variant as artwork-first with a minimal bottom strip", async () => {
         mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
@@ -291,4 +280,5 @@ describe("OG Drop Rendering", () => {
         expect(renderedText).toContain("Unknown source");
     });
 });
+
 
