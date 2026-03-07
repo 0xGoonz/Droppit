@@ -311,7 +311,7 @@ export async function GET(
         const resolvedTitle = drop?.title || miniappMetadata?.metadataName || onchain?.metadataName || null;
         const title = fallbackTitle(resolvedTitle, "Untitled Drop");
         const titleSafe = truncateText(title, 54);
-        const miniappTitleSafe = truncateText(title, 40);
+        const miniappTitleSafe = truncateText(title, 34);
         const art = isMiniAppVariant
             ? miniappMetadata?.metadataImage || normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null
             : normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
@@ -372,7 +372,8 @@ export async function GET(
                                 height: "100%",
                                 display: "flex",
                                 flexDirection: "column",
-                                background: "radial-gradient(circle at 50% 0%, rgba(34,211,238,0.10), transparent 42%), radial-gradient(circle at 50% 100%, rgba(124,58,237,0.12), transparent 42%), linear-gradient(160deg, #020617 0%, #081121 100%)",
+                                backgroundColor: "#020617",
+                                backgroundImage: "radial-gradient(circle at 50% 0%, rgba(34,211,238,0.10), transparent 42%), radial-gradient(circle at 50% 100%, rgba(124,58,237,0.12), transparent 42%), linear-gradient(160deg, #020617 0%, #081121 100%)",
                                 borderRadius: 30,
                                 border: "1px solid rgba(255,255,255,0.10)",
                                 overflow: "hidden",
@@ -383,108 +384,160 @@ export async function GET(
                             <div
                                 data-share-card-art-stage="miniapp"
                                 style={{
+                                    position: "relative",
                                     flex: 1,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    padding: `${MINIAPP_SHARE_CARD.artPaddingTop}px ${MINIAPP_SHARE_CARD.artPaddingX}px ${MINIAPP_SHARE_CARD.artPaddingBottom}px`,
-                                    borderRadius: 24,
+                                    overflow: "hidden",
+                                    borderRadius: 26,
                                     border: "1px solid rgba(255,255,255,0.08)",
-                                    backgroundColor: art ? "rgba(3,7,18,0.72)" : undefined,
+                                    backgroundColor: art ? "rgba(3,7,18,0.78)" : undefined,
                                     backgroundImage: art
-                                        ? "radial-gradient(circle at 50% 15%, rgba(124,58,237,0.18), transparent 36%), radial-gradient(circle at 50% 85%, rgba(0,82,255,0.16), transparent 40%)"
+                                        ? "linear-gradient(180deg, rgba(2,6,23,0.12), rgba(2,6,23,0.32))"
                                         : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
                                 }}
                             >
+                                {art && (
+                                    <img
+                                        alt=""
+                                        src={art}
+                                        width={OG_TOKENS.width}
+                                        height={canvasHeight}
+                                        data-share-card-art-fill="miniapp"
+                                        style={{
+                                            position: "absolute",
+                                            top: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            left: 0,
+                                            width: "100%",
+                                            height: "100%",
+                                            display: "block",
+                                            objectFit: "cover",
+                                            opacity: 0.28,
+                                            filter: "blur(28px)",
+                                            transform: "scale(1.18)",
+                                        }}
+                                    />
+                                )}
                                 <div
-                                    data-share-card-art-frame="miniapp"
+                                    data-share-card-art-tint="miniapp"
                                     style={{
-                                        width: MINIAPP_ARTWORK_BOUNDS.width,
-                                        height: MINIAPP_ARTWORK_BOUNDS.height,
-                                        maxWidth: "100%",
-                                        maxHeight: "100%",
+                                        position: "absolute",
+                                        top: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        left: 0,
+                                        backgroundColor: art ? "rgba(2,6,23,0.46)" : "transparent",
+                                        backgroundImage: art
+                                            ? "radial-gradient(circle at 50% 15%, rgba(124,58,237,0.18), transparent 36%), radial-gradient(circle at 50% 85%, rgba(0,82,255,0.16), transparent 40%)"
+                                            : "none",
+                                    }}
+                                />
+                                <div
+                                    style={{
+                                        position: "relative",
+                                        zIndex: 1,
+                                        flex: 1,
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
-                                        borderRadius: 28,
-                                        background: art ? "rgba(255,255,255,0.02)" : "transparent",
-                                        boxShadow: art ? "inset 0 0 0 1px rgba(255,255,255,0.03)" : "none",
+                                        padding: `${MINIAPP_SHARE_CARD.artPaddingTop}px ${MINIAPP_SHARE_CARD.artPaddingX}px ${MINIAPP_SHARE_CARD.artPaddingBottom}px`,
                                     }}
                                 >
-                                    {art ? (
-                                        <img
-                                            alt=""
-                                            src={art}
-                                            width={MINIAPP_ARTWORK_BOUNDS.width}
-                                            height={MINIAPP_ARTWORK_BOUNDS.height}
-                                            data-share-card-artwork="miniapp"
+                                    <div
+                                        data-share-card-art-frame="miniapp"
+                                        style={{
+                                            width: MINIAPP_ARTWORK_BOUNDS.width,
+                                            height: MINIAPP_ARTWORK_BOUNDS.height,
+                                            maxWidth: "100%",
+                                            maxHeight: "100%",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            borderRadius: 28,
+                                        }}
+                                    >
+                                        {art ? (
+                                            <img
+                                                alt=""
+                                                src={art}
+                                                width={MINIAPP_ARTWORK_BOUNDS.width}
+                                                height={MINIAPP_ARTWORK_BOUNDS.height}
+                                                data-share-card-artwork="miniapp"
+                                                style={{
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    display: "block",
+                                                    objectFit: "contain",
+                                                    objectPosition: "center",
+                                                }}
+                                            />
+                                        ) : (
+                                            <span style={{ fontSize: 240, fontWeight: 800, opacity: 0.9, color: "white" }}>{glyph}</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div
+                                    data-share-card-copy-ribbon="miniapp"
+                                    style={{
+                                        position: "absolute",
+                                        zIndex: 2,
+                                        left: MINIAPP_SHARE_CARD.overlayRibbonInsetX,
+                                        right: MINIAPP_SHARE_CARD.overlayRibbonInsetX,
+                                        bottom: MINIAPP_SHARE_CARD.overlayRibbonInsetBottom,
+                                        height: MINIAPP_SHARE_CARD.overlayRibbonHeight,
+                                        padding: "0 28px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        gap: 20,
+                                        borderRadius: 22,
+                                        border: "1px solid rgba(255,255,255,0.10)",
+                                        backgroundColor: "rgba(8,15,31,0.72)",
+                                        backgroundImage: "linear-gradient(180deg, rgba(15,23,42,0.68), rgba(8,15,31,0.84))",
+                                        boxShadow: "0 14px 34px rgba(0,0,0,0.28)",
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            flex: 1,
+                                            alignItems: "center",
+                                            minWidth: 0,
+                                        }}
+                                    >
+                                        <span
                                             style={{
-                                                width: "100%",
-                                                height: "100%",
-                                                display: "block",
-                                                objectFit: "contain",
-                                                objectPosition: "center",
+                                                fontSize: 44,
+                                                lineHeight: 1.04,
+                                                fontWeight: 800,
+                                                letterSpacing: "-0.035em",
+                                                color: OG_BRAND.text0,
                                             }}
-                                        />
-                                    ) : (
-                                        <span style={{ fontSize: 240, fontWeight: 800, opacity: 0.9, color: "white" }}>{glyph}</span>
+                                        >
+                                            {miniappTitleSafe}
+                                        </span>
+                                    </div>
+                                    {miniappSupplyLabel && (
+                                        <span
+                                            style={{
+                                                fontSize: 22,
+                                                fontWeight: 700,
+                                                color: "#dbeafe",
+                                                backgroundColor: "rgba(14,165,233,0.12)",
+                                                border: "1px solid rgba(14,165,233,0.22)",
+                                                borderRadius: 999,
+                                                padding: "12px 18px",
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {miniappSupplyLabel}
+                                        </span>
                                     )}
                                 </div>
-                            </div>
-
-                            <div
-                                data-share-card-copy-strip="miniapp"
-                                style={{
-                                    height: MINIAPP_SHARE_CARD.infoStripHeight,
-                                    minHeight: MINIAPP_SHARE_CARD.infoStripHeight,
-                                    marginTop: MINIAPP_SHARE_CARD.infoStripGap,
-                                    padding: "0 32px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: 24,
-                                    borderRadius: 24,
-                                    border: "1px solid rgba(255,255,255,0.10)",
-                                    background: "linear-gradient(180deg, rgba(10,15,30,0.78), rgba(10,15,30,0.62))",
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        flex: 1,
-                                        alignItems: "center",
-                                        minWidth: 0,
-                                    }}
-                                >
-                                    <span
-                                        style={{
-                                            fontSize: 46,
-                                            lineHeight: 1.05,
-                                            fontWeight: 800,
-                                            letterSpacing: "-0.035em",
-                                            color: OG_BRAND.text0,
-                                        }}
-                                    >
-                                        {miniappTitleSafe}
-                                    </span>
-                                </div>
-
-                                {miniappSupplyLabel && (
-                                    <span
-                                        style={{
-                                            fontSize: 24,
-                                            fontWeight: 700,
-                                            color: "#dbeafe",
-                                            background: "rgba(14,165,233,0.12)",
-                                            border: "1px solid rgba(14,165,233,0.22)",
-                                            borderRadius: 999,
-                                            padding: "12px 18px",
-                                            whiteSpace: "nowrap",
-                                        }}
-                                    >
-                                        {miniappSupplyLabel}
-                                    </span>
-                                )}
                             </div>
                         </div>
                     ) : (
@@ -620,6 +673,10 @@ export async function GET(
         return new Response("Failed to generate image", { status: 500 });
     }
 }
+
+
+
+
 
 
 

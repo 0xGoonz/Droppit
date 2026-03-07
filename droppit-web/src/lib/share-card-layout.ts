@@ -5,12 +5,13 @@ export const MINIAPP_SHARE_CARD = {
     canvasHeight: 800,
     stagePaddingX: 56,
     stagePaddingY: 44,
-    frameInset: 18,
-    artPaddingX: 34,
-    artPaddingTop: 34,
-    artPaddingBottom: 20,
-    infoStripHeight: 112,
-    infoStripGap: 16,
+    frameInset: 12,
+    artPaddingX: 22,
+    artPaddingTop: 22,
+    artPaddingBottom: 22,
+    overlayRibbonHeight: 86,
+    overlayRibbonInsetX: 20,
+    overlayRibbonInsetBottom: 18,
     previewMaxWidth: 620,
 } as const;
 
@@ -34,8 +35,6 @@ export function getMiniappArtworkBounds(): ImageDimensions {
         width: roundPlacement(innerWidth - (MINIAPP_SHARE_CARD.artPaddingX * 2)),
         height: roundPlacement(
             innerHeight
-            - MINIAPP_SHARE_CARD.infoStripHeight
-            - MINIAPP_SHARE_CARD.infoStripGap
             - MINIAPP_SHARE_CARD.artPaddingTop
             - MINIAPP_SHARE_CARD.artPaddingBottom
         ),
@@ -84,3 +83,5 @@ export function fitArtworkWithinBounds(params: {
         aspectRatio: (params.imageWidth as number) / (params.imageHeight as number),
     };
 }
+
+

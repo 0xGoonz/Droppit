@@ -262,7 +262,7 @@ describe("OG Drop Rendering", () => {
         expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmStoredArtwork");
         expect(renderedText).toContain("333 editions");
     });
-    it("renders the miniapp variant as artwork-first with a minimal bottom strip", async () => {
+    it("renders the miniapp variant with blurred fill and an overlay ribbon", async () => {
         mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
             if (functionName === "owner") return ADDRESS;
             if (functionName === "uri") return "ipfs://QmMetadata";
@@ -288,8 +288,10 @@ describe("OG Drop Rendering", () => {
         const renderedTree = mockImageResponse.mock.calls[0][0];
         const renderedText = collectText(renderedTree);
         const miniappImage = findNodeByProp(renderedTree, "data-share-card-artwork", "miniapp");
+        const artFill = findNodeByProp(renderedTree, "data-share-card-art-fill", "miniapp");
         const artStage = findNodeByProp(renderedTree, "data-share-card-art-stage", "miniapp");
         const artFrame = findNodeByProp(renderedTree, "data-share-card-art-frame", "miniapp");
+        const copyRibbon = findNodeByProp(renderedTree, "data-share-card-copy-ribbon", "miniapp");
         const copyStrip = findNodeByProp(renderedTree, "data-share-card-copy-strip", "miniapp");
 
         expect(renderedText).toContain("Founder's Key");
@@ -302,10 +304,11 @@ describe("OG Drop Rendering", () => {
         expect(miniappImage?.props?.width).toBeDefined();
         expect(miniappImage?.props?.height).toBeDefined();
         expect(miniappImage?.props?.style).toMatchObject({ objectFit: "contain", objectPosition: "center" });
-        expect(artStage?.props?.style).toMatchObject({ backgroundColor: "rgba(3,7,18,0.72)" });
-        expect(artStage?.props?.style).not.toHaveProperty("background");
+        expect(artFill?.props?.style).toMatchObject({ objectFit: "cover", filter: "blur(28px)" });
+        expect(artStage?.props?.style).toMatchObject({ position: "relative", overflow: "hidden" });
         expect(artFrame?.props?.style).toMatchObject({ borderRadius: 28 });
-        expect(copyStrip?.props?.style).toMatchObject({ borderRadius: 24 });
+        expect(copyRibbon?.props?.style).toMatchObject({ position: "absolute", height: 86 });
+        expect(copyStrip).toBeNull();
     });
 
     it("marks fallback OG renders as no-store when metadata stays incomplete", async () => {
@@ -324,6 +327,7 @@ describe("OG Drop Rendering", () => {
         expect(renderedText).toContain("Unknown source");
     });
 });
+
 
 
 

@@ -59,6 +59,7 @@ export default function CreateDrop() {
     const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
     const [fileImageDimensions, setFileImageDimensions] = useState<ImageDimensions | null>(null);
     const [draftImageDimensions, setDraftImageDimensions] = useState<ImageDimensions | null>(null);
+    const [isPreviewRibbonHidden, setIsPreviewRibbonHidden] = useState(false);
 
     const [deployGasEstimate, setDeployGasEstimate] = useState<string | null>(null);
 
@@ -79,6 +80,7 @@ export default function CreateDrop() {
     const { switchChainAsync } = useSwitchChain();
     const { data: receipt, isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
     const normalizedDraftImageUrl = normalizeIpfsToHttp(draftImageUrl);
+    const toPreviewPercent = (value: number, total: number) => `${((value / total) * 100).toFixed(2)}%`;
 
     useEffect(() => {
         if (!file) {
@@ -538,6 +540,17 @@ export default function CreateDrop() {
             : { width: "100%", height: "100%" }
         : null;
     const previewSupplyLabel = formatEditionSizeLabel(formData.editionSize) || "Supply pending";
+    const previewFrameInset = toPreviewPercent(MINIAPP_SHARE_CARD.frameInset, MINIAPP_SHARE_CARD.canvasWidth);
+    const previewArtPaddingX = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingX, MINIAPP_SHARE_CARD.canvasWidth);
+    const previewArtPaddingTop = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingTop, MINIAPP_SHARE_CARD.canvasHeight);
+    const previewArtPaddingBottom = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingBottom, MINIAPP_SHARE_CARD.canvasHeight);
+    const previewRibbonInsetX = toPreviewPercent(MINIAPP_SHARE_CARD.overlayRibbonInsetX, MINIAPP_SHARE_CARD.canvasWidth);
+    const previewRibbonInsetBottom = toPreviewPercent(MINIAPP_SHARE_CARD.overlayRibbonInsetBottom, MINIAPP_SHARE_CARD.canvasHeight);
+    const previewRibbonHeight = toPreviewPercent(MINIAPP_SHARE_CARD.overlayRibbonHeight, MINIAPP_SHARE_CARD.canvasHeight);
+
+    useEffect(() => {
+        setIsPreviewRibbonHidden(false);
+    }, [previewImageUrl, previewTitle, previewSupplyLabel]);
 
     return (
         <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
@@ -963,24 +976,66 @@ export default function CreateDrop() {
                                     <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#05070f]">
                                         <div className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-6">
                                             <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
-                                            <p className="text-xs text-slate-500">This previews the real 3:2 miniapp share image used in Warpcast. The full uploaded artwork is preserved without cropping.</p>
+                                            <p className="text-xs text-slate-500">This previews the real 3:2 miniapp share image used in Warpcast. Hover on desktop or tap on mobile to hide the ribbon here only.</p>
                                         </div>
                                         <div className="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
                                             <div className="mx-auto w-full" style={{ maxWidth: MINIAPP_SHARE_CARD.previewMaxWidth }}>
-                                                <div className="rounded-[28px] border border-white/10 bg-[#040916]/92 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:p-4">
-                                                    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.10),transparent_42%),radial-gradient(circle_at_bottom,rgba(124,58,237,0.12),transparent_42%),linear-gradient(160deg,#020617,#081121)] shadow-[0_20px_48px_rgba(0,0,0,0.34)]" style={{ aspectRatio: "3 / 2" }}>
-                                                        <div className="flex h-full w-full flex-col p-[3%]">
-                                                            <div className="flex flex-1 items-center justify-center rounded-[22px] border border-white/10 bg-[radial-gradient(circle_at_50%_15%,rgba(124,58,237,0.18),transparent_36%),radial-gradient(circle_at_50%_85%,rgba(0,82,255,0.16),transparent_40%),rgba(3,7,18,0.72)] px-[6%] pt-[6%] pb-[3.5%]">
-                                                                <div className="flex items-center justify-center rounded-[22px] bg-white/[0.02] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]" style={{ width: previewArtworkFrameStyle?.width || "100%", height: previewArtworkFrameStyle?.height || "100%" }}>
-                                                                    {previewImageUrl ? (
-                                                                        <img src={previewImageUrl} alt="" className="h-full w-full object-contain object-center" />
-                                                                    ) : (
-                                                                        <div className="text-6xl font-bold text-white/50 sm:text-7xl">{previewGlyph}</div>
-                                                                    )}
-                                                                </div>
+                                                <div className="rounded-[28px] border border-white/10 bg-[#040916]/92 shadow-[0_24px_60px_rgba(0,0,0,0.35)]" style={{ padding: previewFrameInset }}>
+                                                    <div
+                                                        className="relative cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-[#020617] shadow-[0_20px_48px_rgba(0,0,0,0.34)]"
+                                                        style={{ aspectRatio: "3 / 2" }}
+                                                        onMouseEnter={() => setIsPreviewRibbonHidden(true)}
+                                                        onMouseLeave={() => setIsPreviewRibbonHidden(false)}
+                                                        onPointerUp={(event) => {
+                                                            if (event.pointerType !== "mouse") {
+                                                                setIsPreviewRibbonHidden((current) => !current);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {previewImageUrl && (
+                                                            <img
+                                                                src={previewImageUrl}
+                                                                alt=""
+                                                                className="absolute inset-0 h-full w-full object-cover opacity-30"
+                                                                style={{ filter: "blur(28px)", transform: "scale(1.18)" }}
+                                                            />
+                                                        )}
+                                                        <div
+                                                            className="absolute inset-0"
+                                                            style={{
+                                                                backgroundColor: "rgba(2,6,23,0.46)",
+                                                                backgroundImage: "radial-gradient(circle at 50% 15%, rgba(124,58,237,0.18), transparent 36%), radial-gradient(circle at 50% 85%, rgba(0,82,255,0.16), transparent 40%)",
+                                                            }}
+                                                        />
+                                                        <div
+                                                            className="relative flex h-full w-full items-center justify-center"
+                                                            style={{ padding: `${previewArtPaddingTop} ${previewArtPaddingX} ${previewArtPaddingBottom}` }}
+                                                        >
+                                                            <div className="flex items-center justify-center rounded-[24px]" style={{ width: previewArtworkFrameStyle?.width || "100%", height: previewArtworkFrameStyle?.height || "100%" }}>
+                                                                {previewImageUrl ? (
+                                                                    <img src={previewImageUrl} alt="" className="h-full w-full object-contain object-center" />
+                                                                ) : (
+                                                                    <div className="text-6xl font-bold text-white/50 sm:text-7xl">{previewGlyph}</div>
+                                                                )}
                                                             </div>
-                                                            <div className="mt-[2.5%] flex min-h-[84px] items-center justify-between gap-3 rounded-[20px] border border-white/10 bg-white/[0.06] px-[5%] py-[3%]">
-                                                                <h1 className="min-w-0 flex-1 truncate text-base font-bold leading-tight text-white sm:text-[28px] sm:leading-[1.05]">{previewTitle}</h1>
+                                                        </div>
+                                                        <div
+                                                            className={`pointer-events-none absolute transition-opacity duration-200 ${isPreviewRibbonHidden ? "opacity-0" : "opacity-100"}`}
+                                                            style={{
+                                                                left: previewRibbonInsetX,
+                                                                right: previewRibbonInsetX,
+                                                                bottom: previewRibbonInsetBottom,
+                                                                height: previewRibbonHeight,
+                                                            }}
+                                                        >
+                                                            <div
+                                                                className="flex h-full items-center justify-between gap-3 rounded-[22px] border border-white/10 px-[4.5%] shadow-[0_14px_34px_rgba(0,0,0,0.28)]"
+                                                                style={{
+                                                                    backgroundColor: "rgba(8,15,31,0.72)",
+                                                                    backgroundImage: "linear-gradient(180deg, rgba(15,23,42,0.68), rgba(8,15,31,0.84))",
+                                                                }}
+                                                            >
+                                                                <h1 className="min-w-0 flex-1 truncate text-base font-bold leading-tight tracking-[-0.035em] text-white sm:text-[27px] sm:leading-[1.04]">{previewTitle}</h1>
                                                                 <span className="shrink-0 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-100 sm:text-sm">{previewSupplyLabel}</span>
                                                             </div>
                                                         </div>
@@ -989,7 +1044,7 @@ export default function CreateDrop() {
                                                     <div className="mt-3 flex flex-col gap-3 rounded-[20px] border border-white/10 bg-[#07101f]/92 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                                                         <div>
                                                             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Warpcast Post</div>
-                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image, while the artwork stays fully visible.</div>
+                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image. Hover or tap only affects this local preview.</div>
                                                         </div>
                                                         <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,82,255,0.28)]">
                                                             Mint 1
@@ -1096,6 +1151,7 @@ export default function CreateDrop() {
         </div>
     );
 }
+
 
 
 
