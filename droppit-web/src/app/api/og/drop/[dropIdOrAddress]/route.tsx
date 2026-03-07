@@ -247,8 +247,10 @@ export async function GET(
 
         const drop = (data || null) as DropRow | null;
         const contractAddress = drop?.contract_address || (isContractLookup ? identifier : null);
+        const isMiniAppVariant = req.nextUrl.searchParams.get("variant") === "miniapp";
 
         const needsOnchainBackfill = !!contractAddress && (
+            isMiniAppVariant ||
             !drop ||
             !drop.title?.trim() ||
             !drop.image_url ||
@@ -276,8 +278,7 @@ export async function GET(
         const title = fallbackTitle(resolvedTitle, "Untitled Drop");
         const titleSafe = truncateText(title, 54);
         const miniappTitleSafe = truncateText(title, 40);
-        const art = normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
-        const isMiniAppVariant = req.nextUrl.searchParams.get("variant") === "miniapp";
+        const art = onchain?.metadataImage || normalizeIpfsToHttp(drop?.image_url) || null;
         const canvasHeight = isMiniAppVariant ? 800 : OG_TOKENS.height;
         const status = drop?.status || (onchain ? "LIVE" : "UNKNOWN");
         const price = formatMintPriceWei(drop?.mint_price || onchain?.mintPriceWei || "0");
@@ -576,6 +577,11 @@ export async function GET(
         return new Response("Failed to generate image", { status: 500 });
     }
 }
+
+
+
+
+
 
 
 

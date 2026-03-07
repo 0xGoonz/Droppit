@@ -195,6 +195,45 @@ describe("OG Drop Rendering", () => {
         expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmArtwork");
     });
 
+    it("prefers onchain metadata artwork for the miniapp variant when the DB image is stale", async () => {
+        mockDropMaybeSingle.mockResolvedValue({
+            data: {
+                id: "drop-1",
+                title: "Founder's Key",
+                creator_address: ADDRESS,
+                creator_fid: null,
+                mint_price: "0",
+                status: "LIVE",
+                image_url: "https://stale.example/ipfs/QmOldArtwork",
+                contract_address: ADDRESS,
+            },
+            error: null,
+        });
+        mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+            if (functionName === "owner") return ADDRESS;
+            if (functionName === "uri") return "ipfs://QmMetadata";
+            if (functionName === "mintPrice") return BigInt(0);
+            if (functionName === "editionSize") return BigInt(100);
+            if (functionName === "totalMinted") return BigInt(12);
+            throw new Error("Unexpected function " + functionName);
+        });
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                name: "Founder's Key",
+                image: "ipfs://QmFreshArtwork",
+            }),
+        });
+
+        const res = await GET(new NextRequest(`https://droppitonbase.xyz/api/og/drop/${ADDRESS}?variant=miniapp`), {
+            params: Promise.resolve({ dropIdOrAddress: ADDRESS }),
+        });
+
+        expect(res.status).toBe(200);
+
+        const renderedTree = mockImageResponse.mock.calls[0][0];
+        expect(findFirstImageSrc(renderedTree)).toBe("https://droppit-gateway.mypinata.cloud/ipfs/QmFreshArtwork");
+    });
     it("renders the miniapp variant as artwork-first with a minimal bottom strip", async () => {
         mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
             if (functionName === "owner") return ADDRESS;
@@ -252,3 +291,4 @@ describe("OG Drop Rendering", () => {
         expect(renderedText).toContain("Unknown source");
     });
 });
+
