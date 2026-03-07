@@ -52,7 +52,7 @@ describe("Drop Share-Link Frame Rendering", () => {
         expect(miniapp.version).toBe("1");
         expect(miniapp.aspectRatio).toBe("3:2");
         expect(miniapp.imageUrl).toContain(`/api/og/drop/${ADDRESS}?variant=miniapp`);
-        expect(miniapp.button.title).toBe("Mint 1");
+        expect(miniapp.button.title).toBe("Mint");
         expect(miniapp.button.action.type).toBe("launch_miniapp");
         expect(miniapp.button.action.url).toBe(`https://droppitonbase.xyz/drop/base/${ADDRESS}?miniApp=true`);
 
@@ -70,7 +70,7 @@ describe("Drop Share-Link Frame Rendering", () => {
         expect(html).toContain('fc:frame:button:1');
         expect(html).toContain('fc:frame:button:2');
         expect(html).not.toContain('fc:frame:button:3');
-        expect(html).toContain("Mint 1");
+        expect(html).toContain("Mint");
         expect(html).toContain("Open mint page");
         expect(html).not.toContain("Gift");
     });

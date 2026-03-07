@@ -60,14 +60,14 @@ export function getDropShareEmbeds(frame: DropFrameSpec) {
             imageUrl: frame.shareImageUrl,
             actionType: "launch_miniapp",
             actionUrl: frame.launchUrl,
-            buttonTitle: "Mint 1",
+            buttonTitle: "Mint",
         }),
         frame: createEmbed({
             baseUrl: frame.dropUrl,
             imageUrl: frame.shareImageUrl,
             actionType: "launch_frame",
             actionUrl: frame.launchUrl,
-            buttonTitle: "Mint 1",
+            buttonTitle: "Mint",
         }),
     };
 }
@@ -93,3 +93,4 @@ export function getHomeMiniAppEmbeds(baseUrl: string) {
         }),
     };
 }
+

@@ -30,7 +30,7 @@ export function getDropFrameSpec(baseUrl: string, contractAddress: string): Drop
         shareUrl,
         launchUrl,
         buttons: [
-            { action: "tx", label: "Mint 1", target: mintUrl },
+            { action: "tx", label: "Mint", target: mintUrl },
             { action: "link", label: "Open mint page", target: dropUrl },
         ],
     };

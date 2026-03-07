@@ -3,12 +3,12 @@ import type { ImageDimensions } from "@/lib/media-validation";
 export const MINIAPP_SHARE_CARD = {
     canvasWidth: 1200,
     canvasHeight: 800,
-    stagePaddingX: 56,
-    stagePaddingY: 44,
-    frameInset: 8,
-    artPaddingX: 12,
-    artPaddingTop: 12,
-    artPaddingBottom: 12,
+    stagePaddingX: 48,
+    stagePaddingY: 24,
+    frameInset: 4,
+    artPaddingX: 8,
+    artPaddingTop: 0,
+    artPaddingBottom: 0,
     previewMaxWidth: 620,
 } as const;
 export type ShareCardArtworkPlacement = ImageDimensions & {

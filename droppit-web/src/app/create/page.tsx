@@ -1011,7 +1011,7 @@ export default function CreateDrop() {
                                                             <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image. The caption stays compact while the miniapp page holds the full details.</div>
                                                         </div>
                                                         <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,82,255,0.28)]">
-                                                            Mint 1
+                                                            Mint
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1115,6 +1115,7 @@ export default function CreateDrop() {
         </div>
     );
 }
+
 
 
 
