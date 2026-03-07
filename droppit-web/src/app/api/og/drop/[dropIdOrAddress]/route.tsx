@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -22,7 +23,8 @@ import {
     truncateText,
 } from "@/lib/og-utils";
 import { getAlchemyNetworkId, isProductionEnvironment } from "@/lib/chains";
-import { fitArtworkWithinBounds, MINIAPP_ARTWORK_BOUNDS, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
+import { MINIAPP_ARTWORK_BOUNDS, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
+import { formatEditionSizeLabel } from "@/lib/drop-sharing";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -183,7 +185,12 @@ async function readOnchainSnapshot(contractAddress: `0x${string}`): Promise<Onch
     }
 }
 
-async function readSupplyLabel(contractAddress: `0x${string}`): Promise<string | null> {
+type SupplyLabels = {
+    remainingLabel: string | null;
+    editionLabel: string | null;
+};
+
+async function readSupplyLabels(contractAddress: `0x${string}`): Promise<SupplyLabels> {
     try {
         const [editionSize, totalMinted] = await withTimeout(
             Promise.all([
@@ -202,10 +209,16 @@ async function readSupplyLabel(contractAddress: `0x${string}`): Promise<string |
             "Drop supply read"
         );
         const remaining = Math.max(0, Number(editionSize) - Number(totalMinted));
-        return remaining === 0 ? "Sold Out" : `${remaining} remaining`;
+        return {
+            remainingLabel: remaining === 0 ? "Sold Out" : `${remaining} remaining`,
+            editionLabel: formatEditionSizeLabel(editionSize.toString()),
+        };
     } catch (error) {
         console.warn("[OG Drop] Failed to fetch onchain supply:", error);
-        return null;
+        return {
+            remainingLabel: null,
+            editionLabel: null,
+        };
     }
 }
 
@@ -262,6 +275,7 @@ export async function GET(
         const resolvedTitle = drop?.title || onchain?.metadataName || null;
         const title = fallbackTitle(resolvedTitle, "Untitled Drop");
         const titleSafe = truncateText(title, 54);
+        const miniappTitleSafe = truncateText(title, 40);
         const art = normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
         const isMiniAppVariant = req.nextUrl.searchParams.get("variant") === "miniapp";
         const canvasHeight = isMiniAppVariant ? 800 : OG_TOKENS.height;
@@ -283,14 +297,13 @@ export async function GET(
         const chainLabel = getChainLabel();
         const statusLabel = formatStatusLabel(status);
         const statusColors = statusBadgeColors(status);
+        const supplyLabels = contractAddress
+            ? await readSupplyLabels(contractAddress as `0x${string}`)
+            : { remainingLabel: null, editionLabel: null };
         const supplyLabel = contractAddress && (status === "LIVE" || status === "PUBLISHED")
-            ? await readSupplyLabel(contractAddress as `0x${string}`)
+            ? supplyLabels.remainingLabel
             : null;
-
-        const miniappArtworkPlacement = fitArtworkWithinBounds({
-            maxWidth: MINIAPP_ARTWORK_BOUNDS.width,
-            maxHeight: MINIAPP_ARTWORK_BOUNDS.height,
-        });
+        const miniappSupplyLabel = supplyLabels.editionLabel;
 
         const hasCompleteCardData = Boolean(
             resolvedTitle?.trim() &&
@@ -319,61 +332,56 @@ export async function GET(
                                 width: "100%",
                                 height: "100%",
                                 display: "flex",
-                                flexDirection: "row",
-                                background: "linear-gradient(135deg, #020617 0%, #0B1021 100%)",
-                                borderRadius: 24,
-                                border: "1px solid rgba(255,255,255,0.1)",
+                                flexDirection: "column",
+                                background: "radial-gradient(circle at 50% 0%, rgba(34,211,238,0.10), transparent 42%), radial-gradient(circle at 50% 100%, rgba(124,58,237,0.12), transparent 42%), linear-gradient(160deg, #020617 0%, #081121 100%)",
+                                borderRadius: 30,
+                                border: "1px solid rgba(255,255,255,0.10)",
                                 overflow: "hidden",
                                 boxShadow: "0 28px 64px rgba(0,0,0,0.32)",
+                                padding: MINIAPP_SHARE_CARD.frameInset,
                             }}
                         >
                             <div
                                 style={{
-                                    width: (MINIAPP_SHARE_CARD.artPanelWidthRatio * 100) + "%",
-                                    height: "100%",
+                                    flex: 1,
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    padding: `${MINIAPP_SHARE_CARD.artPaddingY}px ${MINIAPP_SHARE_CARD.artPaddingX}px`,
-                                    background: "linear-gradient(160deg, rgba(2,6,23,0.96), rgba(8,15,32,0.92))",
-                                    borderRight: "1px solid rgba(255,255,255,0.1)",
+                                    padding: `${MINIAPP_SHARE_CARD.artPaddingTop}px ${MINIAPP_SHARE_CARD.artPaddingX}px ${MINIAPP_SHARE_CARD.artPaddingBottom}px`,
+                                    borderRadius: 24,
+                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    background: art
+                                        ? "radial-gradient(circle at 50% 15%, rgba(124,58,237,0.18), transparent 36%), radial-gradient(circle at 50% 85%, rgba(0,82,255,0.16), transparent 40%), rgba(3,7,18,0.72)"
+                                        : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
                                 }}
                             >
                                 <div
                                     data-share-card-art-frame="miniapp"
                                     style={{
-                                        width: "100%",
-                                        height: "100%",
+                                        width: MINIAPP_ARTWORK_BOUNDS.width,
+                                        height: MINIAPP_ARTWORK_BOUNDS.height,
+                                        maxWidth: "100%",
+                                        maxHeight: "100%",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
-                                        background: art ? "rgba(0,0,0,0.35)" : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
-                                        border: "1px solid rgba(255,255,255,0.1)",
                                         borderRadius: 28,
-                                        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.03)",
+                                        background: art ? "rgba(255,255,255,0.02)" : "transparent",
+                                        boxShadow: art ? "inset 0 0 0 1px rgba(255,255,255,0.03)" : "none",
                                     }}
                                 >
                                     {art ? (
-                                        <div
+                                        <img
+                                            alt=""
+                                            src={art}
+                                            data-share-card-artwork="miniapp"
                                             style={{
-                                                width: miniappArtworkPlacement.width,
-                                                height: miniappArtworkPlacement.height,
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
+                                                width: "100%",
+                                                height: "100%",
+                                                objectFit: "contain",
+                                                objectPosition: "center",
                                             }}
-                                        >
-                                            <img
-                                                alt=""
-                                                src={art}
-                                                data-share-card-artwork="miniapp"
-                                                style={{
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    objectFit: "contain",
-                                                }}
-                                            />
-                                        </div>
+                                        />
                                     ) : (
                                         <span style={{ fontSize: 240, fontWeight: 800, opacity: 0.9, color: "white" }}>{glyph}</span>
                                     )}
@@ -381,97 +389,58 @@ export async function GET(
                             </div>
 
                             <div
+                                data-share-card-copy-strip="miniapp"
                                 style={{
-                                    width: ((1 - MINIAPP_SHARE_CARD.artPanelWidthRatio) * 100) + "%",
-                                    height: "100%",
+                                    height: MINIAPP_SHARE_CARD.infoStripHeight,
+                                    minHeight: MINIAPP_SHARE_CARD.infoStripHeight,
+                                    marginTop: MINIAPP_SHARE_CARD.infoStripGap,
+                                    padding: "0 32px",
                                     display: "flex",
-                                    flexDirection: "column",
+                                    alignItems: "center",
                                     justifyContent: "space-between",
-                                    padding: "60px 48px",
-                                    background: "linear-gradient(180deg, rgba(2,6,23,0.92), rgba(3,7,18,0.84))",
+                                    gap: 24,
+                                    borderRadius: 24,
+                                    border: "1px solid rgba(255,255,255,0.10)",
+                                    background: "linear-gradient(180deg, rgba(10,15,30,0.78), rgba(10,15,30,0.62))",
                                 }}
                             >
-                                <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                                    <div style={{ display: "flex", gap: 12 }}>
-                                        <span
-                                            style={{
-                                                fontSize: 22,
-                                                padding: "8px 16px",
-                                                borderRadius: 999,
-                                                border: `1px solid ${statusColors.border}`,
-                                                color: statusColors.fg,
-                                                background: statusColors.bg,
-                                            }}
-                                        >
-                                            {statusLabel}
-                                        </span>
-                                        <span
-                                            style={{
-                                                fontSize: 22,
-                                                padding: "8px 16px",
-                                                borderRadius: 999,
-                                                border: `1px solid ${OG_BRAND.blue}66`,
-                                                color: "#cfe2ff",
-                                                background: `${OG_BRAND.blue}2e`,
-                                            }}
-                                        >
-                                            {chainLabel}
-                                        </span>
-                                    </div>
-
-                                    <div
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        flex: 1,
+                                        alignItems: "center",
+                                        minWidth: 0,
+                                    }}
+                                >
+                                    <span
                                         style={{
-                                            fontSize: 56,
+                                            fontSize: 46,
                                             lineHeight: 1.05,
                                             fontWeight: 800,
-                                            letterSpacing: "-0.03em",
+                                            letterSpacing: "-0.035em",
                                             color: OG_BRAND.text0,
                                         }}
                                     >
-                                        {titleSafe}
-                                    </div>
-
-                                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                                        <span
-                                            style={{
-                                                fontSize: 26,
-                                                color: OG_BRAND.text0,
-                                                background: "rgba(11,16,32,0.78)",
-                                                border: "1px solid rgba(34,211,238,0.28)",
-                                                borderRadius: 16,
-                                                padding: "10px 20px",
-                                            }}
-                                        >
-                                            {price}
-                                        </span>
-                                        {supplyLabel && (
-                                            <span
-                                                style={{
-                                                    fontSize: 26,
-                                                    color: supplyLabel === "Sold Out" ? "#ef4444" : "#bae6fd",
-                                                    background: supplyLabel === "Sold Out" ? "rgba(239,68,68,0.1)" : "rgba(14,165,233,0.1)",
-                                                    border: `1px solid ${supplyLabel === "Sold Out" ? "rgba(239,68,68,0.3)" : "rgba(14,165,233,0.3)"}`,
-                                                    borderRadius: 16,
-                                                    padding: "10px 20px",
-                                                }}
-                                            >
-                                                {supplyLabel}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-                                    <span style={{ fontSize: 24, color: OG_BRAND.text1 }}>
-                                        Creator: {creator}
-                                    </span>
-                                    <span style={{ fontSize: 20, color: OG_BRAND.text2 }}>
-                                        Source: {creatorSource}
-                                    </span>
-                                    <span style={{ fontSize: 20, color: OG_BRAND.text2 }}>
-                                        Contract: {contractSnippet}
+                                        {miniappTitleSafe}
                                     </span>
                                 </div>
+
+                                {miniappSupplyLabel && (
+                                    <span
+                                        style={{
+                                            fontSize: 24,
+                                            fontWeight: 700,
+                                            color: "#dbeafe",
+                                            background: "rgba(14,165,233,0.12)",
+                                            border: "1px solid rgba(14,165,233,0.22)",
+                                            borderRadius: 999,
+                                            padding: "12px 18px",
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {miniappSupplyLabel}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     ) : (
@@ -607,3 +576,7 @@ export async function GET(
         return new Response("Failed to generate image", { status: 500 });
     }
 }
+
+
+
+

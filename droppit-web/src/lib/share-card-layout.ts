@@ -5,9 +5,12 @@ export const MINIAPP_SHARE_CARD = {
     canvasHeight: 800,
     stagePaddingX: 56,
     stagePaddingY: 44,
-    artPanelWidthRatio: 0.55,
-    artPaddingX: 40,
-    artPaddingY: 40,
+    frameInset: 18,
+    artPaddingX: 34,
+    artPaddingTop: 34,
+    artPaddingBottom: 20,
+    infoStripHeight: 112,
+    infoStripGap: 16,
     previewMaxWidth: 620,
 } as const;
 
@@ -24,11 +27,18 @@ function roundPlacement(value: number): number {
 export function getMiniappArtworkBounds(): ImageDimensions {
     const cardWidth = MINIAPP_SHARE_CARD.canvasWidth - (MINIAPP_SHARE_CARD.stagePaddingX * 2);
     const cardHeight = MINIAPP_SHARE_CARD.canvasHeight - (MINIAPP_SHARE_CARD.stagePaddingY * 2);
-    const artPanelWidth = cardWidth * MINIAPP_SHARE_CARD.artPanelWidthRatio;
+    const innerWidth = cardWidth - (MINIAPP_SHARE_CARD.frameInset * 2);
+    const innerHeight = cardHeight - (MINIAPP_SHARE_CARD.frameInset * 2);
 
     return {
-        width: roundPlacement(artPanelWidth - (MINIAPP_SHARE_CARD.artPaddingX * 2)),
-        height: roundPlacement(cardHeight - (MINIAPP_SHARE_CARD.artPaddingY * 2)),
+        width: roundPlacement(innerWidth - (MINIAPP_SHARE_CARD.artPaddingX * 2)),
+        height: roundPlacement(
+            innerHeight
+            - MINIAPP_SHARE_CARD.infoStripHeight
+            - MINIAPP_SHARE_CARD.infoStripGap
+            - MINIAPP_SHARE_CARD.artPaddingTop
+            - MINIAPP_SHARE_CARD.artPaddingBottom
+        ),
     };
 }
 

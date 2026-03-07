@@ -151,6 +151,7 @@ describe("OG Drop Rendering", () => {
 
         const renderedText = collectText(mockImageResponse.mock.calls[0][0]);
         expect(renderedText).toContain("Founder's Key");
+        expect(renderedText).toContain("Creator:");
         expect(renderedText).toContain("Onchain creator");
         expect(renderedText).not.toContain("Untitled Drop");
     });
@@ -194,7 +195,7 @@ describe("OG Drop Rendering", () => {
         expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmArtwork");
     });
 
-    it("renders the miniapp variant with contained artwork and no in-card CTA", async () => {
+    it("renders the miniapp variant as artwork-first with a minimal bottom strip", async () => {
         mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
             if (functionName === "owner") return ADDRESS;
             if (functionName === "uri") return "ipfs://QmMetadata";
@@ -221,11 +222,18 @@ describe("OG Drop Rendering", () => {
         const renderedText = collectText(renderedTree);
         const miniappImage = findNodeByProp(renderedTree, "data-share-card-artwork", "miniapp");
         const artFrame = findNodeByProp(renderedTree, "data-share-card-art-frame", "miniapp");
+        const copyStrip = findNodeByProp(renderedTree, "data-share-card-copy-strip", "miniapp");
 
         expect(renderedText).toContain("Founder's Key");
-        expect(renderedText).not.toContain("Open in Farcaster Mini App");
-        expect(miniappImage?.props?.style).toMatchObject({ objectFit: "contain" });
+        expect(renderedText).toContain("100 editions");
+        expect(renderedText).not.toContain("Creator:");
+        expect(renderedText).not.toContain("Source:");
+        expect(renderedText).not.toContain("Contract:");
+        expect(renderedText).not.toContain("Base Sepolia");
+        expect(renderedText).not.toContain("Free");
+        expect(miniappImage?.props?.style).toMatchObject({ objectFit: "contain", objectPosition: "center" });
         expect(artFrame?.props?.style).toMatchObject({ borderRadius: 28 });
+        expect(copyStrip?.props?.style).toMatchObject({ borderRadius: 24 });
     });
 
     it("marks fallback OG renders as no-store when metadata stays incomplete", async () => {

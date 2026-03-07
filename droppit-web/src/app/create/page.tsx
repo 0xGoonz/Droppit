@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { formatEther, parseEther, keccak256, encodePacked, isAddress } from "viem";
@@ -24,7 +26,8 @@ import { FACTORY_ABI } from "@/lib/contracts";
 import { useChainPreference } from "@/providers/OnchainKitProvider";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { publishDropDraft } from "@/lib/publish-drop";
-import { creatorAttribution, formatMintPriceWei, getChainLabel, normalizeIpfsToHttp } from "@/lib/og-utils";
+import { normalizeIpfsToHttp } from "@/lib/og-utils";
+import { formatEditionSizeLabel } from "@/lib/drop-sharing";
 import { fitArtworkWithinBounds, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
 
 export default function CreateDrop() {
@@ -534,26 +537,7 @@ export default function CreateDrop() {
             }
             : { width: "100%", height: "100%" }
         : null;
-    const previewCreator = creatorAttribution(address || null, null, formData.farcasterHandle || null);
-    const previewSourceLabel = formData.farcasterHandle
-        ? "Wallet-linked profile"
-        : address
-            ? "Creator wallet"
-            : "Pending creator";
-    const previewSupplyLabel = Number(formData.editionSize) > 0
-        ? formData.editionSize + " remaining"
-        : "Supply pending";
-    const previewMintInput = formData.mintPrice.trim();
-    const previewPriceLabel = !previewMintInput || Number(previewMintInput) === 0
-        ? "Free"
-        : (() => {
-            try {
-                return formatMintPriceWei(parseEther(previewMintInput).toString());
-            } catch {
-                return previewMintInput + " ETH";
-            }
-        })();
-    const previewChainLabel = getChainLabel();
+    const previewSupplyLabel = formatEditionSizeLabel(formData.editionSize) || "Supply pending";
 
     return (
         <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
@@ -979,41 +963,25 @@ export default function CreateDrop() {
                                     <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#05070f]">
                                         <div className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-6">
                                             <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
-                                            <p className="text-xs text-slate-500">This previews the real 3:2 share image used in Warpcast or X. Warpcast renders the action button below the image.</p>
+                                            <p className="text-xs text-slate-500">This previews the real 3:2 miniapp share image used in Warpcast. The full uploaded artwork is preserved without cropping.</p>
                                         </div>
                                         <div className="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
                                             <div className="mx-auto w-full" style={{ maxWidth: MINIAPP_SHARE_CARD.previewMaxWidth }}>
                                                 <div className="rounded-[28px] border border-white/10 bg-[#040916]/92 p-3 shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:p-4">
-                                                    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(0,82,255,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(34,211,238,0.14),transparent_34%),linear-gradient(180deg,#020617,#081121)] shadow-[0_20px_48px_rgba(0,0,0,0.34)]" style={{ aspectRatio: "3 / 2" }}>
-                                                        <div className="flex h-full w-full p-[4.5%]">
-                                                            <div className="flex h-full w-[55%] items-center justify-center overflow-hidden rounded-l-[20px] border-r border-white/10 bg-[linear-gradient(160deg,rgba(2,6,23,0.96),rgba(8,15,32,0.92))] px-[6.5%] py-[5.5%]">
-                                                                <div className="flex h-full w-full items-center justify-center rounded-[22px] border border-white/10 bg-black/35 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+                                                    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.10),transparent_42%),radial-gradient(circle_at_bottom,rgba(124,58,237,0.12),transparent_42%),linear-gradient(160deg,#020617,#081121)] shadow-[0_20px_48px_rgba(0,0,0,0.34)]" style={{ aspectRatio: "3 / 2" }}>
+                                                        <div className="flex h-full w-full flex-col p-[3%]">
+                                                            <div className="flex flex-1 items-center justify-center rounded-[22px] border border-white/10 bg-[radial-gradient(circle_at_50%_15%,rgba(124,58,237,0.18),transparent_36%),radial-gradient(circle_at_50%_85%,rgba(0,82,255,0.16),transparent_40%),rgba(3,7,18,0.72)] px-[6%] pt-[6%] pb-[3.5%]">
+                                                                <div className="flex items-center justify-center rounded-[22px] bg-white/[0.02] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]" style={{ width: previewArtworkFrameStyle?.width || "100%", height: previewArtworkFrameStyle?.height || "100%" }}>
                                                                     {previewImageUrl ? (
-                                                                        <div className="flex items-center justify-center" style={previewArtworkFrameStyle || { width: "100%", height: "100%" }}>
-                                                                            <img src={previewImageUrl} alt="" className="h-full w-full object-contain object-center drop-shadow-[0_18px_32px_rgba(0,0,0,0.4)]" />
-                                                                        </div>
+                                                                        <img src={previewImageUrl} alt="" className="h-full w-full object-contain object-center" />
                                                                     ) : (
                                                                         <div className="text-6xl font-bold text-white/50 sm:text-7xl">{previewGlyph}</div>
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex h-full w-[45%] flex-col justify-between bg-[linear-gradient(180deg,rgba(2,6,23,0.92),rgba(3,7,18,0.84))] px-[6.5%] py-[7.5%]">
-                                                                <div className="flex flex-col gap-3 sm:gap-4">
-                                                                    <div className="flex flex-wrap gap-2 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-300 sm:text-[10px]">
-                                                                        <span className="rounded-full border border-[#16a34a]/35 bg-[#16a34a]/18 px-2.5 py-1 text-[#86efac]">Live</span>
-                                                                        <span className="rounded-full border border-[#0052FF]/35 bg-[#0052FF]/18 px-2.5 py-1 text-[#cfe2ff]">{previewChainLabel}</span>
-                                                                    </div>
-                                                                    <h1 className="text-base font-bold leading-tight text-white sm:text-[28px] sm:leading-[1.05]">{previewTitle}</h1>
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        <span className="rounded-2xl border border-[#22D3EE]/30 bg-[#0B1020]/80 px-3 py-1.5 text-xs font-medium text-white sm:text-sm">{previewPriceLabel}</span>
-                                                                        <span className="rounded-2xl border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-100 sm:text-sm">{previewSupplyLabel}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex flex-col gap-1.5 border-t border-white/10 pt-3 text-[10px] text-slate-300 sm:gap-2 sm:pt-4 sm:text-xs">
-                                                                    <div>Creator: {previewCreator}</div>
-                                                                    <div className="text-slate-400">Source: {previewSourceLabel}</div>
-                                                                    <div className="text-slate-500">Contract: After deploy</div>
-                                                                </div>
+                                                            <div className="mt-[2.5%] flex min-h-[84px] items-center justify-between gap-3 rounded-[20px] border border-white/10 bg-white/[0.06] px-[5%] py-[3%]">
+                                                                <h1 className="min-w-0 flex-1 truncate text-base font-bold leading-tight text-white sm:text-[28px] sm:leading-[1.05]">{previewTitle}</h1>
+                                                                <span className="shrink-0 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-100 sm:text-sm">{previewSupplyLabel}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1021,7 +989,7 @@ export default function CreateDrop() {
                                                     <div className="mt-3 flex flex-col gap-3 rounded-[20px] border border-white/10 bg-[#07101f]/92 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                                                         <div>
                                                             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Warpcast Post</div>
-                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image.</div>
+                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image, while the artwork stays fully visible.</div>
                                                         </div>
                                                         <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,82,255,0.28)]">
                                                             Mint 1
@@ -1128,5 +1096,9 @@ export default function CreateDrop() {
         </div>
     );
 }
+
+
+
+
 
 

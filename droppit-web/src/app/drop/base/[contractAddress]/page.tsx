@@ -22,7 +22,8 @@ import { createClient } from "@supabase/supabase-js";
 import { useChainPreference } from "@/providers/OnchainKitProvider";
 import { PROTOCOL_FEE_PER_MINT_WEI, hasChainContractConfig } from "@/lib/contracts";
 import { BrandLockup } from "@/components/brand/BrandLockup";
-import { normalizeIpfsToHttp } from "@/lib/og-utils";
+import { formatMintPriceWei, normalizeIpfsToHttp } from "@/lib/og-utils";
+import { buildDropShareCaption, buildWarpcastComposeHref } from "@/lib/drop-sharing";
 import {
     type ReferralPayload,
     normalizeReferralPayloadFromSearchParams,
@@ -405,6 +406,33 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         ? `https://warpcast.com/${farcasterHandle}`
         : null;
     const creatorExplorerHref = hasCreatorAddress ? `${explorerUrl}/address/${creatorAddress}` : null;
+    const sharePriceLabel = formatMintPriceWei(rawPrice.toString());
+    const creatorShareCaption = buildDropShareCaption({
+        title: drop.title,
+        editionSize: supply,
+        priceLabel: sharePriceLabel,
+        chainLabel: selectedChain.name,
+        creatorHandle: farcasterHandle,
+        intro: `"${drop.title}" is live on @droppit.`,
+        cta: "Collect here:",
+    });
+    const creatorShareComposeHref = buildWarpcastComposeHref({
+        text: creatorShareCaption,
+        embedUrl: shareHref,
+    });
+    const collectorShareCaption = buildDropShareCaption({
+        title: drop.title,
+        editionSize: supply,
+        priceLabel: sharePriceLabel,
+        chainLabel: selectedChain.name,
+        creatorHandle: farcasterHandle,
+        intro: `I just collected "${drop.title}" on @droppit.`,
+        cta: "Check out the drop:",
+    });
+    const collectorShareComposeHref = buildWarpcastComposeHref({
+        text: collectorShareCaption,
+        embedUrl: shareHref,
+    });
 
     const handleMint = async () => {
         if (isSoldOut) return alert("This drop is sold out.");
@@ -770,7 +798,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                     <a
-                                        href={`https://warpcast.com/~/compose?text=${encodeURIComponent(`I just collected "${drop.title}" on @droppit!\n\nCheck out the drop:`)}&embeds[]=${encodeURIComponent(shareHref)}`}
+                                        href={collectorShareComposeHref}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center justify-center gap-2 py-3 rounded-xl bg-[#8A63D2]/20 hover:bg-[#8A63D2]/30 border border-[#8A63D2]/40 text-[#8A63D2] text-sm font-semibold transition-colors"
@@ -816,12 +844,22 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
 
 
-                        <button
-                            onClick={handleShare}
-                            className="w-full mt-4 py-3 rounded-full font-bold text-sm text-slate-400 border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:text-white transition-all"
-                        >
-                            {copied ? "Link Copied! ✓" : "Share Link 🔗"}
-                        </button>
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <a
+                                href={creatorShareComposeHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-2 rounded-full border border-[#8A63D2]/40 bg-[#8A63D2]/20 px-4 py-3 text-sm font-semibold text-[#c5b4ec] transition-colors hover:bg-[#8A63D2]/30"
+                            >
+                                Share on Farcaster
+                            </a>
+                            <button
+                                onClick={handleShare}
+                                className="w-full rounded-full border border-white/[0.06] bg-white/[0.03] py-3 text-sm font-bold text-slate-400 transition-all hover:bg-white/[0.06] hover:text-white"
+                            >
+                                {copied ? "Link Copied" : "Copy Share Link"}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Locked Content Unlock */}
@@ -1073,5 +1111,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         </div >
     );
 }
+
+
 
 
