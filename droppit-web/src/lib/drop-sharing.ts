@@ -5,7 +5,7 @@ function normalizeHandle(raw: string | null | undefined): string | null {
 }
 
 function parseEditionSize(raw: bigint | number | string | null | undefined): bigint | null {
-    if (typeof raw === "bigint") return raw > 0n ? raw : null;
+    if (typeof raw === "bigint") return raw > BigInt(0) ? raw : null;
     if (typeof raw === "number") {
         if (!Number.isFinite(raw) || raw <= 0) return null;
         return BigInt(Math.floor(raw));
@@ -14,7 +14,7 @@ function parseEditionSize(raw: bigint | number | string | null | undefined): big
         const trimmed = raw.trim();
         if (!trimmed || !/^[0-9]+$/.test(trimmed)) return null;
         const parsed = BigInt(trimmed);
-        return parsed > 0n ? parsed : null;
+        return parsed > BigInt(0) ? parsed : null;
     }
     return null;
 }
@@ -22,7 +22,7 @@ function parseEditionSize(raw: bigint | number | string | null | undefined): big
 export function formatEditionSizeLabel(raw: bigint | number | string | null | undefined): string | null {
     const parsed = parseEditionSize(raw);
     if (!parsed) return null;
-    if (parsed === 1n) return "1/1";
+    if (parsed === BigInt(1)) return "1/1";
     return `${parsed.toString()} editions`;
 }
 
@@ -63,4 +63,5 @@ export function buildDropShareCaption(params: {
     lines.push("", params.cta.trim());
     return lines.join("\n");
 }
+
 
