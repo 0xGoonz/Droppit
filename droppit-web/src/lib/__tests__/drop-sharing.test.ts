@@ -9,30 +9,30 @@ describe("drop-sharing", () => {
         expect(formatEditionSizeLabel(0)).toBeNull();
     });
 
-    it("builds concise share captions without technical metadata", () => {
+    it("builds concise one-line share captions without technical metadata", () => {
         const caption = buildDropShareCaption({
             title: "Founder's Key",
             priceLabel: "Free",
             chainLabel: "Base",
-            intro: '"Founder\'s Key" is live on @droppit.',
-            cta: "Collect here:",
+            intro: "\"Founder's Key\" is live on @droppit.",
+            cta: "Collect:",
         });
 
-        expect(caption).toContain("Free | Base");
-        expect(caption).toContain("Collect here:");
+        expect(caption).toBe("\"Founder's Key\" is live on @droppit. Free on Base. Collect:");
+        expect(caption).not.toContain("\n");
         expect(caption).not.toContain("331 editions");
         expect(caption).not.toContain("Contract:");
         expect(caption).not.toContain("Source:");
     });
 
-    it("normalizes creator handles and compose links", () => {
+    it("keeps creator handles out of the compact caption and preserves compose links", () => {
         const caption = buildDropShareCaption({
             title: "Founder's Key",
             priceLabel: "0.01 ETH",
             chainLabel: "Base",
             creatorHandle: "@DropArtist",
-            intro: 'I just collected "Founder\'s Key" on @droppit.',
-            cta: "Check out the drop:",
+            intro: "I just collected \"Founder's Key\" on @droppit.",
+            cta: "Check it out:",
         });
         const composeHref = buildWarpcastComposeHref({
             text: caption,
@@ -40,11 +40,12 @@ describe("drop-sharing", () => {
         });
         const parsed = new URL(composeHref);
 
-        expect(caption).toContain("by @dropartist");
+        expect(caption).toBe("I just collected \"Founder's Key\" on @droppit. 0.01 ETH on Base. Check it out:");
+        expect(caption).not.toContain("@dropartist");
+        expect(caption).not.toContain("\n");
         expect(parsed.origin + parsed.pathname).toBe("https://warpcast.com/~/compose");
-        expect(parsed.searchParams.get("text")).toContain("I just collected \"Founder's Key\" on @droppit.");
+        expect(parsed.searchParams.get("text")).toBe("I just collected \"Founder's Key\" on @droppit. 0.01 ETH on Base. Check it out:");
         expect(parsed.searchParams.getAll("embeds[]")).toEqual(["https://droppit.ai/s/0xabc"]);
     });
 });
-
 

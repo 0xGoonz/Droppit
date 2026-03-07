@@ -971,9 +971,9 @@ export default function CreateDrop() {
                                         </div>
                                         <div className="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
                                             <div className="mx-auto w-full" style={{ maxWidth: MINIAPP_SHARE_CARD.previewMaxWidth }}>
-                                                <div className="rounded-[28px] border border-white/10 bg-[#040916]/92 shadow-[0_24px_60px_rgba(0,0,0,0.35)]" style={{ padding: previewFrameInset }}>
+                                                <div className="rounded-[28px] border border-white/[0.08] bg-[#040916]/92 shadow-[0_20px_52px_rgba(0,0,0,0.30)]" style={{ padding: previewFrameInset }}>
                                                     <div
-                                                        className="relative overflow-hidden rounded-[26px] border border-white/10 bg-[#020617] shadow-[0_20px_48px_rgba(0,0,0,0.34)]"
+                                                        className="relative overflow-hidden rounded-[26px] border border-white/[0.04] bg-[#020617] shadow-[0_18px_44px_rgba(0,0,0,0.30)]"
                                                         style={{ aspectRatio: "3 / 2" }}
                                                     >
                                                         {previewImageUrl && (
@@ -995,9 +995,21 @@ export default function CreateDrop() {
                                                             className="relative flex h-full w-full items-center justify-center"
                                                             style={{ padding: `${previewArtPaddingTop} ${previewArtPaddingX} ${previewArtPaddingBottom}` }}
                                                         >
-                                                            <div className="flex items-center justify-center rounded-[24px]" style={{ width: previewArtworkFrameStyle?.width || "100%", height: previewArtworkFrameStyle?.height || "100%" }}>
+                                                            <div className="relative flex items-center justify-center rounded-[24px]" style={{ width: previewArtworkFrameStyle?.width || "100%", height: previewArtworkFrameStyle?.height || "100%" }}>
                                                                 {previewImageUrl ? (
-                                                                    <img src={previewImageUrl} alt="" className="h-full w-full object-contain object-center" />
+                                                                    <>
+                                                                        <img
+                                                                            src={previewImageUrl}
+                                                                            alt=""
+                                                                            className="absolute inset-0 h-full w-full object-contain object-center"
+                                                                            style={{
+                                                                                opacity: MINIAPP_SHARE_CARD.seamFeatherOpacity,
+                                                                                filter: `blur(${MINIAPP_SHARE_CARD.seamFeatherBlurPx}px)`,
+                                                                                transform: `scale(${MINIAPP_SHARE_CARD.seamFeatherScale})`,
+                                                                            }}
+                                                                        />
+                                                                        <img src={previewImageUrl} alt="" className="relative z-10 h-full w-full object-contain object-center" />
+                                                                    </>
                                                                 ) : (
                                                                     <div className="text-6xl font-bold text-white/50 sm:text-7xl">{previewGlyph}</div>
                                                                 )}
@@ -1008,7 +1020,7 @@ export default function CreateDrop() {
                                                     <div className="mt-3 flex flex-col gap-3 rounded-[20px] border border-white/10 bg-[#07101f]/92 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                                                         <div>
                                                             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Warpcast Post</div>
-                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image. Title, price, and other details live in the caption and miniapp page.</div>
+                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image. The caption stays compact while the miniapp page holds the full details.</div>
                                                         </div>
                                                         <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,82,255,0.28)]">
                                                             Mint 1

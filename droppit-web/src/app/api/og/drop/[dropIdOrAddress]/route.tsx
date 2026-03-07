@@ -372,9 +372,9 @@ export async function GET(
                                 backgroundColor: "#020617",
                                 backgroundImage: "radial-gradient(circle at 50% 0%, rgba(34,211,238,0.10), transparent 42%), radial-gradient(circle at 50% 100%, rgba(124,58,237,0.12), transparent 42%), linear-gradient(160deg, #020617 0%, #081121 100%)",
                                 borderRadius: 30,
-                                border: "1px solid rgba(255,255,255,0.10)",
+                                border: "1px solid rgba(255,255,255,0.07)",
                                 overflow: "hidden",
-                                boxShadow: "0 28px 64px rgba(0,0,0,0.32)",
+                                boxShadow: "0 24px 56px rgba(0,0,0,0.28)",
                                 padding: MINIAPP_SHARE_CARD.frameInset,
                             }}
                         >
@@ -388,7 +388,7 @@ export async function GET(
                                     justifyContent: "center",
                                     overflow: "hidden",
                                     borderRadius: 26,
-                                    border: "1px solid rgba(255,255,255,0.08)",
+                                    border: "1px solid rgba(255,255,255,0.04)",
                                     backgroundColor: art ? "rgba(3,7,18,0.78)" : undefined,
                                     backgroundImage: art
                                         ? "linear-gradient(180deg, rgba(2,6,23,0.12), rgba(2,6,23,0.32))"
@@ -450,6 +450,7 @@ export async function GET(
                                             height: MINIAPP_ARTWORK_BOUNDS.height,
                                             maxWidth: "100%",
                                             maxHeight: "100%",
+                                            position: "relative",
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
@@ -457,20 +458,46 @@ export async function GET(
                                         }}
                                     >
                                         {art ? (
-                                            <img
-                                                alt=""
-                                                src={art}
-                                                width={MINIAPP_ARTWORK_BOUNDS.width}
-                                                height={MINIAPP_ARTWORK_BOUNDS.height}
-                                                data-share-card-artwork="miniapp"
-                                                style={{
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    display: "block",
-                                                    objectFit: "contain",
-                                                    objectPosition: "center",
-                                                }}
-                                            />
+                                            <>
+                                                <img
+                                                    alt=""
+                                                    src={art}
+                                                    width={MINIAPP_ARTWORK_BOUNDS.width}
+                                                    height={MINIAPP_ARTWORK_BOUNDS.height}
+                                                    data-share-card-art-feather="miniapp"
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: 0,
+                                                        right: 0,
+                                                        bottom: 0,
+                                                        left: 0,
+                                                        width: "100%",
+                                                        height: "100%",
+                                                        display: "block",
+                                                        objectFit: "contain",
+                                                        objectPosition: "center",
+                                                        opacity: MINIAPP_SHARE_CARD.seamFeatherOpacity,
+                                                        filter: `blur(${MINIAPP_SHARE_CARD.seamFeatherBlurPx}px)`,
+                                                        transform: `scale(${MINIAPP_SHARE_CARD.seamFeatherScale})`,
+                                                    }}
+                                                />
+                                                <img
+                                                    alt=""
+                                                    src={art}
+                                                    width={MINIAPP_ARTWORK_BOUNDS.width}
+                                                    height={MINIAPP_ARTWORK_BOUNDS.height}
+                                                    data-share-card-artwork="miniapp"
+                                                    style={{
+                                                        position: "relative",
+                                                        zIndex: 1,
+                                                        width: "100%",
+                                                        height: "100%",
+                                                        display: "block",
+                                                        objectFit: "contain",
+                                                        objectPosition: "center",
+                                                    }}
+                                                />
+                                            </>
                                         ) : (
                                             <span style={{ fontSize: 240, fontWeight: 800, opacity: 0.9, color: "white" }}>{glyph}</span>
                                         )}

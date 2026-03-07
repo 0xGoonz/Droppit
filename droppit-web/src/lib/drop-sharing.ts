@@ -1,9 +1,3 @@
-function normalizeHandle(raw: string | null | undefined): string | null {
-    if (!raw) return null;
-    const cleaned = raw.trim().replace(/^@+/, "").toLowerCase();
-    return cleaned || null;
-}
-
 function parseEditionSize(raw: bigint | number | string | null | undefined): bigint | null {
     if (typeof raw === "bigint") return raw > BigInt(0) ? raw : null;
     if (typeof raw === "number") {
@@ -43,24 +37,19 @@ export function buildDropShareCaption(params: {
 }): string {
     const title = params.title.trim() || "Untitled Drop";
     const intro = params.intro.trim() || `"${title}" is live on @droppit.`;
-    const lines: string[] = [intro];
     const details = [
         params.priceLabel?.trim() || null,
         params.chainLabel?.trim() || null,
     ].filter((value): value is string => Boolean(value));
-    const normalizedHandle = normalizeHandle(params.creatorHandle);
+    const detailSentence = details.length === 2
+        ? `${details[0]} on ${details[1]}.`
+        : details.length === 1
+            ? `${details[0]}.`
+            : null;
 
-    if (details.length > 0) {
-        lines.push("", details.join(" | "));
-    }
-
-    if (normalizedHandle) {
-        lines.push(`by @${normalizedHandle}`);
-    }
-
-    lines.push("", params.cta.trim());
-    return lines.join("\n");
+    return [intro, detailSentence, params.cta.trim()]
+        .filter((value): value is string => Boolean(value))
+        .join(" ");
 }
-
 
 

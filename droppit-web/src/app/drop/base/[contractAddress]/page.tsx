@@ -413,7 +413,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         chainLabel: selectedChain.name,
         creatorHandle: farcasterHandle,
         intro: `"${drop.title}" is live on @droppit.`,
-        cta: "Collect here:",
+        cta: "Collect:",
     });
     const creatorShareComposeHref = buildWarpcastComposeHref({
         text: creatorShareCaption,
@@ -425,7 +425,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         chainLabel: selectedChain.name,
         creatorHandle: farcasterHandle,
         intro: `I just collected "${drop.title}" on @droppit.`,
-        cta: "Check out the drop:",
+        cta: "Check it out:",
     });
     const collectorShareComposeHref = buildWarpcastComposeHref({
         text: collectorShareCaption,
@@ -1109,6 +1109,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         </div >
     );
 }
+
 
 
 
