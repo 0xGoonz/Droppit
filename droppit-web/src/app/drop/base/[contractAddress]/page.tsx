@@ -3,13 +3,12 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { formatEther, isAddress } from "viem";
-import { useReadContracts, useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, useEnsName } from "wagmi";
+import { useReadContracts, useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, useEnsName } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import {
     ConnectWallet,
     Wallet,
     WalletDropdown,
-    WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet';
 import {
     Avatar,
@@ -30,7 +29,12 @@ import {
     serializeUtm,
 } from "@/lib/attribution";
 import { trackEvent } from "@/lib/analytics";
-
+import {
+    getSessionStorageSafe,
+    hasSelectedChainMismatch,
+    shouldShowMiniAppConnectingState,
+    suppressMiniAppAutoConnect,
+} from "@/lib/miniapp-wallet";
 // Minimal Drop1155 ABI for reads and writes
 const dropAbi = [
     { type: 'function', name: 'editionSize', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
@@ -67,6 +71,8 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         selectedChainId,
         setSelectedChainId,
         hasSelectedChainContractConfig,
+        isMiniAppEnvironment,
+        isMiniAppWalletBootstrapping,
     } = useChainPreference();
     const explorerUrl = selectedChain.blockExplorers?.default.url || "https://basescan.org";
     const isMintEnabledForSelectedChain = hasSelectedChainContractConfig && hasChainContractConfig(selectedChain.id);
@@ -95,8 +101,36 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     // Write Hooks
     const { data: hash, writeContractAsync, isPending } = useWriteContract();
     const { switchChainAsync } = useSwitchChain();
+    const { disconnect } = useDisconnect();
+    const [isSwitchingChain, setIsSwitchingChain] = useState(false);
     const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({ hash });
     const { signMessageAsync } = useSignMessage();
+    const hasConnectedWallet = Boolean(userAddress);
+    const showMiniAppWalletConnecting = shouldShowMiniAppConnectingState({
+        isMiniAppEnvironment,
+        isMiniAppWalletBootstrapping,
+        hasConnectedWallet,
+    });
+    const shouldPromptForChainSwitch = hasSelectedChainMismatch({
+        hasConnectedWallet,
+        walletChainId: chainId,
+        selectedChainId: selectedChain.id,
+    });
+    const handleWalletDisconnect = React.useCallback(() => {
+        suppressMiniAppAutoConnect(getSessionStorageSafe());
+        disconnect();
+    }, [disconnect]);
+    const handleSwitchToSelectedChain = React.useCallback(async () => {
+        setIsSwitchingChain(true);
+        try {
+            await switchChainAsync({ chainId: selectedChain.id });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : `Switch to ${selectedChain.name} to continue.`;
+            alert(message);
+        } finally {
+            setIsSwitchingChain(false);
+        }
+    }, [selectedChain, switchChainAsync]);
 
     // Fetch Onchain Data
     const { data, isLoading, isError, refetch } = useReadContracts({
@@ -394,14 +428,11 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
             }
             setIsLoadingCreatorIdentity(false);
         };
+        void fetchIdentity();
+    }, [creatorAddress, hasCreatorAddress]);
 
-        fetchIdentity();
-    }, [hasCreatorAddress, creatorAddress]);
-
-    const farcasterHandle = creatorIdentity?.handle || null;
-    const creatorDisplay = farcasterHandle
-        ? `@${farcasterHandle}`
-        : ensName || (hasCreatorAddress ? shortAddress(creatorAddress) : "Unknown");
+    const farcasterHandle = creatorIdentity?.handle ?? null;
+    const creatorDisplay = farcasterHandle ? `@${farcasterHandle}` : (ensName || shortAddress(creatorAddress || "Unknown creator"));
     const creatorProfileHref = farcasterHandle
         ? `https://warpcast.com/${farcasterHandle}`
         : null;
@@ -453,17 +484,11 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         }
 
         try {
-            // Force Network Switch if on the wrong chain
             if (chainId !== selectedChain.id) {
-                try {
-                    await switchChainAsync({ chainId: selectedChain.id });
-                } catch {
-                    throw new Error("You must switch to the correct network to mint.");
-                }
+                throw new Error(`Switch to ${selectedChain.name} to mint.`);
             }
 
             setIsMinting(true);
-
             // Item 22: Track mint click event
             trackEvent("mint_click", {
                 contract_address: contractAddress,
@@ -581,7 +606,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 <EthBalance className="text-[#22D3EE] font-bold" />
                             </Identity>
                             <div className="h-px bg-white/[0.06] w-full" />
-                            <WalletDropdownDisconnect className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold" text="Disconnect" />
+                            <button type="button" onClick={handleWalletDisconnect} className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold">
+                                Disconnect
+                            </button>
                         </WalletDropdown>
                     </Wallet>
                 </div>
@@ -814,30 +841,54 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 </div>
                             </div>
                         ) : (
-                            <button
-                                onClick={handleMint}
-                                disabled={!isMintEnabledForSelectedChain || isSoldOut || isMinting || hasMinted || isLoading || isPending || isConfirming}
-                                className={`w-full py-4 rounded-full font-bold text-lg transition-all ${hasMinted
-                                    ? "bg-green-500/20 text-green-400 border border-green-500/50"
-                                    : isSoldOut
-                                        ? "bg-red-500/20 text-red-500 border border-red-500/50 cursor-not-allowed"
-                                        : (isMinting || isLoading || isPending || isConfirming || !isMintEnabledForSelectedChain)
-                                            ? "bg-white/10 text-white/50 cursor-not-allowed"
-                                            : "bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(0,82,255,0.35)]"
-                                    }`}
-                            >
-                                {!isMintEnabledForSelectedChain
-                                    ? "Chain Config Missing"
-                                    : isLoading
-                                        ? "Loading..."
-                                        : hasMinted
-                                            ? "Minted Successfully"
-                                            : isSoldOut
-                                                ? "Sold Out"
-                                                : (isMinting || isPending || isConfirming)
-                                                    ? "Confirming..."
-                                                    : "Mint Drop"}
-                            </button>
+                            <div className="space-y-3">
+                                {showMiniAppWalletConnecting && (
+                                    <div className="rounded-xl border border-[#22D3EE]/25 bg-[#22D3EE]/10 px-4 py-3 text-sm font-semibold text-[#9FEAF8]">
+                                        Connecting wallet...
+                                    </div>
+                                )}
+                                {shouldPromptForChainSwitch && (
+                                    <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                                        <p>Connected wallet is on the wrong network. Switch to {selectedChain.name} before minting.</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleSwitchToSelectedChain}
+                                            disabled={isSwitchingChain}
+                                            className="mt-3 inline-flex items-center justify-center rounded-full border border-amber-300/40 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-50 transition-colors hover:bg-amber-400/25 disabled:pointer-events-none disabled:opacity-50"
+                                        >
+                                            {isSwitchingChain ? `Switching to ${selectedChain.name}...` : `Switch to ${selectedChain.name}`}
+                                        </button>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={handleMint}
+                                    disabled={showMiniAppWalletConnecting || shouldPromptForChainSwitch || !isMintEnabledForSelectedChain || isSoldOut || isMinting || hasMinted || isLoading || isPending || isConfirming || isSwitchingChain}
+                                    className={`w-full py-4 rounded-full font-bold text-lg transition-all ${hasMinted
+                                        ? "bg-green-500/20 text-green-400 border border-green-500/50"
+                                        : isSoldOut
+                                            ? "bg-red-500/20 text-red-500 border border-red-500/50 cursor-not-allowed"
+                                            : (showMiniAppWalletConnecting || shouldPromptForChainSwitch || isMinting || isLoading || isPending || isConfirming || !isMintEnabledForSelectedChain || isSwitchingChain)
+                                                ? "bg-white/10 text-white/50 cursor-not-allowed"
+                                                : "bg-gradient-to-r from-[#0052FF] to-[#22D3EE] text-white hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_30px_rgba(0,82,255,0.35)]"
+                                        }`}
+                                >
+                                    {!isMintEnabledForSelectedChain
+                                        ? "Chain Config Missing"
+                                        : showMiniAppWalletConnecting
+                                            ? "Connecting wallet..."
+                                            : shouldPromptForChainSwitch
+                                                ? `Switch to ${selectedChain.name} to Mint`
+                                                : isLoading
+                                                    ? "Loading..."
+                                                    : hasMinted
+                                                        ? "Minted Successfully"
+                                                        : isSoldOut
+                                                            ? "Sold Out"
+                                                            : (isMinting || isPending || isConfirming)
+                                                                ? "Confirming..."
+                                                                : "Mint Drop"}
+                                </button>
+                            </div>
                         )}
 
 
@@ -1109,6 +1160,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         </div >
     );
 }
+
 
 
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { ReactNode, createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { OnchainKitProvider } from '@coinbase/onchainkit';
-import { createConfig, http, WagmiProvider } from 'wagmi';
+import { createConfig, http, useAccount, useConnect, WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { coinbaseWallet } from 'wagmi/connectors';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
@@ -11,6 +11,13 @@ import { DEFAULT_CHAIN_ID, SUPPORTED_CHAINS, getSupportedChainById, isSupportedC
 import { persistPreferredChainId, readPreferredChainId } from '@/lib/chain-preference';
 import { getChainContracts, hasChainContractConfig } from '@/lib/contracts';
 import { BRAND } from '@/lib/brand';
+import {
+    FARCASTER_CONNECTOR_ID,
+    getSessionStorageSafe,
+    hasMiniAppQueryHint,
+    isMiniAppAutoConnectSuppressed,
+    shouldAttemptMiniAppAutoConnect,
+} from '@/lib/miniapp-wallet';
 
 type ChainPreferenceContextValue = {
     selectedChain: Chain;
@@ -19,9 +26,80 @@ type ChainPreferenceContextValue = {
     isPreferenceHydrated: boolean;
     chainContracts: ReturnType<typeof getChainContracts>;
     hasSelectedChainContractConfig: boolean;
+    isMiniAppEnvironment: boolean;
+    isMiniAppWalletBootstrapping: boolean;
 };
 
 const ChainPreferenceContext = createContext<ChainPreferenceContextValue | null>(null);
+
+function MiniAppWalletBootstrap({
+    isDetectionReady,
+    enabled,
+    setIsBootstrapping,
+}: {
+    isDetectionReady: boolean;
+    enabled: boolean;
+    setIsBootstrapping: (value: boolean) => void;
+}) {
+    const { address } = useAccount();
+    const { connectAsync, connectors } = useConnect();
+    const attemptedRef = useRef(false);
+
+    useEffect(() => {
+        if (!isDetectionReady) return;
+
+        if (!enabled) {
+            attemptedRef.current = false;
+            setIsBootstrapping(false);
+            return;
+        }
+
+        const storage = getSessionStorageSafe();
+        const farcasterConnector = connectors.find((connector) => connector.id === FARCASTER_CONNECTOR_ID);
+        const hasConnectedWallet = Boolean(address);
+        const isSuppressed = isMiniAppAutoConnectSuppressed(storage);
+
+        if (hasConnectedWallet || isSuppressed) {
+            setIsBootstrapping(false);
+            return;
+        }
+
+        if (!shouldAttemptMiniAppAutoConnect({
+            isMiniAppEnvironment: enabled,
+            isSuppressed,
+            hasConnectedWallet,
+            hasFarcasterConnector: Boolean(farcasterConnector),
+            hasAttemptedConnection: attemptedRef.current,
+        })) {
+            setIsBootstrapping(!farcasterConnector);
+            return;
+        }
+
+        let isCancelled = false;
+        attemptedRef.current = true;
+        setIsBootstrapping(true);
+
+        void (async () => {
+            try {
+                const currentChainId = await farcasterConnector!.getChainId().catch(() => null);
+                if (currentChainId == null) return;
+                await connectAsync({ connector: farcasterConnector!, chainId: currentChainId });
+            } catch {
+                // Fall back quietly to the standard wallet UI if auto-connect fails.
+            } finally {
+                if (!isCancelled) {
+                    setIsBootstrapping(false);
+                }
+            }
+        })();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [address, connectAsync, connectors, enabled, isDetectionReady, setIsBootstrapping]);
+
+    return null;
+}
 
 export function useChainPreference() {
     const context = useContext(ChainPreferenceContext);
@@ -38,9 +116,12 @@ export function Providers({ children }: { children: ReactNode }) {
         console.warn("NEXT_PUBLIC_ONCHAINKIT_API_KEY is missing from .env.local");
     }
 
+    const miniAppQueryHint = hasMiniAppQueryHint(typeof window === 'undefined' ? '' : window.location.search);
     const [selectedChainId, setSelectedChainId] = useState<SupportedChainId>(DEFAULT_CHAIN_ID);
     const [isPreferenceHydrated, setIsPreferenceHydrated] = useState(false);
-    const [isMiniAppEnvironment, setIsMiniAppEnvironment] = useState(false);
+    const [isMiniAppDetectionReady, setIsMiniAppDetectionReady] = useState(false);
+    const [isMiniAppEnvironment, setIsMiniAppEnvironment] = useState(miniAppQueryHint);
+    const [isMiniAppWalletBootstrapping, setIsMiniAppWalletBootstrapping] = useState(miniAppQueryHint);
 
     useEffect(() => {
         const preferredChainId = readPreferredChainId();
@@ -64,10 +145,19 @@ export function Providers({ children }: { children: ReactNode }) {
                 if (!isActive) return;
 
                 setIsMiniAppEnvironment(inMiniApp);
-                await sdk.actions.ready().catch((error) => {
-                    console.warn('[Farcaster Mini App] ready() was not accepted:', error);
-                });
+                setIsMiniAppWalletBootstrapping(inMiniApp);
+                setIsMiniAppDetectionReady(true);
+
+                if (inMiniApp) {
+                    await sdk.actions.ready().catch((error) => {
+                        console.warn('[Farcaster Mini App] ready() was not accepted:', error);
+                    });
+                }
             } catch (error) {
+                if (!isActive) return;
+                setIsMiniAppEnvironment(false);
+                setIsMiniAppWalletBootstrapping(false);
+                setIsMiniAppDetectionReady(true);
                 console.warn('[Farcaster Mini App] Failed to initialize SDK:', error);
             }
         }
@@ -117,17 +207,26 @@ export function Providers({ children }: { children: ReactNode }) {
         isPreferenceHydrated,
         chainContracts,
         hasSelectedChainContractConfig,
+        isMiniAppEnvironment,
+        isMiniAppWalletBootstrapping,
     }), [
         selectedChain,
         selectedChainId,
         isPreferenceHydrated,
         chainContracts,
         hasSelectedChainContractConfig,
+        isMiniAppEnvironment,
+        isMiniAppWalletBootstrapping,
     ]);
 
     return (
         <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
+                <MiniAppWalletBootstrap
+                    isDetectionReady={isMiniAppDetectionReady}
+                    enabled={isMiniAppDetectionReady && isMiniAppEnvironment}
+                    setIsBootstrapping={setIsMiniAppWalletBootstrapping}
+                />
                 <ChainPreferenceContext.Provider value={chainPreferenceValue}>
                     <OnchainKitProvider
                         apiKey={apiKey}
@@ -140,3 +239,4 @@ export function Providers({ children }: { children: ReactNode }) {
         </WagmiProvider>
     );
 }
+

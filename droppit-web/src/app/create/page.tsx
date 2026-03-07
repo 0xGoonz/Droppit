@@ -8,12 +8,11 @@ import { formatEther, parseEther, keccak256, encodePacked, isAddress } from "vie
 import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL, ALLOWED_MIME_ACCEPT, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT, MAX_IMAGE_PIXELS } from "@/lib/constants/upload";
 import { validateImageMedia, extractImageDimensions, type ImageDimensions } from "@/lib/media-validation";
 import { validateLockedContent } from "@/lib/validation/drops";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, usePublicClient } from "wagmi";
+import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, usePublicClient } from "wagmi";
 import {
     ConnectWallet,
     Wallet,
     WalletDropdown,
-    WalletDropdownDisconnect,
 } from '@coinbase/onchainkit/wallet';
 import {
     Avatar,
@@ -28,6 +27,12 @@ import { BrandLockup } from "@/components/brand/BrandLockup";
 import { publishDropDraft } from "@/lib/publish-drop";
 import { normalizeIpfsToHttp } from "@/lib/og-utils";
 import { fitArtworkWithinBounds, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
+import {
+    getSessionStorageSafe,
+    hasSelectedChainMismatch,
+    shouldShowMiniAppConnectingState,
+    suppressMiniAppAutoConnect,
+} from "@/lib/miniapp-wallet";
 
 export default function CreateDrop() {
     const [step, setStep] = useState(1);
@@ -68,6 +73,8 @@ export default function CreateDrop() {
         selectedChainId,
         hasSelectedChainContractConfig,
         chainContracts,
+        isMiniAppEnvironment,
+        isMiniAppWalletBootstrapping,
     } = useChainPreference();
     const selectedFactoryAddress = chainContracts?.factoryAddress || "";
     const publicClient = usePublicClient({ chainId: selectedChainId });
@@ -76,9 +83,38 @@ export default function CreateDrop() {
     const router = useRouter();
     const { data: hash, writeContractAsync, isPending } = useWriteContract();
     const { switchChainAsync } = useSwitchChain();
+    const { disconnect } = useDisconnect();
     const { data: receipt, isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
     const normalizedDraftImageUrl = normalizeIpfsToHttp(draftImageUrl);
+    const [isSwitchingChain, setIsSwitchingChain] = useState(false);
     const toPreviewPercent = (value: number, total: number) => `${((value / total) * 100).toFixed(2)}%`;
+    const hasConnectedWallet = Boolean(address);
+    const showMiniAppWalletConnecting = shouldShowMiniAppConnectingState({
+        isMiniAppEnvironment,
+        isMiniAppWalletBootstrapping,
+        hasConnectedWallet,
+    });
+    const shouldPromptForChainSwitch = hasSelectedChainMismatch({
+        hasConnectedWallet,
+        walletChainId: chainId,
+        selectedChainId: selectedChain.id,
+    });
+    const handleWalletDisconnect = useCallback(() => {
+        suppressMiniAppAutoConnect(getSessionStorageSafe());
+        disconnect();
+    }, [disconnect]);
+    const handleSwitchToSelectedChain = useCallback(async () => {
+        setFormError(null);
+        setIsSwitchingChain(true);
+        try {
+            await switchChainAsync({ chainId: selectedChain.id });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : `Switch to ${selectedChain.name} to continue.`;
+            setFormError(message);
+        } finally {
+            setIsSwitchingChain(false);
+        }
+    }, [selectedChain, switchChainAsync]);
 
     useEffect(() => {
         if (!file) {
@@ -374,16 +410,12 @@ export default function CreateDrop() {
         }
 
         try {
-            // 1. Force Network Switch if on the wrong chain
             if (chainId !== selectedChain.id) {
-                try {
-                    await switchChainAsync({ chainId: selectedChain.id });
-                } catch {
-                    throw new Error("You must switch to the correct network to deploy.");
-                }
+                throw new Error(`Switch to ${selectedChain.name} to deploy.`);
             }
 
             setIsUploading(true);
+
 
             // 2. Resolve Draft ID (Create if not resumed from webhook frame)
             let currentDraftId = draftId;
@@ -576,7 +608,9 @@ export default function CreateDrop() {
                                 <EthBalance className="text-[#22D3EE] font-bold" />
                             </Identity>
                             <div className="h-px bg-white/[0.06] w-full" />
-                            <WalletDropdownDisconnect className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold" text="Disconnect" />
+                            <button type="button" onClick={handleWalletDisconnect} className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold">
+                                Disconnect
+                            </button>
                         </WalletDropdown>
                     </Wallet>
                 </div>
@@ -602,8 +636,9 @@ export default function CreateDrop() {
                         <p className="text-blue-200 text-sm mb-2">Please complete the following to automatically finish your drop:</p>
                         <ul className="list-disc list-inside text-sm text-blue-300">
                             {!hasHydrated && <li>Loading draft data…</li>}
-                            {!address && <li>Connect your wallet</li>}
-                            {address && chainId !== selectedChain.id && <li>Switch to {selectedChain.name} in your wallet</li>}
+                            {!address && showMiniAppWalletConnecting && <li>Connecting wallet…</li>}
+                            {!address && !showMiniAppWalletConnecting && <li>Connect your wallet</li>}
+                            {address && shouldPromptForChainSwitch && <li>Switch to {selectedChain.name} in your wallet</li>}
                             {!hasSelectedChainContractConfig && <li>{selectedChain.name} deployment config is missing.</li>}
                             {!file && !draftTokenUri && <li>Upload artwork media</li>}
                         </ul>
@@ -614,14 +649,20 @@ export default function CreateDrop() {
                         <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10 mb-2">
                             <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                         </div>
-                        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">Connect your Wallet</h1>
-                        <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">Connect your wallet to configure and deploy an ERC-1155 Drop on {selectedChain.name}.</p>
-                        <Wallet>
-                            <ConnectWallet className="w-full max-w-xs rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-3 text-white !min-w-[200px] font-bold transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.35)]">
-                                <Avatar className="h-6 w-6" />
-                                <Name />
-                            </ConnectWallet>
-                        </Wallet>
+                        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{showMiniAppWalletConnecting ? "Connecting wallet..." : "Connect your Wallet"}</h1>
+                        <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">{showMiniAppWalletConnecting ? `Attempting Farcaster wallet auto-connect for ${selectedChain.name}.` : `Connect your wallet to configure and deploy an ERC-1155 Drop on ${selectedChain.name}.`}</p>
+                        {showMiniAppWalletConnecting ? (
+                            <div className="rounded-full border border-[#22D3EE]/25 bg-[#22D3EE]/10 px-5 py-3 text-sm font-semibold text-[#9FEAF8]">
+                                Please wait while Droppit connects your Farcaster wallet.
+                            </div>
+                        ) : (
+                            <Wallet>
+                                <ConnectWallet className="w-full max-w-xs rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-3 text-white !min-w-[200px] font-bold transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.35)]">
+                                    <Avatar className="h-6 w-6" />
+                                    <Name />
+                                </ConnectWallet>
+                            </Wallet>
+                        )}
                     </div>
                 ) : (
                     <>
@@ -1079,33 +1120,42 @@ export default function CreateDrop() {
                                         Next Step
                                     </button>
                                 ) : (
-                                    <button
-                                        onClick={() => {
-                                            if (!address) {
-                                                alert("Please connect your wallet first using the button at the top right.");
-                                                return;
-                                            }
-                                            handleDeploy();
-                                        }}
-                                        disabled={!hasSelectedChainContractConfig || !hasHydrated || !!hydrationError || isUploading || isPending || isConfirming || isSuccess || isPublishingDrop}
-                                        className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-2.5 font-bold text-white transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.4)] disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
-                                    >
-                                        {!address
-                                            ? "Connect to Deploy"
-                                            : !hasSelectedChainContractConfig
-                                                ? "Chain Config Missing"
-                                                : !hasHydrated
-                                                    ? "Loading draft…"
-                                                    : isUploading
-                                                        ? "Uploading to IPFS..."
-                                                        : (isPending || isConfirming)
-                                                            ? "Confirming tx..."
-                                                            : isSuccess
-                                                                ? (isPublishingDrop
-                                                                    ? "Finalizing drop..."
-                                                                    : (formError ? "Publish incomplete" : "Awaiting publish..."))
-                                                                : "Sign & Deploy"}
-                                    </button>
+                                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:items-end">
+                                        {shouldPromptForChainSwitch && (
+                                            <div className="w-full rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 sm:max-w-sm">
+                                                <p>Connected wallet is on the wrong network. Switch to {selectedChain.name} before deploying.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSwitchToSelectedChain}
+                                                    disabled={isSwitchingChain}
+                                                    className="mt-3 inline-flex items-center justify-center rounded-full border border-amber-300/40 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-50 transition-colors hover:bg-amber-400/25 disabled:pointer-events-none disabled:opacity-50"
+                                                >
+                                                    {isSwitchingChain ? `Switching to ${selectedChain.name}...` : `Switch to ${selectedChain.name}`}
+                                                </button>
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={handleDeploy}
+                                            disabled={shouldPromptForChainSwitch || !hasSelectedChainContractConfig || !hasHydrated || !!hydrationError || isUploading || isPending || isConfirming || isSuccess || isPublishingDrop || isSwitchingChain}
+                                            className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-2.5 font-bold text-white transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.4)] disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
+                                        >
+                                            {shouldPromptForChainSwitch
+                                                ? `Switch to ${selectedChain.name} to Deploy`
+                                                : !hasSelectedChainContractConfig
+                                                    ? "Chain Config Missing"
+                                                    : !hasHydrated
+                                                        ? "Loading draft…"
+                                                        : isUploading
+                                                            ? "Uploading to IPFS..."
+                                                            : (isPending || isConfirming)
+                                                                ? "Confirming tx..."
+                                                                : isSuccess
+                                                                    ? (isPublishingDrop
+                                                                        ? "Finalizing drop..."
+                                                                        : (formError ? "Publish incomplete" : "Awaiting publish..."))
+                                                                    : "Sign & Deploy"}
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -1115,6 +1165,7 @@ export default function CreateDrop() {
         </div>
     );
 }
+
 
 
 
