@@ -262,7 +262,7 @@ describe("OG Drop Rendering", () => {
         expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmStoredArtwork");
         expect(renderedText).not.toContain("333 editions");
     });
-    it("renders the miniapp variant as pure artwork with blurred fill and seam feathering", async () => {
+    it("renders the miniapp variant as pure artwork with blurred fill", async () => {
         mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
             if (functionName === "owner") return ADDRESS;
             if (functionName === "uri") return "ipfs://QmMetadata";
@@ -289,7 +289,6 @@ describe("OG Drop Rendering", () => {
         const renderedText = collectText(renderedTree);
         const miniappImage = findNodeByProp(renderedTree, "data-share-card-artwork", "miniapp");
         const artFill = findNodeByProp(renderedTree, "data-share-card-art-fill", "miniapp");
-        const artFeather = findNodeByProp(renderedTree, "data-share-card-art-feather", "miniapp");
         const artStage = findNodeByProp(renderedTree, "data-share-card-art-stage", "miniapp");
         const artFrame = findNodeByProp(renderedTree, "data-share-card-art-frame", "miniapp");
         const copyRibbon = findNodeByProp(renderedTree, "data-share-card-copy-ribbon", "miniapp");
@@ -306,7 +305,6 @@ describe("OG Drop Rendering", () => {
         expect(miniappImage?.props?.height).toBeDefined();
         expect(miniappImage?.props?.style).toMatchObject({ objectFit: "contain", objectPosition: "center" });
         expect(artFill?.props?.style).toMatchObject({ objectFit: "cover", filter: "blur(28px)" });
-        expect(artFeather?.props?.style).toMatchObject({ objectFit: "contain", filter: "blur(20px)", opacity: 0.22 });
         expect(artStage?.props?.style).toMatchObject({ position: "relative", overflow: "hidden" });
         expect(artFrame?.props?.style).toMatchObject({ borderRadius: 28, position: "relative" });
         expect(copyRibbon).toBeNull();
@@ -329,6 +327,7 @@ describe("OG Drop Rendering", () => {
         expect(renderedText).toContain("Unknown source");
     });
 });
+
 
 
 

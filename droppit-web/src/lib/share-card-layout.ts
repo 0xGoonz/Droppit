@@ -9,12 +9,8 @@ export const MINIAPP_SHARE_CARD = {
     artPaddingX: 12,
     artPaddingTop: 12,
     artPaddingBottom: 12,
-    seamFeatherScale: 1.08,
-    seamFeatherOpacity: 0.22,
-    seamFeatherBlurPx: 20,
     previewMaxWidth: 620,
 } as const;
-
 export type ShareCardArtworkPlacement = ImageDimensions & {
     widthRatio: number;
     heightRatio: number;
@@ -83,6 +79,7 @@ export function fitArtworkWithinBounds(params: {
         aspectRatio: (params.imageWidth as number) / (params.imageHeight as number),
     };
 }
+
 
 
 

@@ -997,19 +997,7 @@ export default function CreateDrop() {
                                                         >
                                                             <div className="relative flex items-center justify-center rounded-[24px]" style={{ width: previewArtworkFrameStyle?.width || "100%", height: previewArtworkFrameStyle?.height || "100%" }}>
                                                                 {previewImageUrl ? (
-                                                                    <>
-                                                                        <img
-                                                                            src={previewImageUrl}
-                                                                            alt=""
-                                                                            className="absolute inset-0 h-full w-full object-contain object-center"
-                                                                            style={{
-                                                                                opacity: MINIAPP_SHARE_CARD.seamFeatherOpacity,
-                                                                                filter: `blur(${MINIAPP_SHARE_CARD.seamFeatherBlurPx}px)`,
-                                                                                transform: `scale(${MINIAPP_SHARE_CARD.seamFeatherScale})`,
-                                                                            }}
-                                                                        />
-                                                                        <img src={previewImageUrl} alt="" className="relative z-10 h-full w-full object-contain object-center" />
-                                                                    </>
+                                                                    <img src={previewImageUrl} alt="" className="relative z-10 h-full w-full object-contain object-center" />
                                                                 ) : (
                                                                     <div className="text-6xl font-bold text-white/50 sm:text-7xl">{previewGlyph}</div>
                                                                 )}

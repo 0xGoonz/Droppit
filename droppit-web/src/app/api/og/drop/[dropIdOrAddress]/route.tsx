@@ -458,46 +458,22 @@ export async function GET(
                                         }}
                                     >
                                         {art ? (
-                                            <>
-                                                <img
-                                                    alt=""
-                                                    src={art}
-                                                    width={MINIAPP_ARTWORK_BOUNDS.width}
-                                                    height={MINIAPP_ARTWORK_BOUNDS.height}
-                                                    data-share-card-art-feather="miniapp"
-                                                    style={{
-                                                        position: "absolute",
-                                                        top: 0,
-                                                        right: 0,
-                                                        bottom: 0,
-                                                        left: 0,
-                                                        width: "100%",
-                                                        height: "100%",
-                                                        display: "block",
-                                                        objectFit: "contain",
-                                                        objectPosition: "center",
-                                                        opacity: MINIAPP_SHARE_CARD.seamFeatherOpacity,
-                                                        filter: `blur(${MINIAPP_SHARE_CARD.seamFeatherBlurPx}px)`,
-                                                        transform: `scale(${MINIAPP_SHARE_CARD.seamFeatherScale})`,
-                                                    }}
-                                                />
-                                                <img
-                                                    alt=""
-                                                    src={art}
-                                                    width={MINIAPP_ARTWORK_BOUNDS.width}
-                                                    height={MINIAPP_ARTWORK_BOUNDS.height}
-                                                    data-share-card-artwork="miniapp"
-                                                    style={{
-                                                        position: "relative",
-                                                        zIndex: 1,
-                                                        width: "100%",
-                                                        height: "100%",
-                                                        display: "block",
-                                                        objectFit: "contain",
-                                                        objectPosition: "center",
-                                                    }}
-                                                />
-                                            </>
+                                            <img
+                                                alt=""
+                                                src={art}
+                                                width={MINIAPP_ARTWORK_BOUNDS.width}
+                                                height={MINIAPP_ARTWORK_BOUNDS.height}
+                                                data-share-card-artwork="miniapp"
+                                                style={{
+                                                    position: "relative",
+                                                    zIndex: 1,
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    display: "block",
+                                                    objectFit: "contain",
+                                                    objectPosition: "center",
+                                                }}
+                                            />
                                         ) : (
                                             <span style={{ fontSize: 240, fontWeight: 800, opacity: 0.9, color: "white" }}>{glyph}</span>
                                         )}
