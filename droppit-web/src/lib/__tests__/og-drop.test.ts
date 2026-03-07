@@ -288,6 +288,7 @@ describe("OG Drop Rendering", () => {
         const renderedTree = mockImageResponse.mock.calls[0][0];
         const renderedText = collectText(renderedTree);
         const miniappImage = findNodeByProp(renderedTree, "data-share-card-artwork", "miniapp");
+        const artStage = findNodeByProp(renderedTree, "data-share-card-art-stage", "miniapp");
         const artFrame = findNodeByProp(renderedTree, "data-share-card-art-frame", "miniapp");
         const copyStrip = findNodeByProp(renderedTree, "data-share-card-copy-strip", "miniapp");
 
@@ -301,6 +302,8 @@ describe("OG Drop Rendering", () => {
         expect(miniappImage?.props?.width).toBeDefined();
         expect(miniappImage?.props?.height).toBeDefined();
         expect(miniappImage?.props?.style).toMatchObject({ objectFit: "contain", objectPosition: "center" });
+        expect(artStage?.props?.style).toMatchObject({ backgroundColor: "rgba(3,7,18,0.72)" });
+        expect(artStage?.props?.style).not.toHaveProperty("background");
         expect(artFrame?.props?.style).toMatchObject({ borderRadius: 28 });
         expect(copyStrip?.props?.style).toMatchObject({ borderRadius: 24 });
     });
@@ -321,6 +324,7 @@ describe("OG Drop Rendering", () => {
         expect(renderedText).toContain("Unknown source");
     });
 });
+
 
 
 

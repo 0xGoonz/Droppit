@@ -91,6 +91,8 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
     ]);
 }
 
+
+
 async function fetchTokenMetadata(tokenUri: string | null): Promise<{ name: string | null; image: string | null }> {
     const metadataUrls = getIpfsHttpCandidates(tokenUri);
     if (metadataUrls.length === 0) {
@@ -379,6 +381,7 @@ export async function GET(
                             }}
                         >
                             <div
+                                data-share-card-art-stage="miniapp"
                                 style={{
                                     flex: 1,
                                     display: "flex",
@@ -387,8 +390,9 @@ export async function GET(
                                     padding: `${MINIAPP_SHARE_CARD.artPaddingTop}px ${MINIAPP_SHARE_CARD.artPaddingX}px ${MINIAPP_SHARE_CARD.artPaddingBottom}px`,
                                     borderRadius: 24,
                                     border: "1px solid rgba(255,255,255,0.08)",
-                                    background: art
-                                        ? "radial-gradient(circle at 50% 15%, rgba(124,58,237,0.18), transparent 36%), radial-gradient(circle at 50% 85%, rgba(0,82,255,0.16), transparent 40%), rgba(3,7,18,0.72)"
+                                    backgroundColor: art ? "rgba(3,7,18,0.72)" : undefined,
+                                    backgroundImage: art
+                                        ? "radial-gradient(circle at 50% 15%, rgba(124,58,237,0.18), transparent 36%), radial-gradient(circle at 50% 85%, rgba(0,82,255,0.16), transparent 40%)"
                                         : `linear-gradient(150deg, ${accent.from}, ${accent.to})`,
                                 }}
                             >
@@ -616,6 +620,10 @@ export async function GET(
         return new Response("Failed to generate image", { status: 500 });
     }
 }
+
+
+
+
 
 
 
