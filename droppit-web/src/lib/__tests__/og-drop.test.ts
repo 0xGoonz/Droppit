@@ -38,8 +38,8 @@ vi.mock("viem", async (importOriginal) => {
     };
 });
 
-vi.mock("@supabase/supabase-js", () => ({
-    createClient: () => ({
+vi.mock("@/lib/supabase", () => ({
+    getServiceRoleClient: () => ({
         from: (table: string) => {
             if (table === "drops") {
                 return {
@@ -195,7 +195,7 @@ describe("OG Drop Rendering", () => {
         expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmArtwork");
     });
 
-    it("uses stored DB artwork for the miniapp variant when drop data is complete", async () => {
+    it("prefers onchain metadata artwork for the miniapp variant when available", async () => {
         mockDropMaybeSingle.mockResolvedValue({
             data: {
                 id: "drop-1",
@@ -210,6 +210,45 @@ describe("OG Drop Rendering", () => {
             },
             error: null,
         });
+        mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
+            if (functionName === "uri") return "ipfs://QmMetadata";
+            throw new Error(`Unexpected function ${functionName}`);
+        });
+        mockFetch.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                name: "Founder's Key",
+                image: "ipfs://QmOnchainArtwork",
+            }),
+        });
+
+        const res = await GET(new NextRequest(`https://droppitonbase.xyz/api/og/drop/${ADDRESS}?variant=miniapp`), {
+            params: Promise.resolve({ dropIdOrAddress: ADDRESS }),
+        });
+
+        expect(res.status).toBe(200);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        const renderedTree = mockImageResponse.mock.calls[0][0];
+        expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmOnchainArtwork");
+    });
+
+    it("falls back to stored DB artwork for the miniapp variant when token metadata lookup fails", async () => {
+        mockDropMaybeSingle.mockResolvedValue({
+            data: {
+                id: "drop-1",
+                title: "Founder's Key",
+                creator_address: ADDRESS,
+                creator_fid: null,
+                mint_price: "0",
+                status: "LIVE",
+                image_url: "https://gateway.pinata.cloud/ipfs/QmStoredArtwork",
+                contract_address: ADDRESS,
+                edition_size: 333,
+            },
+            error: null,
+        });
+        mockReadContract.mockRejectedValue(new Error("RPC unavailable"));
 
         const res = await GET(new NextRequest(`https://droppitonbase.xyz/api/og/drop/${ADDRESS}?variant=miniapp`), {
             params: Promise.resolve({ dropIdOrAddress: ADDRESS }),
@@ -259,6 +298,8 @@ describe("OG Drop Rendering", () => {
         expect(renderedText).not.toContain("Contract:");
         expect(renderedText).not.toContain("Base Sepolia");
         expect(renderedText).not.toContain("Free");
+        expect(miniappImage?.props?.width).toBeDefined();
+        expect(miniappImage?.props?.height).toBeDefined();
         expect(miniappImage?.props?.style).toMatchObject({ objectFit: "contain", objectPosition: "center" });
         expect(artFrame?.props?.style).toMatchObject({ borderRadius: 28 });
         expect(copyStrip?.props?.style).toMatchObject({ borderRadius: 24 });
@@ -280,5 +321,7 @@ describe("OG Drop Rendering", () => {
         expect(renderedText).toContain("Unknown source");
     });
 });
+
+
 
 

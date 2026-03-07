@@ -2,7 +2,7 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceRoleClient } from "@/lib/supabase";
 import { createPublicClient, http, isAddress } from "viem";
 import { base, baseSepolia } from "viem/chains";
 import {
@@ -73,6 +73,11 @@ type OnchainSnapshot = {
     metadataImage: string | null;
 };
 
+type TokenMetadataSnapshot = {
+    metadataName: string | null;
+    metadataImage: string | null;
+};
+
 function normalizeHandle(raw: string | null | undefined): string | null {
     if (!raw) return null;
     const cleaned = raw.trim().replace(/^@+/, "").toLowerCase();
@@ -108,9 +113,8 @@ async function fetchTokenMetadata(tokenUri: string | null): Promise<{ name: stri
 
             const metadata = await response.json().catch(() => null) as Record<string, unknown> | null;
             const name = typeof metadata?.name === "string" && metadata.name.trim() ? metadata.name.trim() : null;
-            const gatewayBase = new URL(metadataUrl).origin;
             const image = typeof metadata?.image === "string"
-                ? normalizeIpfsToHttp(metadata.image, gatewayBase)
+                ? normalizeIpfsToHttp(metadata.image, "https://gateway.pinata.cloud")
                 : null;
             if (name || image) {
                 return { name, image };
@@ -186,6 +190,36 @@ async function readOnchainSnapshot(contractAddress: `0x${string}`): Promise<Onch
     }
 }
 
+async function readTokenMetadataSnapshot(contractAddress: `0x${string}`): Promise<TokenMetadataSnapshot> {
+    try {
+        const tokenUri = await withTimeout(
+            publicClient.readContract({
+                address: contractAddress,
+                abi: dropAbi,
+                functionName: "uri",
+                args: [BigInt(1)],
+            }),
+            1500,
+            "Drop token URI read"
+        );
+        if (typeof tokenUri !== "string") {
+            return { metadataName: null, metadataImage: null };
+        }
+
+        const metadata = await fetchTokenMetadata(tokenUri);
+        return {
+            metadataName: metadata.name,
+            metadataImage: metadata.image,
+        };
+    } catch (error) {
+        console.warn("[OG Drop] Failed to read token metadata snapshot:", error);
+        return {
+            metadataName: null,
+            metadataImage: null,
+        };
+    }
+}
+
 type SupplyLabels = {
     remainingLabel: string | null;
     editionLabel: string | null;
@@ -232,10 +266,7 @@ export async function GET(
         if (limited) return limited;
         const { dropIdOrAddress: identifier } = await params;
 
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
+        const supabase = getServiceRoleClient();
 
         const isContractLookup = isAddress(identifier, { strict: false });
         const dropQuery = supabase
@@ -249,6 +280,9 @@ export async function GET(
         const drop = (data || null) as DropRow | null;
         const contractAddress = drop?.contract_address || (isContractLookup ? identifier : null);
         const isMiniAppVariant = req.nextUrl.searchParams.get("variant") === "miniapp";
+        const miniappMetadata = isMiniAppVariant && contractAddress
+            ? await readTokenMetadataSnapshot(contractAddress as `0x${string}`)
+            : null;
 
         const needsOnchainBackfill = !!contractAddress && (
             isMiniAppVariant
@@ -272,13 +306,15 @@ export async function GET(
             creatorHandle = normalizeHandle((identity as IdentityRow | null)?.handle);
         }
 
-        const resolvedTitle = drop?.title || onchain?.metadataName || null;
+        const resolvedTitle = drop?.title || miniappMetadata?.metadataName || onchain?.metadataName || null;
         const title = fallbackTitle(resolvedTitle, "Untitled Drop");
         const titleSafe = truncateText(title, 54);
         const miniappTitleSafe = truncateText(title, 40);
-        const art = normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
+        const art = isMiniAppVariant
+            ? miniappMetadata?.metadataImage || normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null
+            : normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
         const canvasHeight = isMiniAppVariant ? 800 : OG_TOKENS.height;
-        const status = drop?.status || (onchain ? "LIVE" : "UNKNOWN");
+        const status = drop?.status || (miniappMetadata?.metadataImage || miniappMetadata?.metadataName || onchain ? "LIVE" : "UNKNOWN");
         const price = formatMintPriceWei(drop?.mint_price || onchain?.mintPriceWei || "0");
         const creator = creatorAttribution(creatorAddress, drop?.creator_fid, creatorHandle);
         const creatorSource = creatorHandle
@@ -375,10 +411,13 @@ export async function GET(
                                         <img
                                             alt=""
                                             src={art}
+                                            width={MINIAPP_ARTWORK_BOUNDS.width}
+                                            height={MINIAPP_ARTWORK_BOUNDS.height}
                                             data-share-card-artwork="miniapp"
                                             style={{
                                                 width: "100%",
                                                 height: "100%",
+                                                display: "block",
                                                 objectFit: "contain",
                                                 objectPosition: "center",
                                             }}
@@ -577,6 +616,12 @@ export async function GET(
         return new Response("Failed to generate image", { status: 500 });
     }
 }
+
+
+
+
+
+
 
 
 
