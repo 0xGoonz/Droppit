@@ -12,15 +12,15 @@ describe("drop-sharing", () => {
     it("builds concise share captions without technical metadata", () => {
         const caption = buildDropShareCaption({
             title: "Founder's Key",
-            editionSize: 331,
             priceLabel: "Free",
             chainLabel: "Base",
             intro: '"Founder\'s Key" is live on @droppit.',
             cta: "Collect here:",
         });
 
-        expect(caption).toContain("331 editions | Free | Base");
+        expect(caption).toContain("Free | Base");
         expect(caption).toContain("Collect here:");
+        expect(caption).not.toContain("331 editions");
         expect(caption).not.toContain("Contract:");
         expect(caption).not.toContain("Source:");
     });
@@ -28,7 +28,6 @@ describe("drop-sharing", () => {
     it("normalizes creator handles and compose links", () => {
         const caption = buildDropShareCaption({
             title: "Founder's Key",
-            editionSize: 331,
             priceLabel: "0.01 ETH",
             chainLabel: "Base",
             creatorHandle: "@DropArtist",
@@ -47,4 +46,5 @@ describe("drop-sharing", () => {
         expect(parsed.searchParams.getAll("embeds[]")).toEqual(["https://droppit.ai/s/0xabc"]);
     });
 });
+
 

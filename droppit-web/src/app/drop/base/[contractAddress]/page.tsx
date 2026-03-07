@@ -409,7 +409,6 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     const sharePriceLabel = formatMintPriceWei(rawPrice.toString());
     const creatorShareCaption = buildDropShareCaption({
         title: drop.title,
-        editionSize: supply,
         priceLabel: sharePriceLabel,
         chainLabel: selectedChain.name,
         creatorHandle: farcasterHandle,
@@ -422,7 +421,6 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     });
     const collectorShareCaption = buildDropShareCaption({
         title: drop.title,
-        editionSize: supply,
         priceLabel: sharePriceLabel,
         chainLabel: selectedChain.name,
         creatorHandle: farcasterHandle,
@@ -1111,6 +1109,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         </div >
     );
 }
+
 
 
 

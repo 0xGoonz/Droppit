@@ -27,7 +27,6 @@ import { useChainPreference } from "@/providers/OnchainKitProvider";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { publishDropDraft } from "@/lib/publish-drop";
 import { normalizeIpfsToHttp } from "@/lib/og-utils";
-import { formatEditionSizeLabel } from "@/lib/drop-sharing";
 import { fitArtworkWithinBounds, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
 
 export default function CreateDrop() {
@@ -59,7 +58,6 @@ export default function CreateDrop() {
     const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
     const [fileImageDimensions, setFileImageDimensions] = useState<ImageDimensions | null>(null);
     const [draftImageDimensions, setDraftImageDimensions] = useState<ImageDimensions | null>(null);
-    const [isPreviewRibbonHidden, setIsPreviewRibbonHidden] = useState(false);
 
     const [deployGasEstimate, setDeployGasEstimate] = useState<string | null>(null);
 
@@ -539,18 +537,11 @@ export default function CreateDrop() {
             }
             : { width: "100%", height: "100%" }
         : null;
-    const previewSupplyLabel = formatEditionSizeLabel(formData.editionSize) || "Supply pending";
     const previewFrameInset = toPreviewPercent(MINIAPP_SHARE_CARD.frameInset, MINIAPP_SHARE_CARD.canvasWidth);
     const previewArtPaddingX = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingX, MINIAPP_SHARE_CARD.canvasWidth);
     const previewArtPaddingTop = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingTop, MINIAPP_SHARE_CARD.canvasHeight);
     const previewArtPaddingBottom = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingBottom, MINIAPP_SHARE_CARD.canvasHeight);
-    const previewRibbonInsetX = toPreviewPercent(MINIAPP_SHARE_CARD.overlayRibbonInsetX, MINIAPP_SHARE_CARD.canvasWidth);
-    const previewRibbonInsetBottom = toPreviewPercent(MINIAPP_SHARE_CARD.overlayRibbonInsetBottom, MINIAPP_SHARE_CARD.canvasHeight);
-    const previewRibbonHeight = toPreviewPercent(MINIAPP_SHARE_CARD.overlayRibbonHeight, MINIAPP_SHARE_CARD.canvasHeight);
 
-    useEffect(() => {
-        setIsPreviewRibbonHidden(false);
-    }, [previewImageUrl, previewTitle, previewSupplyLabel]);
 
     return (
         <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
@@ -976,21 +967,14 @@ export default function CreateDrop() {
                                     <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#05070f]">
                                         <div className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-6">
                                             <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
-                                            <p className="text-xs text-slate-500">This previews the real 3:2 miniapp share image used in Warpcast. Hover on desktop or tap on mobile to hide the ribbon here only.</p>
+                                            <p className="text-xs text-slate-500">This previews the real 3:2 miniapp share image used in Warpcast.</p>
                                         </div>
                                         <div className="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
                                             <div className="mx-auto w-full" style={{ maxWidth: MINIAPP_SHARE_CARD.previewMaxWidth }}>
                                                 <div className="rounded-[28px] border border-white/10 bg-[#040916]/92 shadow-[0_24px_60px_rgba(0,0,0,0.35)]" style={{ padding: previewFrameInset }}>
                                                     <div
-                                                        className="relative cursor-pointer overflow-hidden rounded-[26px] border border-white/10 bg-[#020617] shadow-[0_20px_48px_rgba(0,0,0,0.34)]"
+                                                        className="relative overflow-hidden rounded-[26px] border border-white/10 bg-[#020617] shadow-[0_20px_48px_rgba(0,0,0,0.34)]"
                                                         style={{ aspectRatio: "3 / 2" }}
-                                                        onMouseEnter={() => setIsPreviewRibbonHidden(true)}
-                                                        onMouseLeave={() => setIsPreviewRibbonHidden(false)}
-                                                        onPointerUp={(event) => {
-                                                            if (event.pointerType !== "mouse") {
-                                                                setIsPreviewRibbonHidden((current) => !current);
-                                                            }
-                                                        }}
                                                     >
                                                         {previewImageUrl && (
                                                             <img
@@ -1019,32 +1003,12 @@ export default function CreateDrop() {
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <div
-                                                            className={`pointer-events-none absolute transition-opacity duration-200 ${isPreviewRibbonHidden ? "opacity-0" : "opacity-100"}`}
-                                                            style={{
-                                                                left: previewRibbonInsetX,
-                                                                right: previewRibbonInsetX,
-                                                                bottom: previewRibbonInsetBottom,
-                                                                height: previewRibbonHeight,
-                                                            }}
-                                                        >
-                                                            <div
-                                                                className="flex h-full items-center justify-between gap-3 rounded-[22px] border border-white/10 px-[4.5%] shadow-[0_14px_34px_rgba(0,0,0,0.28)]"
-                                                                style={{
-                                                                    backgroundColor: "rgba(8,15,31,0.72)",
-                                                                    backgroundImage: "linear-gradient(180deg, rgba(15,23,42,0.68), rgba(8,15,31,0.84))",
-                                                                }}
-                                                            >
-                                                                <h1 className="min-w-0 flex-1 truncate text-base font-bold leading-tight tracking-[-0.035em] text-white sm:text-[27px] sm:leading-[1.04]">{previewTitle}</h1>
-                                                                <span className="shrink-0 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-100 sm:text-sm">{previewSupplyLabel}</span>
-                                                            </div>
-                                                        </div>
                                                     </div>
 
                                                     <div className="mt-3 flex flex-col gap-3 rounded-[20px] border border-white/10 bg-[#07101f]/92 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                                                         <div>
                                                             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Warpcast Post</div>
-                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image. Hover or tap only affects this local preview.</div>
+                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image. Title, price, and other details live in the caption and miniapp page.</div>
                                                         </div>
                                                         <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,82,255,0.28)]">
                                                             Mint 1
@@ -1151,6 +1115,7 @@ export default function CreateDrop() {
         </div>
     );
 }
+
 
 
 

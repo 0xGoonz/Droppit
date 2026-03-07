@@ -5,13 +5,10 @@ export const MINIAPP_SHARE_CARD = {
     canvasHeight: 800,
     stagePaddingX: 56,
     stagePaddingY: 44,
-    frameInset: 12,
-    artPaddingX: 22,
-    artPaddingTop: 22,
-    artPaddingBottom: 22,
-    overlayRibbonHeight: 86,
-    overlayRibbonInsetX: 20,
-    overlayRibbonInsetBottom: 18,
+    frameInset: 10,
+    artPaddingX: 16,
+    artPaddingTop: 16,
+    artPaddingBottom: 16,
     previewMaxWidth: 620,
 } as const;
 
@@ -83,5 +80,6 @@ export function fitArtworkWithinBounds(params: {
         aspectRatio: (params.imageWidth as number) / (params.imageHeight as number),
     };
 }
+
 
 

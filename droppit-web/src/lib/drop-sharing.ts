@@ -35,7 +35,6 @@ export function buildWarpcastComposeHref(params: { text: string; embedUrl: strin
 
 export function buildDropShareCaption(params: {
     title: string;
-    editionSize?: bigint | number | string | null;
     priceLabel?: string | null;
     chainLabel?: string | null;
     creatorHandle?: string | null;
@@ -46,7 +45,6 @@ export function buildDropShareCaption(params: {
     const intro = params.intro.trim() || `"${title}" is live on @droppit.`;
     const lines: string[] = [intro];
     const details = [
-        formatEditionSizeLabel(params.editionSize),
         params.priceLabel?.trim() || null,
         params.chainLabel?.trim() || null,
     ].filter((value): value is string => Boolean(value));
@@ -63,5 +61,6 @@ export function buildDropShareCaption(params: {
     lines.push("", params.cta.trim());
     return lines.join("\n");
 }
+
 
 

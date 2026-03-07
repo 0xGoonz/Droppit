@@ -311,7 +311,6 @@ export async function GET(
         const resolvedTitle = drop?.title || miniappMetadata?.metadataName || onchain?.metadataName || null;
         const title = fallbackTitle(resolvedTitle, "Untitled Drop");
         const titleSafe = truncateText(title, 54);
-        const miniappTitleSafe = truncateText(title, 34);
         const art = isMiniAppVariant
             ? miniappMetadata?.metadataImage || normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null
             : normalizeIpfsToHttp(drop?.image_url) || onchain?.metadataImage || null;
@@ -334,13 +333,12 @@ export async function GET(
         const chainLabel = getChainLabel();
         const statusLabel = formatStatusLabel(status);
         const statusColors = statusBadgeColors(status);
-        const supplyLabels = contractAddress && (!isMiniAppVariant || !drop?.edition_size)
+        const supplyLabels = !isMiniAppVariant && contractAddress
             ? await readSupplyLabels(contractAddress as `0x${string}`)
             : { remainingLabel: null, editionLabel: null };
         const supplyLabel = !isMiniAppVariant && contractAddress && (status === "LIVE" || status === "PUBLISHED")
             ? supplyLabels.remainingLabel
             : null;
-        const miniappSupplyLabel = formatEditionSizeLabel(drop?.edition_size) || supplyLabels.editionLabel;
 
         const hasCompleteCardData = isMiniAppVariant
             ? Boolean(resolvedTitle?.trim() && art && contractAddress)
@@ -371,7 +369,6 @@ export async function GET(
                                 width: "100%",
                                 height: "100%",
                                 display: "flex",
-                                flexDirection: "column",
                                 backgroundColor: "#020617",
                                 backgroundImage: "radial-gradient(circle at 50% 0%, rgba(34,211,238,0.10), transparent 42%), radial-gradient(circle at 50% 100%, rgba(124,58,237,0.12), transparent 42%), linear-gradient(160deg, #020617 0%, #081121 100%)",
                                 borderRadius: 30,
@@ -480,64 +477,6 @@ export async function GET(
                                     </div>
                                 </div>
 
-                                <div
-                                    data-share-card-copy-ribbon="miniapp"
-                                    style={{
-                                        position: "absolute",
-                                        zIndex: 2,
-                                        left: MINIAPP_SHARE_CARD.overlayRibbonInsetX,
-                                        right: MINIAPP_SHARE_CARD.overlayRibbonInsetX,
-                                        bottom: MINIAPP_SHARE_CARD.overlayRibbonInsetBottom,
-                                        height: MINIAPP_SHARE_CARD.overlayRibbonHeight,
-                                        padding: "0 28px",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                        gap: 20,
-                                        borderRadius: 22,
-                                        border: "1px solid rgba(255,255,255,0.10)",
-                                        backgroundColor: "rgba(8,15,31,0.72)",
-                                        backgroundImage: "linear-gradient(180deg, rgba(15,23,42,0.68), rgba(8,15,31,0.84))",
-                                        boxShadow: "0 14px 34px rgba(0,0,0,0.28)",
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            flex: 1,
-                                            alignItems: "center",
-                                            minWidth: 0,
-                                        }}
-                                    >
-                                        <span
-                                            style={{
-                                                fontSize: 44,
-                                                lineHeight: 1.04,
-                                                fontWeight: 800,
-                                                letterSpacing: "-0.035em",
-                                                color: OG_BRAND.text0,
-                                            }}
-                                        >
-                                            {miniappTitleSafe}
-                                        </span>
-                                    </div>
-                                    {miniappSupplyLabel && (
-                                        <span
-                                            style={{
-                                                fontSize: 22,
-                                                fontWeight: 700,
-                                                color: "#dbeafe",
-                                                backgroundColor: "rgba(14,165,233,0.12)",
-                                                border: "1px solid rgba(14,165,233,0.22)",
-                                                borderRadius: 999,
-                                                padding: "12px 18px",
-                                                whiteSpace: "nowrap",
-                                            }}
-                                        >
-                                            {miniappSupplyLabel}
-                                        </span>
-                                    )}
-                                </div>
                             </div>
                         </div>
                     ) : (
@@ -673,6 +612,9 @@ export async function GET(
         return new Response("Failed to generate image", { status: 500 });
     }
 }
+
+
+
 
 
 

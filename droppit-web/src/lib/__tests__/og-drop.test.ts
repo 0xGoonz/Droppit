@@ -260,9 +260,9 @@ describe("OG Drop Rendering", () => {
         const renderedTree = mockImageResponse.mock.calls[0][0];
         const renderedText = collectText(renderedTree);
         expect(findFirstImageSrc(renderedTree)).toBe("https://gateway.pinata.cloud/ipfs/QmStoredArtwork");
-        expect(renderedText).toContain("333 editions");
+        expect(renderedText).not.toContain("333 editions");
     });
-    it("renders the miniapp variant with blurred fill and an overlay ribbon", async () => {
+    it("renders the miniapp variant as pure artwork with blurred fill", async () => {
         mockReadContract.mockImplementation(async ({ functionName }: { functionName: string }) => {
             if (functionName === "owner") return ADDRESS;
             if (functionName === "uri") return "ipfs://QmMetadata";
@@ -294,8 +294,8 @@ describe("OG Drop Rendering", () => {
         const copyRibbon = findNodeByProp(renderedTree, "data-share-card-copy-ribbon", "miniapp");
         const copyStrip = findNodeByProp(renderedTree, "data-share-card-copy-strip", "miniapp");
 
-        expect(renderedText).toContain("Founder's Key");
-        expect(renderedText).toContain("100 editions");
+        expect(renderedText).not.toContain("Founder's Key");
+        expect(renderedText).not.toContain("100 editions");
         expect(renderedText).not.toContain("Creator:");
         expect(renderedText).not.toContain("Source:");
         expect(renderedText).not.toContain("Contract:");
@@ -307,7 +307,7 @@ describe("OG Drop Rendering", () => {
         expect(artFill?.props?.style).toMatchObject({ objectFit: "cover", filter: "blur(28px)" });
         expect(artStage?.props?.style).toMatchObject({ position: "relative", overflow: "hidden" });
         expect(artFrame?.props?.style).toMatchObject({ borderRadius: 28 });
-        expect(copyRibbon?.props?.style).toMatchObject({ position: "absolute", height: 86 });
+        expect(copyRibbon).toBeNull();
         expect(copyStrip).toBeNull();
     });
 
@@ -327,6 +327,7 @@ describe("OG Drop Rendering", () => {
         expect(renderedText).toContain("Unknown source");
     });
 });
+
 
 
 
