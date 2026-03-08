@@ -4,8 +4,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // We control what the structuredLlm.invoke returns per test.
 let mockLlmResponse: Record<string, unknown> = {};
 
-vi.mock('@/lib/agent', () => ({
-    initializeFarcasterAgent: vi.fn().mockResolvedValue({
+vi.mock('@/lib/farcaster-parser', () => ({
+    initializeFarcasterParser: vi.fn().mockResolvedValue({
         structuredLlm: {
             invoke: vi.fn().mockImplementation(() => Promise.resolve(mockLlmResponse)),
         },
@@ -198,3 +198,4 @@ describe('parseDeployIntent', () => {
         expect(result.error).toContain('-42');
     });
 });
+
