@@ -77,7 +77,7 @@ vi.mock("@/lib/supabase", () => ({
     }),
 }));
 
-import { GET, dynamic } from "@/app/api/og/draft/[draftId]/route";
+import { GET, dynamic, getDraftTitlePresentation } from "@/app/api/og/draft/[draftId]/route";
 
 function findFirstImageSrc(node: unknown): string | null {
     if (!node || typeof node !== "object") return null;
@@ -133,6 +133,33 @@ describe("OG Draft Rendering", () => {
         mockIdentityMaybeSingle.mockResolvedValue({ data: null, error: null });
         mockEstimateContractGas.mockResolvedValue(BigInt(21000));
         mockGetGasPrice.mockResolvedValue(BigInt(1_000_000_000));
+    });
+
+    it("keeps the hero title treatment for short names", () => {
+        expect(getDraftTitlePresentation("Founder's Key")).toEqual({
+            fontSize: 62,
+            lineHeight: 1.02,
+            letterSpacing: "-0.03em",
+            maxWidth: 760,
+        });
+    });
+
+    it("uses the medium title tier for moderately long names", () => {
+        expect(getDraftTitlePresentation("Founder's Key Genesis Pass")).toEqual({
+            fontSize: 58,
+            lineHeight: 1.06,
+            letterSpacing: "-0.028em",
+            maxWidth: 700,
+        });
+    });
+
+    it("uses the long title tier for extended draft names", () => {
+        expect(getDraftTitlePresentation("Founder's Key Genesis Access Pass Volume II")).toEqual({
+            fontSize: 52,
+            lineHeight: 1.1,
+            letterSpacing: "-0.022em",
+            maxWidth: 640,
+        });
     });
 
     it("renders accurate draft metadata with the persisted webhook author handle on first fetch", async () => {
@@ -242,3 +269,4 @@ describe("OG Draft Rendering", () => {
         expect(renderedText).not.toContain("Est. Deploy");
     });
 });
+
