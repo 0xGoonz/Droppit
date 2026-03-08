@@ -79,6 +79,9 @@ export async function POST(req: NextRequest) {
 
         const castText = body?.data?.text;
         const authorFid = body?.data?.author?.fid;
+        const authorUsername = typeof body?.data?.author?.username === "string"
+            ? body.data.author.username.trim().replace(/^@+/, "").toLowerCase()
+            : null;
         const castHash = body?.data?.hash;
 
         if (!castText || !authorFid || !castHash) {
@@ -211,6 +214,7 @@ export async function POST(req: NextRequest) {
                 editionSize: parsed.editionSize ?? null,
                 mintPrice: parsed.mintPrice ?? null,
                 assetUri: parsed.assetUri || null,
+                authorHandle: authorUsername,
             },
             sourceAssetUri,
         });
@@ -311,3 +315,4 @@ function getRemediationText(error: string | undefined): string {
 
     return `Please fix and retry: ${error}`;
 }
+

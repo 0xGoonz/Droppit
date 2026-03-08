@@ -164,6 +164,9 @@ describe("Webhook Integration", () => {
             editionSize: 100,
             mintPrice: "0",
             creationSource: "farcaster_agent",
+            agentParse: expect.objectContaining({
+                authorHandle: "testuser",
+            }),
         }));
         expect(mockState.ensureAgentPostOutboxRecord).toHaveBeenCalledTimes(1);
         expect(mockState.ensureAgentPostOutboxRecord).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
@@ -291,6 +294,7 @@ describe("Webhook Integration", () => {
         expect(mockState.createDraftRecord).toHaveBeenCalledTimes(1);
     });
 });
+
 
 
 

@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { createClient } from "@supabase/supabase-js";
-import { createPublicClient, http, formatEther, parseEther } from "viem";
+import { getServiceRoleClient } from "@/lib/supabase";
+import { createPublicClient, http, formatEther } from "viem";
 import { base, baseSepolia } from "viem/chains";
 import { FACTORY_ABI, getChainContracts } from "@/lib/contracts";
 import {
@@ -22,6 +22,7 @@ import {
 } from "@/lib/og-utils";
 
 export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
 type DraftRow = {
     id: string;
@@ -32,7 +33,36 @@ type DraftRow = {
     image_url: string | null;
     creator_address: string | null;
     creator_fid: number | null;
+    agent_parse: Record<string, unknown> | null;
 };
+
+type IdentityRow = {
+    handle: string | null;
+};
+
+function normalizeHandle(raw: unknown): string | null {
+    if (typeof raw !== "string") return null;
+    const cleaned = raw.trim().replace(/^@+/, "").toLowerCase();
+    return cleaned || null;
+}
+
+function extractWebhookAuthorHandle(agentParse: Record<string, unknown> | null | undefined): string | null {
+    if (!agentParse || typeof agentParse !== "object") return null;
+
+    const candidates = [
+        agentParse.authorHandle,
+        agentParse.authorUsername,
+        agentParse.creatorHandle,
+        agentParse.username,
+    ];
+
+    for (const candidate of candidates) {
+        const normalized = normalizeHandle(candidate);
+        if (normalized) return normalized;
+    }
+
+    return null;
+}
 
 export async function GET(
     req: NextRequest,
@@ -49,14 +79,10 @@ export async function GET(
             return new Response("Missing draftId parameter", { status: 400 });
         }
 
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-
+        const supabase = getServiceRoleClient();
         const { data } = await supabase
             .from("drops")
-            .select("id, title, status, edition_size, mint_price, image_url, creator_address, creator_fid")
+            .select("id, title, status, edition_size, mint_price, image_url, creator_address, creator_fid, agent_parse")
             .eq("id", draftId)
             .maybeSingle();
 
@@ -70,27 +96,24 @@ export async function GET(
             const contracts = getChainContracts(chainId);
             if (!contracts?.factoryAddress) throw new Error("Missing factory contract configuration");
 
-            const factoryAddress = contracts.factoryAddress;
-
             const publicClient = createPublicClient({
                 chain: activeChain,
-                transport: http()
+                transport: http(),
             });
 
             const dummyTokenUri = "ipfs://QmDummyHash12345678901234567890123456789012345678901234567";
             const dummyCommitment = "0x" + "00".repeat(32);
-            // Non-zero dummy address to avoid some zero-address revert rules if any exist in the EVM call stack
             const account = "0x0000000000000000000000000000000000000001" as `0x${string}`;
 
             const gas = await publicClient.estimateContractGas({
-                address: factoryAddress as `0x${string}`,
+                address: contracts.factoryAddress as `0x${string}`,
                 abi: FACTORY_ABI,
                 functionName: "createDrop",
                 account,
                 args: [
                     BigInt(draft?.edition_size || 100),
-                    parseEther(draft?.mint_price || "0"),
-                    account, // payout recipient
+                    BigInt(draft?.mint_price || "0"),
+                    account,
                     dummyTokenUri,
                     dummyCommitment as `0x${string}`
                 ]
@@ -98,9 +121,10 @@ export async function GET(
             const gasPrice = await publicClient.getGasPrice();
             const costWei = gas * gasPrice;
             estimatedGas = formatEther(costWei + (costWei / BigInt(10)));
-        } catch (e) {
-            console.warn("[OG Draft] Gas Estimate failed", e);
+        } catch (error) {
+            console.warn("[OG Draft] Gas Estimate failed", error);
         }
+
         const title = fallbackTitle(draft?.title, "Untitled Draft");
         const titleSafe = truncateText(title, 46);
         const price = formatMintPriceWei(draft?.mint_price || "0");
@@ -108,7 +132,20 @@ export async function GET(
         const statusLabel = formatStatusLabel(draft?.status || "DRAFT");
         const statusColors = statusBadgeColors(draft?.status || "DRAFT");
         const art = normalizeIpfsToHttp(draft?.image_url);
-        const creator = creatorAttribution(draft?.creator_address, draft?.creator_fid);
+
+        let creatorHandle = extractWebhookAuthorHandle(draft?.agent_parse);
+        if (!creatorHandle && draft?.creator_address) {
+            const { data: identity } = await supabase
+                .from("identity_links")
+                .select("handle")
+                .eq("creator_address", draft.creator_address.toLowerCase())
+                .order("verified_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            creatorHandle = normalizeHandle((identity as IdentityRow | null)?.handle);
+        }
+
+        const creator = creatorAttribution(draft?.creator_address, draft?.creator_fid, creatorHandle);
         const accent = deterministicAccent(draft?.id || draftId);
         const hasArt = !!art;
         const artFallbackGlyph = titleSafe.charAt(0).toUpperCase() || "D";
@@ -254,6 +291,9 @@ export async function GET(
             {
                 width: OG_TOKENS.width,
                 height: OG_TOKENS.height,
+                headers: {
+                    "Cache-Control": "no-store, max-age=0, must-revalidate",
+                },
             }
         );
     } catch (error) {
