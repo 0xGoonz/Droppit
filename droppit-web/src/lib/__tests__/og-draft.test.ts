@@ -155,6 +155,8 @@ describe("OG Draft Rendering", () => {
         expect(renderedText).toContain("Free");
         expect(renderedText).toContain("@oxgnar");
         expect(renderedText).not.toContain("Untitled Draft");
+        expect(renderedText).not.toContain("Draft Preview");
+        expect(renderedText).not.toContain("Est. Deploy");
         expect(findFirstImageSrc(renderedTree)).toBe("https://droppit-gateway.mypinata.cloud/ipfs/QmArtwork");
         expect(mockIdentityMaybeSingle).not.toHaveBeenCalled();
     });
@@ -210,6 +212,19 @@ describe("OG Draft Rendering", () => {
         expect(renderedText).toContain("0.001 ETH");
     });
 
+    it("shows the estimate badge only when the value is visually meaningful", async () => {
+        mockEstimateContractGas.mockResolvedValue(BigInt(3_000_000));
+        mockGetGasPrice.mockResolvedValue(BigInt(40_000_000_000));
+
+        const res = await GET(new NextRequest("https://droppitonbase.xyz/api/og/draft/draft-1"), {
+            params: Promise.resolve({ draftId: "draft-1" }),
+        });
+
+        expect(res.status).toBe(200);
+        const renderedText = collectText(mockImageResponse.mock.calls[0][0]);
+        expect(renderedText).toContain("Est. Deploy: ~0.1320 ETH");
+    });
+
     it("hides only the estimate badge when gas estimation fails", async () => {
         mockEstimateContractGas.mockRejectedValue(new Error("estimate failed"));
         mockDropMaybeSingle.mockResolvedValue({
@@ -227,6 +242,3 @@ describe("OG Draft Rendering", () => {
         expect(renderedText).not.toContain("Est. Deploy");
     });
 });
-
-
-

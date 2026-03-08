@@ -41,6 +41,13 @@ type IdentityRow = {
     handle: string | null;
 };
 
+type EstimateErrorLike = {
+    shortMessage?: string;
+    message?: string;
+    status?: number;
+    url?: string;
+};
+
 function normalizeHandle(raw: unknown): string | null {
     if (typeof raw !== "string") return null;
     const cleaned = raw.trim().replace(/^@+/, "").toLowerCase();
@@ -63,6 +70,33 @@ function extractWebhookAuthorHandle(agentParse: Record<string, unknown> | null |
     }
 
     return null;
+}
+
+function summarizeEstimateError(error: unknown): string {
+    if (!error || typeof error !== "object") return "unknown error";
+
+    const estimateError = error as EstimateErrorLike;
+    const parts: string[] = [];
+
+    if (typeof estimateError.shortMessage === "string" && estimateError.shortMessage.trim()) {
+        parts.push(estimateError.shortMessage.trim());
+    } else if (typeof estimateError.message === "string" && estimateError.message.trim()) {
+        parts.push(estimateError.message.split("\n")[0].trim());
+    }
+
+    if (typeof estimateError.status === "number") {
+        parts.push(`status ${estimateError.status}`);
+    }
+
+    if (typeof estimateError.url === "string") {
+        try {
+            parts.push(new URL(estimateError.url).hostname);
+        } catch {
+            parts.push(estimateError.url);
+        }
+    }
+
+    return parts.join(" | ") || "unknown error";
 }
 
 export async function GET(
@@ -125,8 +159,7 @@ export async function GET(
                 const costWei = gas * gasPrice;
                 estimatedGas = formatEther(costWei + (costWei / BigInt(10)));
             } catch (error) {
-                const message = error instanceof Error ? error.message : "unknown error";
-                console.warn(`[OG Draft] Gas estimate unavailable via configured RPC: ${message}`);
+                console.warn(`[OG Draft] Gas estimate unavailable via configured RPC: ${summarizeEstimateError(error)}`);
             }
         }
 
@@ -137,6 +170,15 @@ export async function GET(
         const statusLabel = formatStatusLabel(draft?.status || "DRAFT");
         const statusColors = statusBadgeColors(draft?.status || "DRAFT");
         const art = normalizeIpfsToHttp(draft?.image_url);
+        const heroArtSize = 248;
+
+        let estimateLabel: string | null = null;
+        if (estimatedGas) {
+            const numericEstimate = Number.parseFloat(estimatedGas);
+            if (Number.isFinite(numericEstimate) && numericEstimate >= 0.0001) {
+                estimateLabel = `Est. Deploy: ~${numericEstimate.toFixed(4)} ETH`;
+            }
+        }
 
         let creatorHandle = extractWebhookAuthorHandle(draft?.agent_parse);
         if (!creatorHandle && draft?.creator_address) {
@@ -176,8 +218,8 @@ export async function GET(
                             position: "relative",
                             overflow: "hidden",
                             borderRadius: 30,
-                            padding: "38px 40px",
-                            background: "linear-gradient(135deg, rgba(7,13,26,0.94) 0%, rgba(10,19,38,0.9) 58%, rgba(9,24,35,0.84) 100%)",
+                            padding: "30px 40px 26px",
+                            background: "linear-gradient(180deg, rgba(6,13,28,0.96) 0%, rgba(6,18,38,0.92) 48%, rgba(4,12,28,0.94) 100%)",
                             border: "1px solid rgba(255,255,255,0.09)",
                             boxShadow: "0 26px 70px rgba(2,8,23,0.42)",
                         }}
@@ -185,56 +227,49 @@ export async function GET(
                         <div
                             style={{
                                 position: "absolute",
-                                top: -120,
-                                right: -110,
-                                width: 360,
-                                height: 360,
-                                borderRadius: 999,
-                                background: `radial-gradient(circle, ${accent.glow} 0%, rgba(34,211,238,0.12) 38%, transparent 72%)`,
-                            }}
-                        />
-                        <div
-                            style={{
-                                width: OG_TOKENS.artSize,
-                                height: OG_TOKENS.artSize,
-                                borderRadius: OG_TOKENS.radius,
-                                marginRight: 40,
-                                background: hasArt ? "rgba(255,255,255,0.03)" : `linear-gradient(145deg, ${accent.from}, ${accent.to})`,
-                                border: "1px solid rgba(255,255,255,0.14)",
+                                top: -150,
+                                left: 0,
+                                right: 0,
                                 display: "flex",
-                                alignItems: "center",
                                 justifyContent: "center",
-                                overflow: "hidden",
-                                alignSelf: "center",
-                                boxShadow: "0 22px 56px rgba(0,0,0,0.42)",
-                                position: "relative",
-                                zIndex: 1,
                             }}
                         >
-                            {hasArt ? (
-                                <img
-                                    alt=""
-                                    src={art as string}
-                                    width={OG_TOKENS.artSize}
-                                    height={OG_TOKENS.artSize}
-                                    style={{ objectFit: "cover" }}
-                                />
-                            ) : (
-                                <span style={{ fontSize: 124, fontWeight: 800, opacity: 0.9 }}>{artFallbackGlyph}</span>
-                            )}
+                            <div
+                                style={{
+                                    width: 520,
+                                    height: 520,
+                                    borderRadius: 999,
+                                    background: `radial-gradient(circle, ${accent.glow} 0%, rgba(34,211,238,0.16) 32%, rgba(59,130,246,0.08) 52%, transparent 74%)`,
+                                }}
+                            />
                         </div>
-
+                        <div
+                            style={{
+                                position: "absolute",
+                                inset: 0,
+                                background: "linear-gradient(180deg, rgba(6,12,24,0.08) 0%, rgba(6,12,24,0) 38%, rgba(4,10,21,0.28) 100%)",
+                            }}
+                        />
                         <div
                             style={{
                                 flex: 1,
                                 display: "flex",
                                 flexDirection: "column",
+                                alignItems: "center",
                                 justifyContent: "space-between",
                                 position: "relative",
                                 zIndex: 1,
                             }}
                         >
-                            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                            <div
+                                style={{
+                                    width: "100%",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gap: 14,
+                                }}
+                            >
                                 <div style={{ display: "flex", gap: 12 }}>
                                     <span
                                         style={{
@@ -260,18 +295,6 @@ export async function GET(
                                     >
                                         {chainLabel}
                                     </span>
-                                    <span
-                                        style={{
-                                            fontSize: OG_TOKENS.badgeSize,
-                                            padding: "7px 14px",
-                                            borderRadius: 999,
-                                            border: "1px solid rgba(167,139,250,0.42)",
-                                            color: "#efe7ff",
-                                            background: "rgba(109,40,217,0.24)",
-                                        }}
-                                    >
-                                        Draft Preview
-                                    </span>
                                 </div>
 
                                 <div
@@ -280,9 +303,10 @@ export async function GET(
                                         lineHeight: 1.02,
                                         letterSpacing: "-0.03em",
                                         fontWeight: 800,
-                                        maxWidth: 700,
+                                        maxWidth: 760,
                                         color: "#f8fbff",
                                         textShadow: "0 8px 24px rgba(2,8,23,0.38)",
+                                        textAlign: "center",
                                     }}
                                 >
                                     {titleSafe}
@@ -296,25 +320,25 @@ export async function GET(
                                             background: "rgba(11,16,32,0.86)",
                                             border: "1px solid rgba(34,211,238,0.28)",
                                             borderRadius: 16,
-                                            padding: "8px 16px",
+                                            padding: "8px 18px",
                                         }}
                                     >
                                         {price}
                                     </span>
-                                    {estimatedGas && (
+                                    {estimateLabel && (
                                         <span
                                             style={{
-                                                fontSize: OG_TOKENS.subtitleSize,
-                                                color: "#e2e8f0",
-                                                background: "rgba(11,16,32,0.86)",
-                                                border: "1px solid rgba(255,255,255,0.1)",
+                                                fontSize: 20,
+                                                color: "rgba(226,232,240,0.84)",
+                                                background: "rgba(11,16,32,0.68)",
+                                                border: "1px solid rgba(255,255,255,0.08)",
                                                 borderRadius: 16,
-                                                padding: "8px 16px",
+                                                padding: "9px 16px",
                                                 display: "flex",
                                                 alignItems: "center",
                                             }}
                                         >
-                                            Est. Deploy: ~{parseFloat(estimatedGas).toFixed(4)} ETH
+                                            {estimateLabel}
                                         </span>
                                     )}
                                 </div>
@@ -322,20 +346,71 @@ export async function GET(
 
                             <div
                                 style={{
+                                    width: "100%",
                                     display: "flex",
                                     flexDirection: "column",
-                                    gap: 10,
-                                    background: "linear-gradient(180deg, rgba(6,12,24,0.02) 0%, rgba(6,12,24,0.34) 100%)",
-                                    borderTop: "1px solid rgba(255,255,255,0.06)",
-                                    paddingTop: 18,
+                                    alignItems: "center",
+                                    gap: 16,
                                 }}
                             >
-                                <span style={{ fontSize: OG_TOKENS.bodySize, color: "#d8e2f0" }}>
-                                    Creator: {creator}
-                                </span>
-                                <span style={{ fontSize: 18, color: "#94a3b8" }}>
-                                    Draft ID: {truncateText(draftId, 16)}
-                                </span>
+                                <div
+                                    style={{
+                                        width: heroArtSize + 16,
+                                        height: heroArtSize + 16,
+                                        borderRadius: OG_TOKENS.radius + 8,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        background: "radial-gradient(circle at 50% 38%, rgba(255,255,255,0.08), rgba(255,255,255,0.02) 58%, rgba(255,255,255,0) 78%)",
+                                        boxShadow: "0 28px 72px rgba(0,0,0,0.34)",
+                                        overflow: "hidden",
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            width: heroArtSize,
+                                            height: heroArtSize,
+                                            borderRadius: OG_TOKENS.radius + 4,
+                                            background: hasArt ? "rgba(255,255,255,0.03)" : `linear-gradient(145deg, ${accent.from}, ${accent.to})`,
+                                            border: "1px solid rgba(255,255,255,0.14)",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            overflow: "hidden",
+                                        }}
+                                    >
+                                        {hasArt ? (
+                                            <img
+                                                alt=""
+                                                src={art as string}
+                                                width={heroArtSize}
+                                                height={heroArtSize}
+                                                style={{ objectFit: "cover" }}
+                                            />
+                                        ) : (
+                                            <span style={{ fontSize: 124, fontWeight: 800, opacity: 0.9 }}>{artFallbackGlyph}</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        gap: 8,
+                                        width: "100%",
+                                        borderTop: "1px solid rgba(255,255,255,0.06)",
+                                        paddingTop: 16,
+                                    }}
+                                >
+                                    <span style={{ fontSize: 20, color: "rgba(216,226,240,0.88)" }}>
+                                        Creator: {creator}
+                                    </span>
+                                    <span style={{ fontSize: 16, color: "rgba(148,163,184,0.82)" }}>
+                                        Draft ID: {truncateText(draftId, 16)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
