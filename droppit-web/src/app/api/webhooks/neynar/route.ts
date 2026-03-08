@@ -6,6 +6,7 @@ import { pinata } from "@/lib/pinata";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { validateImageMedia } from "@/lib/media-validation";
 import { createDraftRecord } from "@/lib/draft";
+import { getDraftShareSpec } from "@/lib/draft-share";
 import {
     attemptAgentPostPublish,
     buildDeployReplyText,
@@ -227,7 +228,7 @@ export async function POST(req: NextRequest) {
         const draftId = draftResult.id;
         console.log(`[Webhook] Successfully drafted Drop ID: ${draftId}`);
 
-        const deployFrameUrl = `${baseUrl}/api/frame/deploy/${castHash}`;
+        const draftShare = getDraftShareSpec(baseUrl, draftId);
         const reply = await publishAgentReplySafely(supabaseAdmin, {
             postType: "deploy_reply",
             sourceCastHash: castHash,
@@ -239,7 +240,7 @@ export async function POST(req: NextRequest) {
                     mintPriceWei: parsed.mintPrice ?? "0",
                 }),
                 parent: castHash,
-                embeds: [{ url: deployFrameUrl }],
+                embeds: [{ url: draftShare.shareUrl }],
             },
         });
 
@@ -251,7 +252,7 @@ export async function POST(req: NextRequest) {
                 {
                     label: primaryLabel,
                     action: "post",
-                    target: deployFrameUrl,
+                    target: draftShare.shareUrl,
                 },
             ],
         };
@@ -315,4 +316,6 @@ function getRemediationText(error: string | undefined): string {
 
     return `Please fix and retry: ${error}`;
 }
+
+
 

@@ -23,6 +23,14 @@ vi.mock("@/lib/rate-limit", () => ({
     checkRateLimit: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock("@/lib/chains", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/lib/chains")>();
+    return {
+        ...actual,
+        getAlchemyRpcUrl: () => "https://alchemy.test",
+    };
+});
+
 vi.mock("@/lib/contracts", () => ({
     FACTORY_ABI: [],
     getChainContracts: () => ({ factoryAddress: FACTORY_ADDRESS }),
@@ -219,4 +227,6 @@ describe("OG Draft Rendering", () => {
         expect(renderedText).not.toContain("Est. Deploy");
     });
 });
+
+
 

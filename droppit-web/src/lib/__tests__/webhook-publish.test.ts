@@ -175,12 +175,13 @@ describe("Webhook Integration", () => {
             dropId: "draft-1",
             requestPayload: expect.objectContaining({
                 parent: "0xcast123",
-                embeds: [{ url: "http://localhost:3000/api/frame/deploy/0xcast123" }],
+                embeds: [{ url: "http://localhost:3000/s/draft/draft-1" }],
             }),
         }));
         expect(mockState.attemptAgentPostPublish).toHaveBeenCalledTimes(1);
         expect(json.success).toBe(true);
         expect(json.reply).toEqual({ status: "published", castHash: "0xreplyhash" });
+        expect(json.frame.buttons[0].target).toBe("http://localhost:3000/s/draft/draft-1");
     });
 
     it("does not create a second draft or reply for duplicate webhook events", async () => {
@@ -294,6 +295,7 @@ describe("Webhook Integration", () => {
         expect(mockState.createDraftRecord).toHaveBeenCalledTimes(1);
     });
 });
+
 
 
 

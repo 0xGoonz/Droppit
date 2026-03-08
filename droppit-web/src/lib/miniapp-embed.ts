@@ -1,4 +1,5 @@
 import { BRAND } from "@/lib/brand";
+import type { DraftShareSpec } from "@/lib/draft-share";
 import type { DropFrameSpec } from "@/lib/drop-frame";
 
 type MiniAppActionType = "launch_frame" | "launch_miniapp";
@@ -72,6 +73,25 @@ export function getDropShareEmbeds(frame: DropFrameSpec) {
     };
 }
 
+export function getDraftShareEmbeds(share: DraftShareSpec) {
+    return {
+        miniapp: createEmbed({
+            baseUrl: share.reviewUrl,
+            imageUrl: share.shareImageUrl,
+            actionType: "launch_miniapp",
+            actionUrl: share.launchUrl,
+            buttonTitle: share.buttonTitle,
+        }),
+        frame: createEmbed({
+            baseUrl: share.reviewUrl,
+            imageUrl: share.shareImageUrl,
+            actionType: "launch_frame",
+            actionUrl: share.launchUrl,
+            buttonTitle: share.buttonTitle,
+        }),
+    };
+}
+
 export function getHomeMiniAppEmbeds(baseUrl: string) {
     const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
     const imageUrl = new URL("/miniapp/metadata/hero-1200x630.png", normalizedBaseUrl).toString();
@@ -93,4 +113,3 @@ export function getHomeMiniAppEmbeds(baseUrl: string) {
         }),
     };
 }
-

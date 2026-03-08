@@ -95,7 +95,7 @@ export function buildDeployReplyText(params: {
         : `${formatEther(BigInt(params.mintPriceWei))} ETH`;
 
     return normalizeReplyText(
-        `Draft ready: ${title} | ${params.editionSize} editions | ${priceLabel}. Open the deploy frame below.`,
+        `Draft ready: ${title} | ${params.editionSize} editions | ${priceLabel}. Open in Droppit below.`,
         DEPLOY_REPLY_TEXT_LIMIT
     );
 }
@@ -255,6 +255,7 @@ async function markAgentPostStatus(
         .update(updatePayload)
         .eq("id", outboxId);
 }
+
 
 
 
