@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabase";
 import type { DeployDraft } from "@/lib/frame-deploy";
+import { renderDeployFramePage } from "@/lib/frame-deploy-page";
 import {
     DEPLOY_DRAFT_SELECT,
     finalizeDeployFromFrameCallback,
@@ -9,6 +10,16 @@ import {
     renderLiveDropFrame,
     stageDraftSecretFromFrameInput,
 } from "@/lib/frame-deploy-frame";
+
+export async function GET(
+    _req: NextRequest,
+    { params }: { params: Promise<{ castHash: string }> }
+) {
+    const resolvedParams = await params;
+    const castHash = resolvedParams.castHash;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+    return renderDeployFramePage({ castHash, baseUrl });
+}
 
 export async function POST(
     req: NextRequest,
@@ -31,7 +42,6 @@ export async function POST(
             return renderInvalidDraftFrame({ baseUrl, postUrl });
         }
 
-        // Item 23: Track frame button click for impression/CTR analytics
         void supabaseAdmin.from("analytics_events").insert({
             event: "frame_button_click",
             drop_id: draft.id,
@@ -96,4 +106,3 @@ export async function POST(
         return renderInvalidDraftFrame({ baseUrl, postUrl, target: `${baseUrl}/create` });
     }
 }
-

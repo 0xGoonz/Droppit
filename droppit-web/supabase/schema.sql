@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS public.drops (
     mint_price TEXT DEFAULT '0',        -- Wei as TEXT string (bigint-safe, no float precision loss)
     image_url TEXT,                     -- IPFS gateway or pinned URL
     token_uri TEXT,                     -- ipfs://Qm... (set at upload time)
+    source_asset_uri TEXT,              -- Optional original source media URI from Farcaster / AI parse
     -- Payout
     payout_recipient TEXT
         CONSTRAINT drops_payout_recipient_lowercase CHECK (
@@ -39,7 +40,10 @@ CREATE TABLE IF NOT EXISTS public.drops (
     deploy_salt TEXT,                  -- Staged 32-byte random salt for locked-content commitment during deploy
     deploy_commitment TEXT,            -- Staged keccak256(salt || locked_content_draft) used in tx build/finalize
     -- Webhook/Farcaster linkage
-    cast_hash TEXT,                    -- Farcaster cast hash linking webhook → draft
+    cast_hash TEXT,                    -- Farcaster cast hash linking webhook -> draft
+    creation_source TEXT,              -- web | farcaster_agent
+    agent_parse JSONB,                 -- Persisted parse metadata from agentic creation
+    agent_reply_cast_hash TEXT,        -- Public Farcaster reply hash posted by the Droppit bot
     -- Deployment lifecycle
     status TEXT NOT NULL DEFAULT 'DRAFT', -- DRAFT | LIVE
     contract_address TEXT UNIQUE,      -- Set at publish (lowercase)
@@ -52,16 +56,19 @@ CREATE INDEX IF NOT EXISTS idx_drops_contract_address ON public.drops(contract_a
 CREATE INDEX IF NOT EXISTS idx_drops_status ON public.drops(status);
 CREATE INDEX IF NOT EXISTS idx_drops_cast_hash ON public.drops(cast_hash);
 
-COMMENT ON COLUMN public.drops.mint_price IS 'Wei value as TEXT string. Never use NUMERIC — BigInt precision loss risk. Validated by validateMintPriceWei(). Normalized from ETH by normalizeEthToWei().';
+COMMENT ON COLUMN public.drops.mint_price IS 'Wei value as TEXT string. Never use NUMERIC - BigInt precision loss risk. Validated by validateMintPriceWei(). Normalized from ETH by normalizeEthToWei().';
 COMMENT ON COLUMN public.drops.locked_content IS 'Encrypted locked content JSON payload. Written only at publish time via encryptLockedContent(). Never plaintext.';
 COMMENT ON COLUMN public.drops.locked_content_draft IS 'Temporary plaintext staging for locked content during draft phase. Cleared to NULL at publish time after encryption.';
 COMMENT ON COLUMN public.drops.deploy_salt IS 'Temporary random bytes32 salt generated at tx-build time for locked-content commitment. Cleared at publish.';
 COMMENT ON COLUMN public.drops.deploy_commitment IS 'Temporary keccak256(bytes32 salt || locked_content_draft) staged for frame deploy consistency. Cleared at publish.';
 COMMENT ON COLUMN public.drops.payout_recipient IS 'EVM address receiving mint proceeds. Lowercase, set via web flow or defaulting to creator_address.';
 COMMENT ON COLUMN public.drops.cast_hash IS 'Farcaster cast hash linking a Neynar webhook event to this draft.';
+COMMENT ON COLUMN public.drops.creation_source IS 'How the draft was created (for example web or farcaster_agent).';
+COMMENT ON COLUMN public.drops.agent_parse IS 'Structured parse metadata captured during agentic creation.';
+COMMENT ON COLUMN public.drops.source_asset_uri IS 'Original media URI extracted from the Farcaster cast or AI parse before normalization.';
+COMMENT ON COLUMN public.drops.agent_reply_cast_hash IS 'Public Farcaster reply cast hash created by the Droppit bot for this draft.';
 COMMENT ON COLUMN public.drops.creator_fid IS 'Farcaster FID of the creator. Set via webhook flow when creator_address is not available.';
 COMMENT ON COLUMN public.drops.tx_hash_deploy IS 'Transaction hash of the createDrop() call on Base. Set at publish time.';
-
 -- 2. nonces — Challenge nonces for signature verification
 -- Used by: api/drop/locked/nonce, api/drop/locked,
 --          api/identity/link/nonce, api/identity/link/verify
@@ -142,7 +149,30 @@ CREATE TABLE IF NOT EXISTS public.webhook_events (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
--- 6. rate_limits — IP-based rate limiting
+-- 6. agent_post_outbox — Durable public posting outbox for the Droppit agent
+CREATE TABLE IF NOT EXISTS public.agent_post_outbox (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_type TEXT NOT NULL,
+    source_cast_hash TEXT NOT NULL,
+    drop_id UUID,
+    status TEXT NOT NULL DEFAULT 'pending',
+    published_cast_hash TEXT,
+    error TEXT,
+    request_payload JSONB,
+    response_payload JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    CONSTRAINT agent_post_outbox_source_post_unique UNIQUE (source_cast_hash, post_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_post_outbox_drop_id ON public.agent_post_outbox(drop_id);
+CREATE INDEX IF NOT EXISTS idx_agent_post_outbox_status ON public.agent_post_outbox(status);
+
+COMMENT ON TABLE public.agent_post_outbox IS 'Durable outbox for public Farcaster posts published by the Droppit agent.';
+COMMENT ON COLUMN public.agent_post_outbox.request_payload IS 'Serialized publish request payload including text, embeds, and parent cast hash.';
+COMMENT ON COLUMN public.agent_post_outbox.response_payload IS 'Raw publish response payload returned by the Farcaster provider.';
+
+-- 7. rate_limits — IP-based rate limiting
 CREATE TABLE IF NOT EXISTS public.rate_limits (
     ip_address TEXT PRIMARY KEY,
     points INTEGER DEFAULT 0 NOT NULL,
@@ -250,3 +280,5 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.cleanup_stale_rows() IS 'Periodic cleanup: purges expired nonces (24h), stale rate_limit rows (24h), and old webhook_events (30d). Schedule with pg_cron.';
+
+

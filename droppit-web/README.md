@@ -291,3 +291,4 @@ droppit-web/
 - **AI:** Google Gemini 2.5 Flash (via LangChain)
 - **Webhooks:** Neynar (Farcaster)
 - **Testing:** Vitest
+

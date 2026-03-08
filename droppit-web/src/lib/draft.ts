@@ -28,6 +28,9 @@ export interface CreateDraftParams {
     imageUrl?: string | null;
     tokenUri?: string | null;
     payoutRecipient?: string;
+    creationSource?: string;
+    agentParse?: Record<string, unknown> | null;
+    sourceAssetUri?: string | null;
 }
 
 export type CreateDraftResult =
@@ -37,7 +40,7 @@ export type CreateDraftResult =
 export async function createDraftRecord(
     params: CreateDraftParams
 ): Promise<CreateDraftResult> {
-    // ── Validate ──────────────────────────────────────────────
+    // Validate
     const titleCheck = validateTitle(params.title);
     if (!titleCheck.valid) return { success: false, error: titleCheck.error };
 
@@ -51,7 +54,7 @@ export async function createDraftRecord(
     if (params.creatorAddress) {
         const addressCheck = validateEvmAddress(params.creatorAddress, "creatorAddress");
         if (!addressCheck.valid) return { success: false, error: addressCheck.error };
-        normalizedCreator = addressCheck.value; // already lowercased
+        normalizedCreator = addressCheck.value;
     }
 
     let normalizedPayout: string | undefined;
@@ -61,8 +64,9 @@ export async function createDraftRecord(
         normalizedPayout = payoutCheck.value;
     }
 
-    // ── Insert ────────────────────────────────────────────────
+    // Insert
     const supabaseAdmin = getServiceRoleClient();
+    const creationSource = params.creationSource || (params.creatorFid ? "farcaster_agent" : normalizedCreator ? "web" : null);
 
     const { data, error } = await supabaseAdmin
         .from("drops")
@@ -77,6 +81,9 @@ export async function createDraftRecord(
             token_uri: params.tokenUri || null,
             payout_recipient: normalizedPayout || normalizedCreator || null,
             cast_hash: params.castHash || null,
+            creation_source: creationSource,
+            agent_parse: params.agentParse || null,
+            source_asset_uri: params.sourceAssetUri || null,
             status: "DRAFT",
         })
         .select("id")
