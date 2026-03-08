@@ -33,13 +33,21 @@ import {
     shouldShowMiniAppConnectingState,
     suppressMiniAppAutoConnect,
 } from "@/lib/miniapp-wallet";
+import {
+    PRIVATE_DRAFT_ACCESS_MESSAGE,
+    mapDraftLoadFailure,
+    resolveDraftLoadStatus,
+    shouldFetchDraft,
+    type DraftLoadRequestStatus,
+} from "@/lib/draft-load";
 
 export default function CreateDrop() {
     const [step, setStep] = useState(1);
     const [draftId, setDraftId] = useState<string | null>(null);
     const [autoDeploy, setAutoDeploy] = useState(false);
-    const [hasHydrated, setHasHydrated] = useState(false);
-    const [hydrationError, setHydrationError] = useState<string | null>(null);
+    const [hasResolvedDraftParams, setHasResolvedDraftParams] = useState(false);
+    const [draftLoadRequestStatus, setDraftLoadRequestStatus] = useState<DraftLoadRequestStatus>("idle");
+    const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         title: "",
         description: "",
@@ -99,6 +107,19 @@ export default function CreateDrop() {
         walletChainId: chainId,
         selectedChainId: selectedChain.id,
     });
+    const draftLoadStatus = resolveDraftLoadStatus({
+        draftId,
+        address,
+        requestStatus: draftLoadRequestStatus,
+    });
+    const hasHydrated = hasResolvedDraftParams && draftLoadStatus === "loaded";
+    const hydrationError = draftLoadStatus === "private"
+        ? PRIVATE_DRAFT_ACCESS_MESSAGE
+        : draftLoadStatus === "error"
+            ? draftLoadError
+            : null;
+    const isDraftLoading = Boolean(draftId) && draftLoadStatus === "loading";
+    const shouldBlockDraftReview = Boolean(address) && Boolean(draftId) && draftLoadStatus !== "loaded";
     const handleWalletDisconnect = useCallback(() => {
         suppressMiniAppAutoConnect(getSessionStorageSafe());
         disconnect();
@@ -159,61 +180,105 @@ export default function CreateDrop() {
         };
     }, [file, normalizedDraftImageUrl]);
 
-    // Parse draftId and auto from URL on mount, then hydrate formData from API
+    // Parse draftId and auto from URL on mount.
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (hasHydrated) return;
+        if (typeof window === "undefined" || hasResolvedDraftParams) return;
 
         const searchParams = new URLSearchParams(window.location.search);
-        const dId = searchParams.get('draftId');
-        const auto = searchParams.get('auto');
+        const nextDraftId = searchParams.get("draftId");
+        const auto = searchParams.get("auto");
 
-        if (!dId) {
-            setHasHydrated(true);
+        setDraftId(nextDraftId);
+        setAutoDeploy(auto === "1");
+        setHasResolvedDraftParams(true);
+    }, [hasResolvedDraftParams]);
+
+    // Hydrate draft data only after the creator wallet is available.
+    useEffect(() => {
+        if (!hasResolvedDraftParams) return;
+
+        if (!draftId) {
+            setDraftLoadRequestStatus("idle");
+            setDraftLoadError(null);
             return;
         }
 
-        setDraftId(dId);
-        if (auto === '1') setAutoDeploy(true);
+        if (!shouldFetchDraft({ draftId, address })) {
+            setDraftLoadRequestStatus("idle");
+            setDraftLoadError(null);
+            return;
+        }
 
-        fetch(`/api/drops/${dId}`, {
-            headers: address ? { "x-creator-address": address } : {},
+        const controller = new AbortController();
+        let isActive = true;
+
+        setDraftLoadRequestStatus("loading");
+        setDraftLoadError(null);
+
+        fetch(`/api/drops/${draftId}`, {
+            headers: { "x-creator-address": address as string },
+            signal: controller.signal,
         })
             .then(async (res) => {
+                const body = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    const body = await res.json().catch(() => ({}));
-                    throw new Error(body.error || `Draft fetch failed (${res.status})`);
+                    const failure = mapDraftLoadFailure(
+                        res.status,
+                        typeof body?.error === "string" ? body.error : null
+                    );
+                    const error = new Error(failure.message) as Error & {
+                        draftLoadStatus?: DraftLoadRequestStatus;
+                    };
+                    error.draftLoadStatus = failure.status;
+                    throw error;
                 }
-                return res.json();
+                return body;
             })
-            .then(data => {
-                if (data && !data.error) {
-                    setFormData(prev => ({
-                        ...prev,
-                        title: data.title || prev.title,
-                        description: data.description || prev.description,
-                        editionSize: data.editionSize || prev.editionSize,
-                        mintPrice: data.mintPriceWei ? formatEther(BigInt(data.mintPriceWei)) : prev.mintPrice,
-                        payoutRecipient: data.payoutRecipient || prev.payoutRecipient,
-                        lockedContent: data.lockedContent || prev.lockedContent,
-                    }));
-                    // Hydrate pre-existing IPFS URIs from draft
-                    if (data.imageUrl) setDraftImageUrl(data.imageUrl);
-                    if (data.tokenUri) setDraftTokenUri(data.tokenUri);
-                    setHydrationError(null);
-                } else if (data?.error) {
-                    setHydrationError(data.error);
-                    setAutoDeploy(false);
-                }
-                setHasHydrated(true);
+            .then((data) => {
+                if (!isActive) return;
+
+                setFormData((prev) => ({
+                    ...prev,
+                    title: data.title || prev.title,
+                    description: data.description || prev.description,
+                    editionSize: data.editionSize || prev.editionSize,
+                    mintPrice: data.mintPriceWei ? formatEther(BigInt(data.mintPriceWei)) : prev.mintPrice,
+                    payoutRecipient: data.payoutRecipient || prev.payoutRecipient,
+                    lockedContent: data.lockedContent || prev.lockedContent,
+                }));
+                setDraftImageUrl(data.imageUrl || null);
+                setDraftTokenUri(data.tokenUri || null);
+                setDraftLoadError(null);
+                setDraftLoadRequestStatus("loaded");
             })
-            .catch(err => {
+            .catch((err: unknown) => {
+                if (!isActive) return;
+                if (err instanceof Error && err.name === "AbortError") return;
+
                 console.error("[CreateDrop] Hydration failed:", err);
-                setHydrationError(err.message || "Failed to load draft data.");
                 setAutoDeploy(false);
-                setHasHydrated(true);
+
+                const draftError = err as Error & {
+                    draftLoadStatus?: DraftLoadRequestStatus;
+                };
+                const message = draftError.message || "Failed to load draft data.";
+                const nextStatus = draftError.draftLoadStatus === "private"
+                    ? "private"
+                    : "error";
+
+                setDraftLoadRequestStatus(nextStatus);
+                setDraftLoadError(
+                    nextStatus === "private"
+                        ? PRIVATE_DRAFT_ACCESS_MESSAGE
+                        : message
+                );
             });
-    }, [hasHydrated, address]);
+
+        return () => {
+            isActive = false;
+            controller.abort();
+        };
+    }, [hasResolvedDraftParams, draftId, address]);
 
     useEffect(() => {
         if (!isSuccess || !receipt || !deployedState || !selectedFactoryAddress) return;
@@ -617,17 +682,11 @@ export default function CreateDrop() {
             </nav>
 
             <main className="relative z-10 mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
-                {/* Hydration loading / error indicators */}
-                {draftId && !hasHydrated && (
+                                {/* Hydration loading / error indicators */}
+                {isDraftLoading && address && (
                     <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
-                        <h3 className="text-yellow-400 font-bold mb-2">⏳ Loading Draft…</h3>
+                        <h3 className="text-yellow-400 font-bold mb-2">Loading Draft</h3>
                         <p className="text-yellow-200 text-sm">Fetching your draft data, please wait.</p>
-                    </div>
-                )}
-                {hydrationError && (
-                    <div className="mb-8 p-4 bg-red-500/10 border border-red-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
-                        <h3 className="text-red-400 font-bold mb-2">❌ Draft Load Failed</h3>
-                        <p className="text-red-200 text-sm">{hydrationError}</p>
                     </div>
                 )}
                 {autoDeploy && !hydrationError && (
@@ -649,8 +708,8 @@ export default function CreateDrop() {
                         <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10 mb-2">
                             <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                         </div>
-                        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{showMiniAppWalletConnecting ? "Connecting wallet..." : "Connect your Wallet"}</h1>
-                        <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">{showMiniAppWalletConnecting ? `Attempting Farcaster wallet auto-connect for ${selectedChain.name}.` : `Connect your wallet to configure and deploy an ERC-1155 Drop on ${selectedChain.name}.`}</p>
+                        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{showMiniAppWalletConnecting ? "Connecting wallet..." : draftId ? "Connect Creator Wallet" : "Connect your Wallet"}</h1>
+                        <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">{showMiniAppWalletConnecting ? `Attempting Farcaster wallet auto-connect for ${selectedChain.name}${draftId ? " to load your draft." : "."}` : draftId ? `Connect the creator wallet used to create this draft to review or deploy it on ${selectedChain.name}.` : `Connect your wallet to configure and deploy an ERC-1155 Drop on ${selectedChain.name}.`}</p>
                         {showMiniAppWalletConnecting ? (
                             <div className="rounded-full border border-[#22D3EE]/25 bg-[#22D3EE]/10 px-5 py-3 text-sm font-semibold text-[#9FEAF8]">
                                 Please wait while Droppit connects your Farcaster wallet.
@@ -662,6 +721,31 @@ export default function CreateDrop() {
                                     <Name />
                                 </ConnectWallet>
                             </Wallet>
+                        )}
+                    </div>
+                ) : shouldBlockDraftReview ? (
+                    <div className="flex min-h-[320px] flex-col items-center justify-center space-y-5 text-center animate-in fade-in slide-in-from-bottom-4 duration-500 sm:min-h-[400px] sm:space-y-6">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10 mb-2">
+                            <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        </div>
+                        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+                            {isDraftLoading ? "Loading draft..." : draftLoadStatus === "private" ? "Draft Access Restricted" : "Draft Load Failed"}
+                        </h1>
+                        <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">
+                            {isDraftLoading
+                                ? "Fetching the private draft details for the connected wallet."
+                                : draftLoadStatus === "private"
+                                    ? PRIVATE_DRAFT_ACCESS_MESSAGE
+                                    : (draftLoadError || "Droppit could not load this draft right now.")}
+                        </p>
+                        {draftLoadStatus === "private" && (
+                            <button
+                                type="button"
+                                onClick={handleWalletDisconnect}
+                                className="rounded-full border border-[#22D3EE]/25 bg-[#22D3EE]/10 px-5 py-3 text-sm font-semibold text-[#9FEAF8] transition-colors hover:bg-[#22D3EE]/15"
+                            >
+                                Disconnect wallet
+                            </button>
                         )}
                     </div>
                 ) : (
