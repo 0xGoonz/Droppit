@@ -77,7 +77,8 @@ vi.mock("@/lib/supabase", () => ({
     }),
 }));
 
-import { GET, dynamic, getDraftTitlePresentation } from "@/app/api/og/draft/[draftId]/route";
+import { GET, dynamic } from "@/app/api/og/draft/[draftId]/route";
+import { getDraftTitlePresentation } from "@/lib/og-utils";
 
 function findFirstImageSrc(node: unknown): string | null {
     if (!node || typeof node !== "object") return null;

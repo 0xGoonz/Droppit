@@ -15,6 +15,7 @@ import {
     formatMintPriceWei,
     formatStatusLabel,
     getChainLabel,
+    getDraftTitlePresentation,
     normalizeIpfsToHttp,
     ogBackdrop,
     ogFontFamily,
@@ -48,12 +49,6 @@ type EstimateErrorLike = {
     url?: string;
 };
 
-export type DraftTitlePresentation = {
-    fontSize: number;
-    lineHeight: number;
-    letterSpacing: string;
-    maxWidth: number;
-};
 
 function normalizeHandle(raw: unknown): string | null {
     if (typeof raw !== "string") return null;
@@ -106,34 +101,6 @@ function summarizeEstimateError(error: unknown): string {
     return parts.join(" | ") || "unknown error";
 }
 
-export function getDraftTitlePresentation(title: string): DraftTitlePresentation {
-    const length = title.trim().length;
-
-    if (length >= 32) {
-        return {
-            fontSize: 52,
-            lineHeight: 1.1,
-            letterSpacing: "-0.022em",
-            maxWidth: 640,
-        };
-    }
-
-    if (length >= 20) {
-        return {
-            fontSize: 58,
-            lineHeight: 1.06,
-            letterSpacing: "-0.028em",
-            maxWidth: 700,
-        };
-    }
-
-    return {
-        fontSize: OG_TOKENS.titleSize,
-        lineHeight: 1.02,
-        letterSpacing: "-0.03em",
-        maxWidth: 760,
-    };
-}
 
 export async function GET(
     req: NextRequest,
