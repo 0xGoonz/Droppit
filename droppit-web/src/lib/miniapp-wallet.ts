@@ -2,6 +2,7 @@
 
 export const FARCASTER_CONNECTOR_ID = "farcaster";
 export const MINIAPP_AUTO_CONNECT_SUPPRESSION_KEY = "droppit:miniapp:auto-connect:suppressed";
+export const MINIAPP_AUTO_CONNECT_TIMEOUT_MS = 4_000;
 
 type StorageReader = Pick<Storage, "getItem">;
 type StorageWriter = Pick<Storage, "setItem" | "removeItem">;
@@ -61,6 +62,29 @@ export function shouldShowMiniAppConnectingState(params: {
         && params.isMiniAppWalletBootstrapping
         && !params.hasConnectedWallet
     );
+}
+
+
+export function withMiniAppAutoConnectTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs = MINIAPP_AUTO_CONNECT_TIMEOUT_MS
+): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timeoutId = globalThis.setTimeout(() => {
+            reject(new Error("Mini app wallet auto-connect timed out."));
+        }, timeoutMs);
+
+        promise.then(
+            (value) => {
+                globalThis.clearTimeout(timeoutId);
+                resolve(value);
+            },
+            (error) => {
+                globalThis.clearTimeout(timeoutId);
+                reject(error);
+            }
+        );
+    });
 }
 
 export function hasSelectedChainMismatch(params: {

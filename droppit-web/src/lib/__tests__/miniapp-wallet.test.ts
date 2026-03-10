@@ -3,12 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
     FARCASTER_CONNECTOR_ID,
     MINIAPP_AUTO_CONNECT_SUPPRESSION_KEY,
+    MINIAPP_AUTO_CONNECT_TIMEOUT_MS,
     hasMiniAppQueryHint,
     hasSelectedChainMismatch,
     isMiniAppAutoConnectSuppressed,
     shouldAttemptMiniAppAutoConnect,
     shouldShowMiniAppConnectingState,
     suppressMiniAppAutoConnect,
+    withMiniAppAutoConnectTimeout,
 } from "@/lib/miniapp-wallet";
 
 describe("miniapp-wallet", () => {
@@ -68,6 +70,27 @@ describe("miniapp-wallet", () => {
             isMiniAppWalletBootstrapping: false,
             hasConnectedWallet: false,
         })).toBe(false);
+    });
+
+    it("lets successful miniapp auto-connects complete before the timeout", async () => {
+        await expect(
+            withMiniAppAutoConnectTimeout(Promise.resolve("connected"), MINIAPP_AUTO_CONNECT_TIMEOUT_MS)
+        ).resolves.toBe("connected");
+    });
+
+    it("fails fast when miniapp auto-connect never resolves", async () => {
+        vi.useFakeTimers();
+
+        const autoConnect = withMiniAppAutoConnectTimeout(
+            new Promise<never>(() => undefined),
+            25
+        );
+        const autoConnectAssertion = expect(autoConnect).rejects.toThrow("Mini app wallet auto-connect timed out.");
+
+        await vi.advanceTimersByTimeAsync(25);
+        await autoConnectAssertion;
+
+        vi.useRealTimers();
     });
 
     it("detects wrong-chain prompts only for connected wallets", () => {

@@ -17,6 +17,7 @@ import {
     hasMiniAppQueryHint,
     isMiniAppAutoConnectSuppressed,
     shouldAttemptMiniAppAutoConnect,
+    withMiniAppAutoConnectTimeout,
 } from '@/lib/miniapp-wallet';
 
 type ChainPreferenceContextValue = {
@@ -35,10 +36,12 @@ const ChainPreferenceContext = createContext<ChainPreferenceContextValue | null>
 function MiniAppWalletBootstrap({
     isDetectionReady,
     enabled,
+    targetChainId,
     setIsBootstrapping,
 }: {
     isDetectionReady: boolean;
     enabled: boolean;
+    targetChainId: SupportedChainId;
     setIsBootstrapping: (value: boolean) => void;
 }) {
     const { address } = useAccount();
@@ -81,11 +84,11 @@ function MiniAppWalletBootstrap({
 
         void (async () => {
             try {
-                const currentChainId = await farcasterConnector!.getChainId().catch(() => null);
-                if (currentChainId == null) return;
-                await connectAsync({ connector: farcasterConnector!, chainId: currentChainId });
-            } catch {
-                // Fall back quietly to the standard wallet UI if auto-connect fails.
+                await withMiniAppAutoConnectTimeout(
+                    connectAsync({ connector: farcasterConnector!, chainId: targetChainId })
+                );
+            } catch (error) {
+                console.warn('[Farcaster Mini App] Wallet auto-connect failed:', error);
             } finally {
                 if (!isCancelled) {
                     setIsBootstrapping(false);
@@ -96,7 +99,7 @@ function MiniAppWalletBootstrap({
         return () => {
             isCancelled = true;
         };
-    }, [address, connectAsync, connectors, enabled, isDetectionReady, setIsBootstrapping]);
+    }, [address, connectAsync, connectors, enabled, isDetectionReady, setIsBootstrapping, targetChainId]);
 
     return null;
 }
@@ -225,6 +228,7 @@ export function Providers({ children }: { children: ReactNode }) {
                 <MiniAppWalletBootstrap
                     isDetectionReady={isMiniAppDetectionReady}
                     enabled={isMiniAppDetectionReady && isMiniAppEnvironment}
+                    targetChainId={selectedChainId}
                     setIsBootstrapping={setIsMiniAppWalletBootstrapping}
                 />
                 <ChainPreferenceContext.Provider value={chainPreferenceValue}>
@@ -239,4 +243,3 @@ export function Providers({ children }: { children: ReactNode }) {
         </WagmiProvider>
     );
 }
-
