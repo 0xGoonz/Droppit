@@ -725,11 +725,11 @@ export default function CreateDrop() {
                 )}
                 {autoDeploy && !hydrationError && (
                     <div className="mb-8 p-4 bg-blue-500/10 border border-blue-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
-                        <h3 className="text-blue-400 font-bold mb-2">Ã¢Å¡Â¡ Auto-Deploy Pending</h3>
+                        <h3 className="text-blue-400 font-bold mb-2">⚡ Auto-Deploy Pending</h3>
                         <p className="text-blue-200 text-sm mb-2">Please complete the following to automatically finish your drop:</p>
                         <ul className="list-disc list-inside text-sm text-blue-300">
-                            {!hasHydrated && <li>Loading draft dataÃ¢â‚¬Â¦</li>}
-                            {!address && showMiniAppWalletConnecting && <li>Connecting walletÃ¢â‚¬Â¦</li>}
+                            {!hasHydrated && <li>Loading draft data…</li>}
+                            {!address && showMiniAppWalletConnecting && <li>Connecting wallet…</li>}
                             {!address && !showMiniAppWalletConnecting && <li>Connect your wallet</li>}
                             {address && shouldPromptForChainSwitch && <li>Switch to {selectedChain.name} in your wallet</li>}
                             {!hasSelectedChainContractConfig && <li>{selectedChain.name} deployment config is missing.</li>}
@@ -1292,7 +1292,7 @@ export default function CreateDrop() {
                                                 : !hasSelectedChainContractConfig
                                                     ? "Chain Config Missing"
                                                     : !hasHydrated
-                                                        ? "Loading draftÃ¢â‚¬Â¦"
+                                                        ? "Loading draft…"
                                                         : isUploading
                                                             ? "Uploading to IPFS..."
                                                             : (isPending || isConfirming)

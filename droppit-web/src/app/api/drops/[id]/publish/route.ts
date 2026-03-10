@@ -346,7 +346,7 @@ export async function POST(
             .from('drops')
             .update(updatePayload)
             .eq('id', draftId)
-            .eq('status', 'DRAFT')  // DB-level guard: only transition DRAFTÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢LIVE
+            .eq('status', 'DRAFT')  // DB-level guard: only transition DRAFT→LIVE
             .select('*');
 
         if (error) {
