@@ -262,7 +262,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     const canAttemptUnlock = !!userAddress && !!tokenUri;
     const appOrigin = typeof window !== "undefined"
         ? window.location.origin
-        : (process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai");
+        : (process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz");
     const shareHref = new URL(`/s/${contractAddress}`, appOrigin).toString();
     const receiptHref = receipt?.transactionHash ? `/r/receipt/${receipt.transactionHash}` : null;
     const absoluteReceiptUrl = receiptHref ? new URL(receiptHref, appOrigin).toString() : null;

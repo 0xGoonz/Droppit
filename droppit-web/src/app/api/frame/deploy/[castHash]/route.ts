@@ -17,7 +17,7 @@ export async function GET(
 ) {
     const resolvedParams = await params;
     const castHash = resolvedParams.castHash;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
     return renderDeployFramePage({ castHash, baseUrl });
 }
 
@@ -27,7 +27,7 @@ export async function POST(
 ) {
     const resolvedParams = await params;
     const castHash = resolvedParams.castHash;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
     const postUrl = `${baseUrl}/api/frame/deploy/${castHash}`;
 
     try {

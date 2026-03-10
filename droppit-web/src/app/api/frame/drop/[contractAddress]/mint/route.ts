@@ -37,7 +37,7 @@ const publicClient = createPublicClient({
 function getFrameChainId() {
     return process.env.NEXT_PUBLIC_ENVIRONMENT === "production" ? "eip155:8453" : "eip155:84532";
 }
-function openMintPageFrame(contractAddress: string, frame = getDropFrameSpec(process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai", contractAddress)) {
+function openMintPageFrame(contractAddress: string, frame = getDropFrameSpec(process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz", contractAddress)) {
     return getFrameHtmlResponse({
         buttons: [{ action: "link", label: "Open mint page", target: frame.dropUrl }],
         image: { src: frame.shareImageUrl },
@@ -53,7 +53,7 @@ export async function POST(
         const body = await req.json();
         const resolvedParams = await params;
         const contractAddress = resolvedParams.contractAddress;
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
         const frame = getDropFrameSpec(baseUrl, contractAddress);
 
         if (!contractAddress || !isAddress(contractAddress, { strict: false })) {
@@ -152,7 +152,7 @@ export async function POST(
         );
     } catch (error) {
         console.error("[Frame Mint] Unhandled error:", error instanceof Error ? error.message : "Unknown error");
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
         return new NextResponse(
             getFrameHtmlResponse({
                 buttons: [{ action: "link", label: "Open Droppit", target: `${baseUrl}/create` }],

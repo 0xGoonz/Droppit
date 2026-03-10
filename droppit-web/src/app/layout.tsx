@@ -21,7 +21,7 @@ const monoFont = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
 const baseAppId = process.env.NEXT_PUBLIC_BASE_APP_ID?.trim();
 const promoImagePath = "/miniapp/metadata/hero-1200x630.png";
 

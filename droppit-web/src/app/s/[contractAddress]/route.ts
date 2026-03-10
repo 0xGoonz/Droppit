@@ -18,7 +18,7 @@ export async function GET(
     { params }: { params: Promise<{ contractAddress: string }> }
 ) {
     const { contractAddress } = await params;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
     const frame = getDropFrameSpec(baseUrl, contractAddress);
     const embeds = getDropShareEmbeds(frame);
 

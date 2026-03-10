@@ -1,6 +1,6 @@
 # Droppit — Web Application
 
-Next.js application for [Droppit](https://droppit.ai): an agentic NFT drop platform on **Base**.
+Next.js application for [Droppit](https://droppitonbase.xyz): an agentic NFT drop platform on **Base**.
 Creators launch one-artwork ERC-1155 drops via the web wizard **or** by tagging `@droppit` on Farcaster.
 Collectors mint in 1–2 taps from a universal share link or a Farcaster Frame.
 
@@ -45,7 +45,7 @@ Create a `.env.local` in this directory. All variables below are used by at leas
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | OG image routes, edge routes | Supabase anon/public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | All API routes (server-side) | Supabase service role key (bypasses RLS) |
 | `NEXT_PUBLIC_ENVIRONMENT` | All chain-aware routes | `production` → Base mainnet; anything else → Base Sepolia |
-| `NEXT_PUBLIC_BASE_URL` | Webhooks, frames, receipt pages | Canonical app URL (e.g. `https://droppit.ai`). Fallback: `https://droppit.ai` |
+| `NEXT_PUBLIC_BASE_URL` | Webhooks, frames, receipt pages | Canonical app URL (e.g. `https://droppitonbase.xyz`). Fallback: `https://droppitonbase.xyz` |
 | `NEXT_PUBLIC_BASE_APP_ID` | Root metadata | Base Build app identifier used for `base:app_id` ownership verification |
 | `NEXT_PUBLIC_FACTORY_ADDRESS` | Create page, deploy routes | EIP-1167 Factory contract address |
 | `NEXT_PUBLIC_IMPLEMENTATION_ADDRESS` | Mint page trust section | Master implementation contract address |

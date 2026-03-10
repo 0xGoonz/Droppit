@@ -4,7 +4,7 @@ import { BelowTheFold } from "@/components/landing/BelowTheFold";
 import { BRAND } from "@/lib/brand";
 import { getHomeMiniAppEmbeds } from "@/lib/miniapp-embed";
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
 const homeEmbeds = getHomeMiniAppEmbeds(baseUrl);
 
 export const metadata: Metadata = {

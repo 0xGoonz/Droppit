@@ -11,7 +11,7 @@ export async function generateMetadata(
     const resolvedParams = await params;
     const contractAddress = resolvedParams.contractAddress;
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
     const frame = getDropFrameSpec(baseUrl, contractAddress);
 
     return {

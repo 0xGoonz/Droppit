@@ -221,7 +221,7 @@ Configure the following in `.env.local`:
 | `NEYNAR_WEBHOOK_SECRET` | Neynar webhook HMAC secret |
 | `LOCKED_CONTENT_ENCRYPTION_KEY` | 32-byte hex key for AES-256-GCM |
 | `NEXT_PUBLIC_ENVIRONMENT` | `production` or `sandbox` (controls Base vs Sepolia) |
-| `NEXT_PUBLIC_BASE_URL` | Public-facing URL (e.g., `https://droppit.ai`) |
+| `NEXT_PUBLIC_BASE_URL` | Public-facing URL (e.g., `https://droppitonbase.xyz`) |
 | `NEXT_PUBLIC_FACTORY_ADDRESS` | Deployed DropFactory contract address |
 | `NEXT_PUBLIC_IMPLEMENTATION_ADDRESS` | Deployed Drop1155 implementation address |
 

@@ -14,7 +14,7 @@ type AccountAssociation = {
 };
 
 function getBaseUrl() {
-    return (process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai").replace(/\/+$/, "");
+    return (process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz").replace(/\/+$/, "");
 }
 
 function getAccountAssociation(): AccountAssociation | null {

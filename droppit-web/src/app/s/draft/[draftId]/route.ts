@@ -32,7 +32,7 @@ export async function GET(
         return new NextResponse("Missing draft ID.", { status: 400 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
     const supabaseAdmin = getServiceRoleClient();
     const { data: draft, error } = await supabaseAdmin
         .from("drops")

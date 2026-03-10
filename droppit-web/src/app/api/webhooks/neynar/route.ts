@@ -29,7 +29,7 @@ type PublishAgentReplyResult = {
 
 export async function POST(req: NextRequest) {
     try {
-        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai").replace(/\/+$/, "");
+        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz").replace(/\/+$/, "");
 
         // 0. Rate limit: webhook preset (60 reqs / 5 min per IP)
         const limited = await checkRateLimit(req, "webhook", "[Webhook]");

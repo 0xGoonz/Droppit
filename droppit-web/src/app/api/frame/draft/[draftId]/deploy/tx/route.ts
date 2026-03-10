@@ -15,7 +15,7 @@ export async function POST(
 ) {
     const resolvedParams = await params;
     const draftId = resolvedParams.draftId;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppit.ai";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://droppitonbase.xyz";
 
     const createUrl = `${baseUrl}/create?draftId=${draftId}`;
     const postUrl = `${baseUrl}/api/frame/draft/${draftId}/deploy`;
