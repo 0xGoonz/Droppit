@@ -101,7 +101,7 @@ droppit/
 │   └── scripts/
 │       └── check-schema-conformance.ts  # CI schema drift detection
 │
-├── BRANDING.md                 # Official brand guidelines & assets
+├── droppit-web/BRANDING.md                 # Official brand guidelines & assets
 ├── litepaper.md                # Droppit Litepaper documentation
 └── product-spec.md             # MVP Product Specification
 ```

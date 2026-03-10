@@ -36,7 +36,7 @@ describe("drop-sharing", () => {
         });
         const composeHref = buildWarpcastComposeHref({
             text: caption,
-            embedUrl: "https://droppit.ai/s/0xabc",
+            embedUrl: "https://droppitonbase.xyz/s/0xabc",
         });
         const parsed = new URL(composeHref);
 
@@ -45,7 +45,7 @@ describe("drop-sharing", () => {
         expect(caption).not.toContain("\n");
         expect(parsed.origin + parsed.pathname).toBe("https://warpcast.com/~/compose");
         expect(parsed.searchParams.get("text")).toBe("I just collected \"Founder's Key\" on @droppit. 0.01 ETH on Base. Check it out:");
-        expect(parsed.searchParams.getAll("embeds[]")).toEqual(["https://droppit.ai/s/0xabc"]);
+        expect(parsed.searchParams.getAll("embeds[]")).toEqual(["https://droppitonbase.xyz/s/0xabc"]);
     });
 });
 

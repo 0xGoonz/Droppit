@@ -538,7 +538,7 @@ export default function CreateDrop() {
                 currentDraftId = draftData.dropId;
             }
 
-            // 3. Resolve IPFS URIs Ã¢â‚¬â€ reuse draft values or upload fresh
+            // 3. Resolve IPFS URIs - reuse draft values or upload fresh
             let tokenUri: string;
             let imageUri: string;
 
@@ -676,7 +676,7 @@ export default function CreateDrop() {
 
     return (
         <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
-            {/* Background gradient Ã¢â‚¬â€ matches all pages */}
+            {/* Background gradient - matches all pages */}
             <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
 
             {/* Nav */}
@@ -823,7 +823,7 @@ export default function CreateDrop() {
                             {formError && (
                                 <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
                                     <p className="text-red-400 font-semibold text-center text-sm">
-                                        Ã¢Å¡Â Ã¯Â¸Â {formError}
+                                        Warning: {formError}
                                     </p>
                                 </div>
                             )}
@@ -1032,7 +1032,7 @@ export default function CreateDrop() {
                                             <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#7C3AED]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></svg>
                                             <h4 className="font-semibold text-[#7C3AED] text-sm">Locked Content (Mint-to-Unlock)</h4>
                                         </div>
-                                        <p className="text-xs text-slate-500 mb-4">Secret message only visible to wallets that own the NFT. Text only Ã¢â‚¬â€ no URLs.</p>
+                                        <p className="text-xs text-slate-500 mb-4">Secret message only visible to wallets that own the NFT. Text only - no URLs.</p>
                                         <textarea
                                             value={formData.lockedContent}
                                             onChange={(e) => {
@@ -1060,7 +1060,7 @@ export default function CreateDrop() {
                                             <svg viewBox="0 0 24 24" className="h-7 w-7 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                                         </div>
                                         <h3 className="font-display text-xl font-bold mb-2">Creator Identity</h3>
-                                        <p className="text-sm text-slate-400 max-w-md mx-auto">Link a Farcaster handle via wallet signature. This is optional Ã¢â‚¬â€ not KYC.</p>
+                                        <p className="text-sm text-slate-400 max-w-md mx-auto">Link a Farcaster handle via wallet signature. This is optional - not KYC.</p>
                                     </div>
 
                                     <div className="rounded-2xl border border-[#0052FF]/15 bg-gradient-to-b from-[#0052FF]/[0.05] to-transparent p-6 space-y-4">
