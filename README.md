@@ -3,8 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>The native Farcaster drop infrastructure for Base.</strong><br/>
-  Launch ERC-1155 NFT drops directly into the feed — via the web or by casting to <code>@droppit</code>.
+  <strong>Launch Base ERC-1155 drops directly from the social feed.</strong>
 </p>
 
 <p align="center">
@@ -25,12 +24,18 @@
 
 ## <img src="https://img.shields.io/badge/What_is_Droppit%3F-0052FF?style=for-the-badge" alt="What is Droppit?" />
 
-Droppit is an **agentic web platform for Base** that lets creators launch single-artwork NFT drops in two ways:
+Droppit makes onchain launches native to social. A creator tags `@droppit` on Warpcast, and our AI turns that social intent into a live, fully deployed sovereign contract on Base Mainnet in **under 60 seconds**.
 
-1. **Web Wizard** — A 4-step guided flow: metadata → economics → identity → deploy.
-2. **Farcaster AI Agent** — Cast an image and tag `@droppit` with natural-language instructions. The AI parses your intent, drafts the drop, and returns a deploy frame — all without leaving Warpcast.
+Every drop gets its own **sovereign smart contract address** on Base, a **canonical mint page**, and an **in-feed Farcaster Mini App** so creation, sharing, and collection happen in one seamless flow. We reduce creator velocity from hours of complex Web3 UX to under a minute.
 
-Every drop gets its own **smart contract address** on Base (gas-optimized via EIP-1167 minimal proxy clones), a **canonical mint page**, and a **Farcaster Mini App** for zero-UI interactive minting directly in-feed.
+---
+
+## <img src="https://img.shields.io/badge/🏆_Why_Droppit_on_Base%3F-10B981?style=for-the-badge&logoColor=white" alt="Why Droppit on Base?" />
+
+1. **Zero-UI Agent Builder**: We utilize the CDP AgentKit and Google Gemini to abstract away complex dashboards. Our Farcaster AI agent orchestrates deployments directly from social intent.
+2. **Gas-Optimized Base Architecture**: We don't use shared contracts. Every creator gets their own sovereign ERC-1155 contract. The entire execution layer lives entirely on Base to leverage its low fees using EIP-1167 Minimal Proxy Clones.
+3. **Native "Drop-in-Feed"**: We bypass the app store and wallet-connect friction. With Farcaster Mini Apps (Frames v2) and Coinbase Smart Wallet integration, drops are pushed directly to the social feed.
+4. **Encrypted Mint-to-Unlock**: We bridge onchain assets to offchain utility securely. Lock Shopify discount codes, secret links, or event barcodes behind an offchain AES-256 envelope that only unlocks for wallets holding the onchain NFT.
 
 ---
 

@@ -73,11 +73,9 @@
 
 ### Primary Personas
 
-- **Creator (Crypto Artists & Everyday Users)**
-  - Wants a simple drop generator with predictable costs.
-  - Wants a link that looks good in a feed and converts to mints instantly.
-  - *Event Organizers/Normies:* Wants to create digital souvenirs for weddings, birthdays, and IRL meetups without crypto friction.
-- **Collector / Follower / Guest**
+- **Everyday Consumers & IRL Event Organizers:** Want to distribute digital souvenirs and phygital claim codes for real-world events or private access without navigating complex crypto UX.
+- **Creators (Crypto Artists & Communities):** Want an agentic link that looks native in a feed, converts to mints instantly, and deploys with zero-UI friction.
+- **Collector / Guest**
   - Sees a link in a feed or scans a QR code at an event.
   - Clicks → lands on mint page → mints quickly and confidently in 1-2 taps.
 
@@ -202,7 +200,7 @@
 1. Creator publishes a cast on Warpcast with an image (or an `ipfs://` / Arweave URL for full-quality source) and tags `@droppit` with natural-language instructions.
    - Example: `@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH.`
 2. Droppit backend ingests the cast via **Neynar webhook** (signature-verified).
-3. LLM parser (**Google Gemini 2.5 Flash** alongside **CDP AgentKit** using `responseMimeType: "application/json"` for structured output) extracts and normalizes `title`, `editionSize`, and `mintPrice` and validates MVP invariants (especially edition bounds `1–10,000`).
+3. **LLM Parser (The "Syntax Engineer"):** Google Gemini 2.5 Flash alongside CDP AgentKit (using `responseMimeType: "application/json"` for structured output) acts as the strict "Syntax Engineer," extracting and translating messy social intent into deterministic `title`, `editionSize`, and `mintPrice` parameters while validating MVP invariants.
 4. Agent calls existing `POST /api/drops` to create a **Draft**, pins media to IPFS via **Pinata**, and receives `dropId`.
 5. Agent replies to the cast with a **Deploy Mini App** showing: drop summary, estimated deploy gas, and action controls.
 6. Creator enters optional secret in Mini App text input (`Enter secret unlockable message (optional)`), which is not posted publicly.
