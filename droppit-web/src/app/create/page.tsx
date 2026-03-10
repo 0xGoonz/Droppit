@@ -1,0 +1,1325 @@
+"use client";
+
+/* eslint-disable @next/next/no-img-element */
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { formatEther, parseEther, keccak256, encodePacked, isAddress } from "viem";
+import { MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_LABEL, ALLOWED_MIME_ACCEPT, MAX_IMAGE_WIDTH, MAX_IMAGE_HEIGHT, MAX_IMAGE_PIXELS } from "@/lib/constants/upload";
+import { validateImageMedia, extractImageDimensions, type ImageDimensions } from "@/lib/media-validation";
+import { validateLockedContent } from "@/lib/validation/drops";
+import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useSwitchChain, useSignMessage, usePublicClient } from "wagmi";
+import {
+    ConnectWallet,
+    Wallet,
+    WalletDropdown,
+} from '@coinbase/onchainkit/wallet';
+import {
+    Avatar,
+    Name,
+    Identity,
+    Address,
+    EthBalance
+} from '@coinbase/onchainkit/identity';
+import { FACTORY_ABI } from "@/lib/contracts";
+import { useChainPreference } from "@/providers/OnchainKitProvider";
+import { BrandLockup } from "@/components/brand/BrandLockup";
+import { publishDropDraft } from "@/lib/publish-drop";
+import { normalizeIpfsToHttp } from "@/lib/og-utils";
+import { fitArtworkWithinBounds, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
+import {
+    getSessionStorageSafe,
+    hasSelectedChainMismatch,
+    shouldShowMiniAppConnectingState,
+    suppressMiniAppAutoConnect,
+} from "@/lib/miniapp-wallet";
+import {
+    PRIVATE_DRAFT_ACCESS_MESSAGE,
+    hasReusableDraftMedia,
+    mapDraftLoadFailure,
+    parseDraftLaunchMode,
+    resolveDraftEntryBehavior,
+    resolveDraftLoadStatus,
+    shouldFetchDraft,
+    type DraftLaunchMode,
+    type DraftLoadRequestStatus,
+} from "@/lib/draft-load";
+
+export default function CreateDrop() {
+    const [step, setStep] = useState(1);
+    const [draftId, setDraftId] = useState<string | null>(null);
+    const [draftMode, setDraftMode] = useState<DraftLaunchMode | null>(null);
+    const [autoDeploy, setAutoDeploy] = useState(false);
+    const [hasResolvedDraftParams, setHasResolvedDraftParams] = useState(false);
+    const [draftLoadRequestStatus, setDraftLoadRequestStatus] = useState<DraftLoadRequestStatus>("idle");
+    const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
+    const [formData, setFormData] = useState({
+        title: "",
+        description: "",
+        editionSize: "100",
+        mintPrice: "0",
+        lockedContent: "",
+        farcasterHandle: "",
+        payoutRecipient: "",
+    });
+    const [isLinkingIdentity, setIsLinkingIdentity] = useState(false);
+    const [identityVerified, setIdentityVerified] = useState(false);
+    const [file, setFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [deployedState, setDeployedState] = useState<{ tokenUri: string, imageUri: string, draftId: string, salt: string, commitment: string } | null>(null);
+    const [isPublishingDrop, setIsPublishingDrop] = useState(false);
+
+    // Pre-existing IPFS URIs hydrated from draft (skip re-upload when available)
+    const [draftImageUrl, setDraftImageUrl] = useState<string | null>(null);
+    const [draftTokenUri, setDraftTokenUri] = useState<string | null>(null);
+    const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+    const [fileImageDimensions, setFileImageDimensions] = useState<ImageDimensions | null>(null);
+    const [draftImageDimensions, setDraftImageDimensions] = useState<ImageDimensions | null>(null);
+
+    const [deployGasEstimate, setDeployGasEstimate] = useState<string | null>(null);
+
+    const deployFiredRef = useRef(false);
+    const publishFiredRef = useRef<string | null>(null);
+    const initialDraftEntryKeyRef = useRef<string | null>(null);
+    const {
+        selectedChain,
+        selectedChainId,
+        hasSelectedChainContractConfig,
+        chainContracts,
+        isMiniAppEnvironment,
+        isMiniAppWalletBootstrapping,
+    } = useChainPreference();
+    const selectedFactoryAddress = chainContracts?.factoryAddress || "";
+    const publicClient = usePublicClient({ chainId: selectedChainId });
+
+    const { address, chainId } = useAccount();
+    const router = useRouter();
+    const { data: hash, writeContractAsync, isPending } = useWriteContract();
+    const { switchChainAsync } = useSwitchChain();
+    const { disconnect } = useDisconnect();
+    const { data: receipt, isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+    const normalizedDraftImageUrl = normalizeIpfsToHttp(draftImageUrl);
+    const [isSwitchingChain, setIsSwitchingChain] = useState(false);
+    const toPreviewPercent = (value: number, total: number) => `${((value / total) * 100).toFixed(2)}%`;
+    const hasConnectedWallet = Boolean(address);
+    const showMiniAppWalletConnecting = shouldShowMiniAppConnectingState({
+        isMiniAppEnvironment,
+        isMiniAppWalletBootstrapping,
+        hasConnectedWallet,
+    });
+    const shouldPromptForChainSwitch = hasSelectedChainMismatch({
+        hasConnectedWallet,
+        walletChainId: chainId,
+        selectedChainId: selectedChain.id,
+    });
+    const draftLoadStatus = resolveDraftLoadStatus({
+        draftId,
+        address,
+        requestStatus: draftLoadRequestStatus,
+    });
+    const hasReusableMedia = hasReusableDraftMedia(draftTokenUri, draftImageUrl);
+    const hasArtworkReady = Boolean(file || hasReusableMedia);
+    const draftEntryBehavior = resolveDraftEntryBehavior({
+        mode: draftMode,
+        hasReusableMedia,
+    });
+    const isAiDraftFlow = draftMode !== null;
+    const hasHydrated = hasResolvedDraftParams && draftLoadStatus === "loaded";
+    const hydrationError = draftLoadStatus === "private"
+        ? PRIVATE_DRAFT_ACCESS_MESSAGE
+        : draftLoadStatus === "error"
+            ? draftLoadError
+            : null;
+    const isDraftLoading = Boolean(draftId) && draftLoadStatus === "loading";
+    const shouldBlockDraftReview = Boolean(address) && Boolean(draftId) && draftLoadStatus !== "loaded";
+    const showMissingArtworkBanner = draftEntryBehavior.showMissingArtworkBanner && !hasArtworkReady;
+    const handleWalletDisconnect = useCallback(() => {
+        suppressMiniAppAutoConnect(getSessionStorageSafe());
+        disconnect();
+    }, [disconnect]);
+    const handleSwitchToSelectedChain = useCallback(async () => {
+        setFormError(null);
+        setIsSwitchingChain(true);
+        try {
+            await switchChainAsync({ chainId: selectedChain.id });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : `Switch to ${selectedChain.name} to continue.`;
+            setFormError(message);
+        } finally {
+            setIsSwitchingChain(false);
+        }
+    }, [selectedChain, switchChainAsync]);
+
+    useEffect(() => {
+        if (!file) {
+            setFilePreviewUrl(null);
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        setFilePreviewUrl(objectUrl);
+
+        return () => {
+            URL.revokeObjectURL(objectUrl);
+        };
+    }, [file]);
+
+    useEffect(() => {
+        if (file || !normalizedDraftImageUrl) {
+            if (!file) setDraftImageDimensions(null);
+            return;
+        }
+
+        let isActive = true;
+        const image = new window.Image();
+
+        image.onload = () => {
+            if (!isActive) return;
+            setDraftImageDimensions({
+                width: image.naturalWidth || 1,
+                height: image.naturalHeight || 1,
+            });
+        };
+        image.onerror = () => {
+            if (!isActive) return;
+            setDraftImageDimensions(null);
+        };
+        image.src = normalizedDraftImageUrl;
+
+        return () => {
+            isActive = false;
+            image.onload = null;
+            image.onerror = null;
+        };
+    }, [file, normalizedDraftImageUrl]);
+
+    // Parse draftId and auto from URL on mount.
+    useEffect(() => {
+        if (typeof window === "undefined" || hasResolvedDraftParams) return;
+
+        const searchParams = new URLSearchParams(window.location.search);
+        const nextDraftId = searchParams.get("draftId");
+        const nextDraftMode = parseDraftLaunchMode(searchParams.get("mode"));
+        const auto = searchParams.get("auto");
+
+        setDraftId(nextDraftId);
+        setDraftMode(nextDraftMode);
+        setAutoDeploy(auto === "1");
+        setHasResolvedDraftParams(true);
+    }, [hasResolvedDraftParams]);
+
+    // Hydrate draft data only after the creator wallet is available.
+    useEffect(() => {
+        if (!hasResolvedDraftParams) return;
+
+        if (!draftId) {
+            setDraftLoadRequestStatus("idle");
+            setDraftLoadError(null);
+            return;
+        }
+
+        if (!shouldFetchDraft({ draftId, address })) {
+            setDraftLoadRequestStatus("idle");
+            setDraftLoadError(null);
+            return;
+        }
+
+        const controller = new AbortController();
+        let isActive = true;
+
+        setDraftLoadRequestStatus("loading");
+        setDraftLoadError(null);
+
+        fetch(`/api/drops/${draftId}`, {
+            headers: { "x-creator-address": address as string },
+            signal: controller.signal,
+        })
+            .then(async (res) => {
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const failure = mapDraftLoadFailure(
+                        res.status,
+                        typeof body?.error === "string" ? body.error : null
+                    );
+                    const error = new Error(failure.message) as Error & {
+                        draftLoadStatus?: DraftLoadRequestStatus;
+                    };
+                    error.draftLoadStatus = failure.status;
+                    throw error;
+                }
+                return body;
+            })
+            .then((data) => {
+                if (!isActive) return;
+
+                setFormData((prev) => ({
+                    ...prev,
+                    title: typeof data.title === "string" ? data.title : prev.title,
+                    description: typeof data.description === "string" ? data.description : prev.description,
+                    editionSize: typeof data.editionSize === "string" ? data.editionSize : prev.editionSize,
+                    mintPrice: typeof data.mintPriceWei === "string" ? formatEther(BigInt(data.mintPriceWei)) : prev.mintPrice,
+                    payoutRecipient: typeof data.payoutRecipient === "string" ? data.payoutRecipient : prev.payoutRecipient,
+                    lockedContent: typeof data.lockedContent === "string" ? data.lockedContent : prev.lockedContent,
+                }));
+                setDraftImageUrl(data.imageUrl || null);
+                setDraftTokenUri(data.tokenUri || null);
+                setDraftLoadError(null);
+                setDraftLoadRequestStatus("loaded");
+            })
+            .catch((err: unknown) => {
+                if (!isActive) return;
+                if (err instanceof Error && err.name === "AbortError") return;
+
+                console.error("[CreateDrop] Hydration failed:", err);
+                setAutoDeploy(false);
+
+                const draftError = err as Error & {
+                    draftLoadStatus?: DraftLoadRequestStatus;
+                };
+                const message = draftError.message || "Failed to load draft data.";
+                const nextStatus = draftError.draftLoadStatus === "private"
+                    ? "private"
+                    : "error";
+
+                setDraftLoadRequestStatus(nextStatus);
+                setDraftLoadError(
+                    nextStatus === "private"
+                        ? PRIVATE_DRAFT_ACCESS_MESSAGE
+                        : message
+                );
+            });
+
+        return () => {
+            isActive = false;
+            controller.abort();
+        };
+    }, [hasResolvedDraftParams, draftId, address]);
+
+    useEffect(() => {
+        if (!draftId) {
+            initialDraftEntryKeyRef.current = null;
+            return;
+        }
+
+        if (!hasHydrated) return;
+
+        const entryKey = `${draftId}:${draftMode ?? "legacy"}`;
+        if (initialDraftEntryKeyRef.current === entryKey) return;
+
+        if (draftEntryBehavior.initialStep !== null) {
+            setStep(draftEntryBehavior.initialStep);
+        }
+
+        initialDraftEntryKeyRef.current = entryKey;
+    }, [draftEntryBehavior.initialStep, draftId, draftMode, hasHydrated]);
+
+    useEffect(() => {
+        if (!isSuccess || !receipt || !deployedState || !selectedFactoryAddress) return;
+
+        const dropCreatedLog = receipt.logs.find(log => log.address.toLowerCase() === selectedFactoryAddress.toLowerCase());
+        if (!dropCreatedLog || !dropCreatedLog.topics[2]) {
+            setFormError("Deployment confirmed, but Droppit could not resolve the deployed drop address.");
+            return;
+        }
+
+        const rawAddress = dropCreatedLog.topics[2];
+        const dropAddress = "0x" + rawAddress.slice(-40);
+        const publishKey = `${deployedState.draftId}:${receipt.transactionHash}:${dropAddress.toLowerCase()}`;
+        if (publishFiredRef.current === publishKey) return;
+        publishFiredRef.current = publishKey;
+
+        let isActive = true;
+        const finalizePublish = async () => {
+            if (isActive) {
+                setIsPublishingDrop(true);
+                setFormError(null);
+            }
+
+            try {
+                await publishDropDraft({
+                    draftId: deployedState.draftId,
+                    txHash: receipt.transactionHash,
+                    contractAddress: dropAddress,
+                    tokenUri: deployedState.tokenUri,
+                    imageUrl: deployedState.imageUri,
+                    lockedContent: formData.lockedContent,
+                    salt: deployedState.salt,
+                    commitment: deployedState.commitment,
+                    creatorWallet: address,
+                });
+                router.push(`/drop/base/${dropAddress}`);
+            } catch (err) {
+                console.error("Publish failed:", err);
+                publishFiredRef.current = null;
+                if (isActive) {
+                    setFormError(err instanceof Error ? err.message : "Publish failed. Please retry from the creator dashboard.");
+                }
+            } finally {
+                if (isActive) setIsPublishingDrop(false);
+            }
+        };
+
+        void finalizePublish();
+        return () => {
+            isActive = false;
+        };
+    }, [address, isSuccess, receipt, router, deployedState, formData.lockedContent, selectedFactoryAddress]);
+
+    // Estimate deployment gas when entering Step 4
+    useEffect(() => {
+        if (step !== 4 || !publicClient || !address || !hasSelectedChainContractConfig || !selectedFactoryAddress) return;
+
+        let isMounted = true;
+        async function estimate() {
+            try {
+                const dummyTokenUri = draftTokenUri || "ipfs://QmDummyHash12345678901234567890123456789012345678901234567";
+                const dummyCommitment = "0x" + "00".repeat(32);
+                let finalPayoutRecipient: `0x${string}` = address as `0x${string}`;
+
+                if (formData.payoutRecipient.trim() && isAddress(formData.payoutRecipient.trim())) {
+                    finalPayoutRecipient = formData.payoutRecipient.trim() as `0x${string}`;
+                }
+
+                let gas: bigint;
+                try {
+                    gas = await publicClient!.estimateContractGas({
+                        address: selectedFactoryAddress as `0x${string}`,
+                        abi: FACTORY_ABI,
+                        functionName: "createDrop",
+                        account: address as `0x${string}`,
+                        args: [
+                            BigInt(formData.editionSize || "1"),
+                            parseEther(formData.mintPrice || "0"),
+                            finalPayoutRecipient,
+                            dummyTokenUri,
+                            dummyCommitment as `0x${string}`
+                        ]
+                    });
+                } catch (err) {
+                    console.warn("Real gas estimation failed, using safe fallback for EIP-1167 proxy:", err);
+                    gas = BigInt(350000); // Safe fallback estimate for clone deploy + init
+                }
+
+                const gasPrice = await publicClient!.getGasPrice();
+                const costWei = gas * gasPrice;
+                if (isMounted) {
+                    // Small buffer added (+10%) for safety margin in UX
+                    setDeployGasEstimate(formatEther(costWei + (costWei / BigInt(10))));
+                }
+            } catch (err) {
+                console.warn("Gas calculation entirely failed:", err);
+                if (isMounted) setDeployGasEstimate("Unknown");
+            }
+        }
+        estimate();
+        return () => { isMounted = false; };
+    }, [step, publicClient, address, formData, draftTokenUri, hasSelectedChainContractConfig, selectedFactoryAddress]);
+
+    const handleNext = () => setStep((s) => Math.min(s + 1, 4));
+    const handlePrev = () => setStep((s) => Math.max(s - 1, 1));
+
+    const { signMessageAsync } = useSignMessage();
+
+    const handleLinkIdentity = async () => {
+        if (!address) return;
+        if (!formData.farcasterHandle) {
+            setFormError("Please enter a handle to link");
+            return;
+        }
+
+        // Basic frontend format catch
+        if (!/^[a-zA-Z0-9_.-]+$/.test(formData.farcasterHandle)) {
+            setFormError("Handles can only contain letters, numbers, underscores, dashes or dots.");
+            return;
+        }
+
+        setIsLinkingIdentity(true);
+        setFormError(null);
+
+        try {
+            // 1. Get Nonce
+            const nonceRes = await fetch('/api/identity/link/nonce', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet: address, handle: formData.farcasterHandle })
+            });
+            const { nonce, error: nonceErr } = await nonceRes.json();
+            if (nonceErr || !nonce) throw new Error(nonceErr || "Failed to generate challenge");
+
+            // 2. Sign
+            const signature = await signMessageAsync({ message: nonce });
+
+            // 3. Verify and Persist API
+            const verifyRes = await fetch('/api/identity/link/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wallet: address,
+                    handle: formData.farcasterHandle,
+                    signature,
+                    nonce
+                })
+            });
+
+            const { error: verifyErr } = await verifyRes.json();
+            if (!verifyRes.ok || verifyErr) throw new Error(verifyErr || "Signature verification failed");
+
+            setIdentityVerified(true);
+            setTimeout(() => {
+                handleNext();
+            }, 1000);
+
+        } catch (e: unknown) {
+            console.error("Identity Link Failed:", e);
+            const message = e instanceof Error ? e.message : "Failed to successfully verify identity.";
+            setFormError(message);
+        } finally {
+            setIsLinkingIdentity(false);
+        }
+    };
+
+    const handleDeploy = useCallback(async () => {
+        // One-shot guard: prevent multiple deploy triggers
+        if (deployFiredRef.current) return;
+        if (!hasHydrated) return;
+        if (!address) return;
+        if (!hasSelectedChainContractConfig || !selectedFactoryAddress) {
+            setFormError(`Deployment is unavailable: ${selectedChain.name} contract config is missing.`);
+            return;
+        }
+        // Art is required unless the draft already has reusable media.
+        if (!hasArtworkReady) {
+            setFormError("Upload artwork to continue.");
+            return;
+        }
+
+        // Mark as fired immediately to block re-entry
+        deployFiredRef.current = true;
+
+        setFormError(null);
+
+        // 0. Resolve Payout Recipient
+        let finalPayoutRecipient: `0x${string}` = address;
+        if (formData.payoutRecipient.trim()) {
+            if (!isAddress(formData.payoutRecipient.trim())) {
+                setFormError("Invalid Payout Recipient address.");
+                return;
+            }
+            finalPayoutRecipient = formData.payoutRecipient.trim() as `0x${string}`;
+        }
+
+        try {
+            if (chainId !== selectedChain.id) {
+                throw new Error(`Switch to ${selectedChain.name} to deploy.`);
+            }
+
+            setIsUploading(true);
+
+
+            // 2. Resolve Draft ID (Create if not resumed from webhook frame)
+            let currentDraftId = draftId;
+
+            if (!currentDraftId) {
+                const draftRes = await fetch("/api/drops", {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: formData.title,
+                        description: formData.description,
+                        editionSize: formData.editionSize,
+                        mintPriceWei: parseEther(formData.mintPrice || "0").toString(),
+                        creatorAddress: address,
+                        payoutRecipient: finalPayoutRecipient
+                    })
+                });
+                const draftData = await draftRes.json();
+                if (!draftRes.ok) throw new Error(draftData.error || "Failed to create draft");
+                currentDraftId = draftData.dropId;
+            }
+
+            // 3. Resolve IPFS URIs Ã¢â‚¬â€ reuse draft values or upload fresh
+            let tokenUri: string;
+            let imageUri: string;
+
+            if (!file && draftTokenUri && draftImageUrl) {
+                // Draft already has IPFS URIs from a prior upload; skip re-upload
+                tokenUri = draftTokenUri;
+                imageUri = draftImageUrl;
+            } else if (file) {
+                // 1. Fetch Temporary JWT from backend (Vercel payload bypass)
+                const tokenRes = await fetch("/api/upload/token", { method: "POST" });
+                if (!tokenRes.ok) throw new Error("Failed to secure upload token. Please try again.");
+                const tokenData = await tokenRes.json();
+
+                // 2. Upload Image Directly to Pinata
+                const uploadData = new FormData();
+                uploadData.append("file", file);
+
+                const pinataUploadRes = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${tokenData.JWT}`,
+                    },
+                    body: uploadData,
+                });
+
+                if (!pinataUploadRes.ok) throw new Error("Artwork upload to IPFS failed.");
+                const imageUploadResult = await pinataUploadRes.json();
+                imageUri = `ipfs://${imageUploadResult.IpfsHash}`;
+
+                // 3. Upload Metadata directly to Pinata
+                const metadata = {
+                    name: formData.title || "Untitled Drop",
+                    description: formData.description || "Created via Droppit",
+                    image: imageUri,
+                    properties: { generator: "Droppit AgentKit" },
+                };
+
+                const metadataRes = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${tokenData.JWT}`,
+                    },
+                    body: JSON.stringify({ pinataContent: metadata }),
+                });
+
+                if (!metadataRes.ok) throw new Error("Metadata upload to IPFS failed.");
+                const jsonUploadResult = await metadataRes.json();
+                tokenUri = `ipfs://${jsonUploadResult.IpfsHash}`;
+            } else {
+                throw new Error("No artwork file or existing IPFS URIs available.");
+            }
+
+            // 4. Generate Salt and Commitment for Locked Content
+            let saltHex = "0x" + "00".repeat(32); // Default to empty 32-byte hash
+            let commitment = "0x" + "00".repeat(32);
+
+            if (formData.lockedContent) {
+                // Generate a random 32-byte salt
+                const randomBytes = new Uint8Array(32);
+                window.crypto.getRandomValues(randomBytes);
+                saltHex = "0x" + Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
+                // Derive commitment: keccak256(encodePacked(['bytes32', 'string'], [salt, lockedContent]))
+                commitment = keccak256(
+                    encodePacked(
+                        ['bytes32', 'string'],
+                        [saltHex as `0x${string}`, formData.lockedContent]
+                    )
+                );
+            }
+
+            // Store URIs + Draft ID + Salt into state hook so the effect can transition it to LIVE
+            setDeployedState({ tokenUri, imageUri, draftId: currentDraftId as string, salt: saltHex, commitment });
+
+            // 5. Sign Transaction on Base
+            await writeContractAsync({
+                chainId: selectedChain.id,
+                address: selectedFactoryAddress as `0x${string}`,
+                abi: FACTORY_ABI,
+                functionName: "createDrop",
+                args: [
+                    BigInt(formData.editionSize || "1"),
+                    parseEther(formData.mintPrice || "0"),
+                    finalPayoutRecipient as `0x${string}`, // payoutRecipient
+                    tokenUri,
+                    commitment as `0x${string}`
+                ]
+            });
+        } catch (e: unknown) {
+            console.error("Deploy error:", e);
+            const message = e instanceof Error ? e.message : "Deployment failed";
+            setFormError(message);
+            // Reset the one-shot guard so user can retry after fixing the issue
+            deployFiredRef.current = false;
+        } finally {
+            setIsUploading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [address, hasArtworkReady, hasSelectedChainContractConfig, selectedFactoryAddress, selectedChain, file, chainId, formData, draftId, hasHydrated, draftTokenUri, draftImageUrl]);
+
+    // Auto-deploy: trigger deploy only after all prerequisites are met
+    useEffect(() => {
+        if (!autoDeploy || !hasHydrated || hydrationError) return;
+        if (deployFiredRef.current || isUploading || isPending || isConfirming || isSuccess) return;
+        if (!hasSelectedChainContractConfig || !selectedFactoryAddress) return;
+
+        if (address && hasArtworkReady && chainId === selectedChain.id && !formError) {
+            setAutoDeploy(false);
+            handleDeploy();
+        }
+    }, [autoDeploy, hasArtworkReady, hasHydrated, hydrationError, address, chainId, formError, isUploading, isPending, isConfirming, isSuccess, handleDeploy, hasSelectedChainContractConfig, selectedFactoryAddress, selectedChain]);
+
+    const previewTitle = formData.title.trim() || "Untitled Drop";
+    const previewGlyph = previewTitle.charAt(0).toUpperCase() || "D";
+    const previewImageUrl = filePreviewUrl || normalizedDraftImageUrl;
+    const previewImageDimensions = file ? fileImageDimensions : draftImageDimensions;
+    const previewArtworkPlacement = fitArtworkWithinBounds({
+        imageWidth: previewImageDimensions?.width,
+        imageHeight: previewImageDimensions?.height,
+    });
+    const previewArtworkFrameStyle = previewImageUrl
+        ? previewImageDimensions
+            ? {
+                width: (previewArtworkPlacement.widthRatio * 100).toFixed(2) + "%",
+                height: (previewArtworkPlacement.heightRatio * 100).toFixed(2) + "%",
+            }
+            : { width: "100%", height: "100%" }
+        : null;
+    const previewFrameInset = toPreviewPercent(MINIAPP_SHARE_CARD.frameInset, MINIAPP_SHARE_CARD.canvasWidth);
+    const previewArtPaddingX = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingX, MINIAPP_SHARE_CARD.canvasWidth);
+    const previewArtPaddingTop = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingTop, MINIAPP_SHARE_CARD.canvasHeight);
+    const previewArtPaddingBottom = toPreviewPercent(MINIAPP_SHARE_CARD.artPaddingBottom, MINIAPP_SHARE_CARD.canvasHeight);
+
+
+    return (
+        <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
+            {/* Background gradient Ã¢â‚¬â€ matches all pages */}
+            <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
+
+            {/* Nav */}
+            <nav className="relative z-30 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+                <BrandLockup markSize={28} wordmarkClassName="text-lg font-bold tracking-tight sm:text-xl" />
+
+                <div className="relative z-30 flex items-center gap-2 sm:gap-3">
+                    <button
+                        type="button"
+                        onClick={() => router.push('/creator')}
+                        className="relative z-20 inline-flex shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white sm:px-4 sm:text-sm"
+                    >
+                        My Drops
+                    </button>
+                    <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-mono text-slate-400">
+                        <div className="h-2 w-2 rounded-full bg-[#22D3EE] animate-pulse" />
+                        {selectedChain.name}
+                    </div>
+                    <Wallet>
+                        <ConnectWallet className="relative z-10 shrink-0 rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">
+                            <Avatar className="h-7 w-7 ring-2 ring-[#0052FF]/30" />
+                        </ConnectWallet>
+                        <WalletDropdown className="border border-white/[0.08] bg-[#0B1020] rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                            <Identity className="px-4 pt-4 pb-2 text-white hover:bg-white/[0.03] transition-colors" hasCopyAddressOnClick>
+                                <Avatar className="h-10 w-10 ring-2 ring-[#0052FF]/40" />
+                                <Name className="text-white font-bold" />
+                                <Address className="text-slate-400 font-mono text-sm" />
+                                <EthBalance className="text-[#22D3EE] font-bold" />
+                            </Identity>
+                            <div className="h-px bg-white/[0.06] w-full" />
+                            <button type="button" onClick={handleWalletDisconnect} className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold">
+                                Disconnect
+                            </button>
+                        </WalletDropdown>
+                    </Wallet>
+                </div>
+            </nav>
+
+            <main className="relative z-10 mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
+                                {/* Hydration loading / error indicators */}
+                {isDraftLoading && address && (
+                    <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
+                        <h3 className="text-yellow-400 font-bold mb-2">Loading Draft</h3>
+                        <p className="text-yellow-200 text-sm">Fetching your draft data, please wait.</p>
+                    </div>
+                )}
+                {autoDeploy && !hydrationError && (
+                    <div className="mb-8 p-4 bg-blue-500/10 border border-blue-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
+                        <h3 className="text-blue-400 font-bold mb-2">Ã¢Å¡Â¡ Auto-Deploy Pending</h3>
+                        <p className="text-blue-200 text-sm mb-2">Please complete the following to automatically finish your drop:</p>
+                        <ul className="list-disc list-inside text-sm text-blue-300">
+                            {!hasHydrated && <li>Loading draft dataÃ¢â‚¬Â¦</li>}
+                            {!address && showMiniAppWalletConnecting && <li>Connecting walletÃ¢â‚¬Â¦</li>}
+                            {!address && !showMiniAppWalletConnecting && <li>Connect your wallet</li>}
+                            {address && shouldPromptForChainSwitch && <li>Switch to {selectedChain.name} in your wallet</li>}
+                            {!hasSelectedChainContractConfig && <li>{selectedChain.name} deployment config is missing.</li>}
+                            {!hasArtworkReady && <li>Upload artwork media</li>}
+                        </ul>
+                    </div>
+                )}
+                {!address ? (
+                    <div className="flex min-h-[320px] flex-col items-center justify-center space-y-5 text-center animate-in fade-in slide-in-from-bottom-4 duration-500 sm:min-h-[400px] sm:space-y-6">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10 mb-2">
+                            <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        </div>
+                        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{showMiniAppWalletConnecting ? "Connecting wallet..." : draftId ? "Connect Creator Wallet" : "Connect your Wallet"}</h1>
+                        <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">{showMiniAppWalletConnecting ? `Attempting Farcaster wallet auto-connect for ${selectedChain.name}${draftId ? " to load your draft." : "."}` : draftId ? `Connect the creator wallet used to create this draft to review or deploy it on ${selectedChain.name}.` : `Connect your wallet to configure and deploy an ERC-1155 Drop on ${selectedChain.name}.`}</p>
+                        {showMiniAppWalletConnecting ? (
+                            <div className="rounded-full border border-[#22D3EE]/25 bg-[#22D3EE]/10 px-5 py-3 text-sm font-semibold text-[#9FEAF8]">
+                                Please wait while Droppit connects your Farcaster wallet.
+                            </div>
+                        ) : (
+                            <Wallet>
+                                <ConnectWallet className="w-full max-w-xs rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-3 text-white !min-w-[200px] font-bold transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.35)]">
+                                    <Avatar className="h-6 w-6" />
+                                    <Name />
+                                </ConnectWallet>
+                            </Wallet>
+                        )}
+                    </div>
+                ) : shouldBlockDraftReview ? (
+                    <div className="flex min-h-[320px] flex-col items-center justify-center space-y-5 text-center animate-in fade-in slide-in-from-bottom-4 duration-500 sm:min-h-[400px] sm:space-y-6">
+                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10 mb-2">
+                            <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        </div>
+                        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+                            {isDraftLoading ? "Loading draft..." : draftLoadStatus === "private" ? "Draft Access Restricted" : "Draft Load Failed"}
+                        </h1>
+                        <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">
+                            {isDraftLoading
+                                ? "Fetching the private draft details for the connected wallet."
+                                : draftLoadStatus === "private"
+                                    ? PRIVATE_DRAFT_ACCESS_MESSAGE
+                                    : (draftLoadError || "Droppit could not load this draft right now.")}
+                        </p>
+                        {draftLoadStatus === "private" && (
+                            <button
+                                type="button"
+                                onClick={handleWalletDisconnect}
+                                className="rounded-full border border-[#22D3EE]/25 bg-[#22D3EE]/10 px-5 py-3 text-sm font-semibold text-[#9FEAF8] transition-colors hover:bg-[#22D3EE]/15"
+                            >
+                                Disconnect wallet
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        <div className="mb-10 sm:mb-12">
+                            <div className="mb-3 inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/70">
+                                {isAiDraftFlow ? "AI Draft Review" : "Create Drop"}
+                            </div>
+                            <h1 className="mb-3 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{isAiDraftFlow ? "Review AI Draft" : "Launch your Drop"}</h1>
+                            <p className="text-slate-400">
+                                {isAiDraftFlow
+                                    ? `Review the AI-generated draft for ${selectedChain.name}. This draft is still editable before deployment.`
+                                    : `Configure your ${selectedChain.name} ERC-1155 contract and unlockable content.`}
+                            </p>
+                        </div>
+
+                        {/* Stepper */}
+                        <div className="mb-8 flex items-center gap-2 sm:mb-12 sm:gap-3">
+                            {[1, 2, 3, 4].map((i) => (
+                                <div key={i} className="flex flex-1 items-center gap-2 sm:gap-3">
+                                    <div
+                                        className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 sm:h-10 sm:w-10 sm:text-sm ${step >= i
+                                            ? "bg-gradient-to-br from-[#0052FF] to-[#22D3EE] text-white shadow-[0_0_20px_rgba(0,82,255,0.35)]"
+                                            : step === i - 1
+                                                ? "border border-[#0052FF]/30 bg-[#0052FF]/10 text-[#22D3EE]"
+                                                : "border border-white/[0.06] bg-white/[0.02] text-slate-600"
+                                            }`}
+                                    >
+                                        {step > i ? (
+                                            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" /></svg>
+                                        ) : i}
+                                    </div>
+                                    {i !== 4 && <div className={`h-px w-full rounded-full transition-all duration-300 sm:h-[2px] ${step > i ? "bg-gradient-to-r from-[#0052FF] to-[#22D3EE]/50" : "bg-white/[0.04]"}`} />}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Form Container */}
+                        <div className="rounded-3xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent p-5 shadow-[0_0_0_1px_rgba(0,82,255,0.04),0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl sm:p-8">
+                            {/* Error Message Display */}
+                            {formError && (
+                                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
+                                    <p className="text-red-400 font-semibold text-center text-sm">
+                                        Ã¢Å¡Â Ã¯Â¸Â {formError}
+                                    </p>
+                                </div>
+                            )}
+
+                            {step === 1 && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-2">
+                                        <h3 className="font-display text-lg font-bold text-white">{isAiDraftFlow ? "AI Draft Details" : "Drop Details"}</h3>
+                                        <p className="text-sm text-slate-500">
+                                            {isAiDraftFlow
+                                                ? (hasReusableMedia
+                                                    ? "Review the saved AI artwork below. Upload a replacement only if you want to override it."
+                                                    : "This AI draft needs a high-resolution artwork upload before deployment.")
+                                                : "Give your drop a name, tell its story, and upload the artwork."}
+                                        </p>
+                                    </div>
+                                    {showMissingArtworkBanner && (
+                                        <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-sm text-amber-100">
+                                            This AI draft does not have reusable artwork yet. Upload a high-resolution image to continue to deployment.
+                                        </div>
+                                    )}
+                                    {isAiDraftFlow && hasReusableMedia && !file && (
+                                        <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 text-sm text-sky-100">
+                                            Saved AI artwork is ready. Upload a replacement only if you want to override the current image.
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">Drop Title</label>
+                                        <input
+                                            type="text"
+                                            value={formData.title}
+                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
+                                            placeholder="e.g. The Farcaster Genesis"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+                                        <textarea
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all h-32 resize-none"
+                                            placeholder="Tell the story behind this drop..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">Artwork Image</label>
+                                        <p className="text-xs text-slate-500 mb-3">
+                                            {isAiDraftFlow && !hasReusableMedia
+                                                ? `Upload a high-resolution PNG, JPG, or WebP. Max ${MAX_UPLOAD_SIZE_LABEL}`
+                                                : `PNG, JPG, or WebP. Max ${MAX_UPLOAD_SIZE_LABEL}`}
+                                        </p>
+                                        <div className="group relative rounded-2xl border-2 border-dashed border-white/[0.08] p-8 text-center transition-all hover:border-[#0052FF]/30 hover:bg-[#0052FF]/[0.02] cursor-pointer">
+                                            <input
+                                                type="file"
+                                                accept={ALLOWED_MIME_ACCEPT}
+                                                className="hidden"
+                                                id="file-upload"
+                                                onChange={async (e) => {
+                                                    const selectedFile = e.target.files?.[0] || null;
+                                                    setFormError(null);
+
+                                                    if (!selectedFile) {
+                                                        setFile(null);
+                                                        setFileImageDimensions(null);
+                                                        return;
+                                                    }
+
+                                                    if (selectedFile.size > MAX_UPLOAD_SIZE_BYTES) {
+                                                        setFormError(`Artwork media exceeds the ${MAX_UPLOAD_SIZE_LABEL} size limit.`);
+                                                        setFile(null);
+                                                        setFileImageDimensions(null);
+                                                        return;
+                                                    }
+
+                                                    try {
+                                                        // Convert file to Uint8Array for validation
+                                                        const buffer = await selectedFile.arrayBuffer();
+                                                        const bytes = new Uint8Array(buffer);
+
+                                                        // 1. Validate Media Type (Magic Bytes Sniffing)
+                                                        const mediaValidation = validateImageMedia(bytes, selectedFile.type);
+                                                        if (!mediaValidation.ok) {
+                                                            setFormError(mediaValidation.error);
+                                                            setFile(null);
+                                                            setFileImageDimensions(null);
+                                                            return;
+                                                        }
+
+                                                        // 2. Validate Image Dimensions (Decompression Bomb Protection)
+                                                        const dimensions = extractImageDimensions(mediaValidation.normalizedMime, bytes);
+                                                        if (!dimensions) {
+                                                            setFormError("Could not read image dimensions from uploaded file.");
+                                                            setFile(null);
+                                                            setFileImageDimensions(null);
+                                                            return;
+                                                        }
+
+                                                        if (dimensions.width > MAX_IMAGE_WIDTH || dimensions.height > MAX_IMAGE_HEIGHT) {
+                                                            setFormError(`Image dimensions exceed limit (${MAX_IMAGE_WIDTH}x${MAX_IMAGE_HEIGHT} max).`);
+                                                            setFile(null);
+                                                            setFileImageDimensions(null);
+                                                            return;
+                                                        }
+
+                                                        const totalPixels = dimensions.width * dimensions.height;
+                                                        if (totalPixels > MAX_IMAGE_PIXELS) {
+                                                            setFormError("Image is too large to process safely.");
+                                                            setFile(null);
+                                                            setFileImageDimensions(null);
+                                                            return;
+                                                        }
+
+                                                        // Validation passed
+                                                        setFile(selectedFile);
+                                                        setFileImageDimensions(dimensions);
+                                                    } catch (err) {
+                                                        console.error("Client-side validation failed:", err);
+                                                        setFormError("Failed to validate artwork file.");
+                                                        setFile(null);
+                                                        setFileImageDimensions(null);
+                                                    }
+                                                }}
+                                            />
+                                            <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center w-full">
+                                                {(filePreviewUrl || normalizedDraftImageUrl) ? (
+                                                    <div className="relative flex justify-center w-full mb-4">
+                                                        <img
+                                                            src={filePreviewUrl || normalizedDraftImageUrl || undefined}
+                                                            alt={file ? "Preview" : "Draft artwork preview"}
+                                                            className="max-h-[250px] max-w-full object-contain rounded-xl border border-white/[0.08] shadow-[0_0_30px_rgba(0,82,255,0.15)]"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/8 text-[#22D3EE] transition-transform group-hover:scale-110">
+                                                        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 16V7" /><path d="M8.5 10.5L12 7l3.5 3.5" /><rect x="4" y="16" width="16" height="4" rx="1.5" /></svg>
+                                                    </div>
+                                                )}
+                                                <span className="text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
+                                                    {file
+                                                        ? file.name
+                                                        : hasReusableMedia
+                                                            ? "Saved draft artwork preview. Click to upload a replacement."
+                                                            : isAiDraftFlow
+                                                                ? "Click to upload high-resolution artwork"
+                                                                : "Click to upload artwork"}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {step === 2 && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="mb-2">
+                                        <h3 className="font-display text-lg font-bold text-white">Pricing & Config</h3>
+                                        <p className="text-sm text-slate-500">Set your edition size, mint price, and optional locked content.</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">Edition Size</label>
+                                            <input
+                                                type="number"
+                                                min="1" max="10000"
+                                                value={formData.editionSize}
+                                                onChange={(e) => {
+                                                    let val = e.target.value;
+                                                    if (val !== "" && parseInt(val, 10) > 10000) {
+                                                        val = "10000";
+                                                    }
+                                                    setFormData({ ...formData, editionSize: val });
+                                                }}
+                                                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
+                                            />
+                                            <p className="text-xs text-slate-600 mt-2">Between 1 and 10,000</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">Mint Price (ETH)</label>
+                                            <input
+                                                type="number"
+                                                step="0.0001"
+                                                min="0"
+                                                value={formData.mintPrice}
+                                                onChange={(e) => setFormData({ ...formData, mintPrice: e.target.value })}
+                                                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
+                                            />
+                                            <p className="text-xs text-slate-600 mt-2">Set to 0 for Free Mints</p>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">Payout Recipient</label>
+                                        <input
+                                            type="text"
+                                            value={formData.payoutRecipient}
+                                            onChange={(e) => setFormData({ ...formData, payoutRecipient: e.target.value })}
+                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all font-mono disabled:opacity-50"
+                                            placeholder={address ? address : "0x..."}
+                                        />
+                                        <p className="text-xs text-slate-600 mt-2">Defaults to your connected wallet.</p>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-[#7C3AED]/15 bg-gradient-to-b from-[#7C3AED]/[0.06] to-transparent p-4 sm:p-5">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#7C3AED]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></svg>
+                                            <h4 className="font-semibold text-[#7C3AED] text-sm">Locked Content (Mint-to-Unlock)</h4>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mb-4">Secret message only visible to wallets that own the NFT. Text only Ã¢â‚¬â€ no URLs.</p>
+                                        <textarea
+                                            value={formData.lockedContent}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                const check = validateLockedContent(val);
+                                                if (!check.valid) {
+                                                    setFormError(check.error);
+                                                } else {
+                                                    setFormError(null);
+                                                }
+                                                setFormData({ ...formData, lockedContent: val });
+                                            }}
+                                            maxLength={1000}
+                                            className="w-full rounded-xl border border-[#7C3AED]/20 bg-[#0B1020]/80 px-4 py-3 text-[#22D3EE] font-mono text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#7C3AED]/40 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)] transition-all h-32 resize-none"
+                                            placeholder="e.g. The secret password for the event is 'BASE'"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {step === 3 && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="text-center mb-8">
+                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10">
+                                            <svg viewBox="0 0 24 24" className="h-7 w-7 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                                        </div>
+                                        <h3 className="font-display text-xl font-bold mb-2">Creator Identity</h3>
+                                        <p className="text-sm text-slate-400 max-w-md mx-auto">Link a Farcaster handle via wallet signature. This is optional Ã¢â‚¬â€ not KYC.</p>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-[#0052FF]/15 bg-gradient-to-b from-[#0052FF]/[0.05] to-transparent p-6 space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-[#22D3EE]/80 mb-2">Handle / Username</label>
+                                            <div className="relative">
+                                                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-[#0052FF]/50 font-mono">@</span>
+                                                <input
+                                                    type="text"
+                                                    value={formData.farcasterHandle}
+                                                    onChange={(e) => setFormData({ ...formData, farcasterHandle: e.target.value.replace(/[^a-zA-Z0-9_.-]/g, '') })}
+                                                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] pl-10 pr-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all font-mono disabled:opacity-50"
+                                                    placeholder="e.g. jesse.base"
+                                                    disabled={identityVerified}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-2">
+                                            {identityVerified ? (
+                                                <div className="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.06] p-4 text-green-400">
+                                                    <svg viewBox="0 0 16 16" className="h-5 w-5 shrink-0" fill="currentColor"><path d="M8 1a7 7 0 110 14A7 7 0 018 1zm3.22 4.72a.75.75 0 00-1.06.02L7.4 8.78 5.84 7.22a.75.75 0 00-1.08 1.04l2.1 2.1a.75.75 0 001.07-.01l3.3-3.55a.75.75 0 00-.01-1.08z" /></svg>
+                                                    <span className="font-semibold text-sm">Linked to @{formData.farcasterHandle}</span>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={handleLinkIdentity}
+                                                    disabled={!formData.farcasterHandle || isLinkingIdentity}
+                                                    className="w-full rounded-xl border border-[#0052FF]/25 bg-[#0052FF]/10 py-3 font-bold text-[#22D3EE] transition-all hover:bg-[#0052FF]/20 hover:border-[#0052FF]/40 disabled:opacity-30 disabled:pointer-events-none"
+                                                >
+                                                    {isLinkingIdentity ? "Signing..." : "Link handle via signature"}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <p className="text-[11px] text-slate-600 text-center leading-relaxed mt-4">
+                                            Wallet-signature proof only. Not official Farcaster verification and not KYC.
+                                        </p>
+                                    </div>
+
+                                    {!identityVerified && (
+                                        <div className="text-center mt-4">
+                                            <button onClick={handleNext} className="text-sm text-slate-500 hover:text-white underline decoration-white/20 transition-colors">Skip and Continue Anonymously</button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {step === 4 && (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                    <div className="text-center">
+                                        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0052FF]/20 to-[#22D3EE]/15 border border-[#22D3EE]/20">
+                                            <svg viewBox="0 0 24 24" className="h-9 w-9 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                        </div>
+                                        <h2 className="font-display text-2xl font-bold mb-2">{isAiDraftFlow ? "Review Before Deploy" : "Ready to Deploy"}</h2>
+                                        <p className="text-slate-400">
+                                            {isAiDraftFlow
+                                                ? `Review the AI draft details below. You can still go back and edit steps 1-3 before signing the ${selectedChain.name} transaction.`
+                                                : `Review your drop details before signing the ${selectedChain.name} transaction.`}
+                                        </p>
+                                    </div>
+
+                                    {!hasSelectedChainContractConfig && (
+                                        <div className="p-4 bg-yellow-500/10 border border-yellow-500/40 rounded-xl text-yellow-200 text-sm">
+                                            Deployment is disabled: missing factory/implementation configuration for {selectedChain.name}.
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-0 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 font-mono text-sm sm:p-6">
+                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                                            <span className="text-slate-500">Title</span>
+                                            <span className="w-full break-words text-left font-medium text-white sm:w-auto sm:max-w-xs sm:text-right">{formData.title || "Untitled"}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                                            <span className="text-slate-500">Supply</span>
+                                            <span className="w-full break-words text-left text-white sm:w-auto sm:text-right">{formData.editionSize}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                                            <span className="text-slate-500">Price</span>
+                                            <span className={`w-full break-words text-left sm:w-auto sm:text-right ${Number(formData.mintPrice) === 0 ? "font-bold text-[#22D3EE]" : "text-white"}`}>{Number(formData.mintPrice) === 0 ? "Free mint" : `${formData.mintPrice} ETH`}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                                            <span className="text-slate-500">Recipient</span>
+                                            <span className="w-full break-all text-left text-white sm:w-auto sm:max-w-xs sm:text-right">{formData.payoutRecipient.trim() ? formData.payoutRecipient.trim() : address}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-1.5 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                                            <span className="text-slate-500">Est. Deploy Gas</span>
+                                            <span className="w-full break-words text-left font-medium text-[#22D3EE] sm:w-auto sm:text-right">{deployGasEstimate ? (deployGasEstimate === "Unknown" ? "Unknown" : `~${parseFloat(deployGasEstimate).toFixed(4)} ETH`) : "Estimating..."}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Share-Card Preview */}
+                                    <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#05070f]">
+                                        <div className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-6">
+                                            <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
+                                            <p className="text-xs text-slate-500">This previews the real 3:2 miniapp share image used in Warpcast.</p>
+                                        </div>
+                                        <div className="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
+                                            <div className="mx-auto w-full" style={{ maxWidth: MINIAPP_SHARE_CARD.previewMaxWidth }}>
+                                                <div className="rounded-[28px] border border-white/[0.08] bg-[#040916]/92 shadow-[0_20px_52px_rgba(0,0,0,0.30)]" style={{ padding: previewFrameInset }}>
+                                                    <div
+                                                        className="relative overflow-hidden rounded-[26px] border border-white/[0.04] bg-[#020617] shadow-[0_18px_44px_rgba(0,0,0,0.30)]"
+                                                        style={{ aspectRatio: "3 / 2" }}
+                                                    >
+                                                        {previewImageUrl && (
+                                                            <img
+                                                                src={previewImageUrl}
+                                                                alt=""
+                                                                className="absolute inset-0 h-full w-full object-cover opacity-30"
+                                                                style={{ filter: "blur(28px)", transform: "scale(1.18)" }}
+                                                            />
+                                                        )}
+                                                        <div
+                                                            className="absolute inset-0"
+                                                            style={{
+                                                                backgroundColor: "rgba(2,6,23,0.46)",
+                                                                backgroundImage: "radial-gradient(circle at 50% 15%, rgba(124,58,237,0.18), transparent 36%), radial-gradient(circle at 50% 85%, rgba(0,82,255,0.16), transparent 40%)",
+                                                            }}
+                                                        />
+                                                        <div
+                                                            className="relative flex h-full w-full items-center justify-center"
+                                                            style={{ padding: `${previewArtPaddingTop} ${previewArtPaddingX} ${previewArtPaddingBottom}` }}
+                                                        >
+                                                            <div className="relative flex items-center justify-center rounded-[24px]" style={{ width: previewArtworkFrameStyle?.width || "100%", height: previewArtworkFrameStyle?.height || "100%" }}>
+                                                                {previewImageUrl ? (
+                                                                    <img src={previewImageUrl} alt="" className="relative z-10 h-full w-full object-contain object-center" />
+                                                                ) : (
+                                                                    <div className="text-6xl font-bold text-white/50 sm:text-7xl">{previewGlyph}</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-3 flex flex-col gap-3 rounded-[20px] border border-white/10 bg-[#07101f]/92 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                                                        <div>
+                                                            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Warpcast Post</div>
+                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image. The caption stays compact while the miniapp page holds the full details.</div>
+                                                        </div>
+                                                        <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,82,255,0.28)]">
+                                                            Mint
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+
+                            {/* Action Buttons */}
+                            <div className="mt-10 flex flex-col gap-3 border-t border-white/[0.06] pt-6 sm:flex-row sm:items-center sm:justify-between">
+                                <button
+                                    onClick={handlePrev}
+                                    disabled={step === 1}
+                                    className={`rounded-full px-6 py-2.5 font-medium transition-all ${step === 1 ? "hidden sm:inline-flex sm:opacity-0 sm:pointer-events-none" : "inline-flex w-full items-center justify-center border border-white/[0.06] bg-white/[0.02] text-slate-400 hover:border-white/15 hover:bg-white/[0.06] hover:text-white sm:w-auto"
+                                        }`}
+                                >
+                                    Back
+                                </button>
+
+                                {step < 4 ? (
+                                    <button
+                                        onClick={() => {
+                                            if (step === 1 && (!formData.title.trim() || !hasArtworkReady)) {
+                                                setFormError("Please provide a Drop Title and artwork media to proceed.");
+                                                return;
+                                            }
+
+                                            if (step === 2) {
+                                                if (formData.lockedContent) {
+                                                    const check = validateLockedContent(formData.lockedContent);
+                                                    if (!check.valid) {
+                                                        setFormError(check.error);
+                                                        return;
+                                                    }
+                                                }
+
+                                                if (formData.payoutRecipient.trim()) {
+                                                    // Import isAddress here if not at top, but viem is imported at top
+                                                    import('viem').then(({ isAddress }) => {
+                                                        if (!isAddress(formData.payoutRecipient.trim())) {
+                                                            setFormError("Payout Recipient is not a valid EVM address.");
+                                                            return;
+                                                        } else {
+                                                            setFormError(null);
+                                                            handleNext();
+                                                        }
+                                                    });
+                                                    return; // Async import handling, return early to prevent sync handleNext
+                                                }
+                                            }
+
+                                            // Step 3 handles identity internally vs skip explicit handler.
+                                            if (step === 3 && formData.farcasterHandle && !identityVerified) {
+                                                setFormError("Please link your entered handle via signature, or clear the box completely to skip anonymously.");
+                                                return;
+                                            }
+
+                                            setFormError(null);
+                                            handleNext();
+                                        }}
+                                        className="inline-flex w-full items-center justify-center rounded-full bg-white px-8 py-2.5 font-bold text-[#05070f] transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)] sm:w-auto"
+                                    >
+                                        Next Step
+                                    </button>
+                                ) : (
+                                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:items-end">
+                                        {shouldPromptForChainSwitch && (
+                                            <div className="w-full rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 sm:max-w-sm">
+                                                <p>Connected wallet is on the wrong network. Switch to {selectedChain.name} before deploying.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSwitchToSelectedChain}
+                                                    disabled={isSwitchingChain}
+                                                    className="mt-3 inline-flex items-center justify-center rounded-full border border-amber-300/40 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-50 transition-colors hover:bg-amber-400/25 disabled:pointer-events-none disabled:opacity-50"
+                                                >
+                                                    {isSwitchingChain ? `Switching to ${selectedChain.name}...` : `Switch to ${selectedChain.name}`}
+                                                </button>
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={handleDeploy}
+                                            disabled={shouldPromptForChainSwitch || !hasSelectedChainContractConfig || !hasHydrated || !!hydrationError || isUploading || isPending || isConfirming || isSuccess || isPublishingDrop || isSwitchingChain}
+                                            className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-2.5 font-bold text-white transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.4)] disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
+                                        >
+                                            {shouldPromptForChainSwitch
+                                                ? `Switch to ${selectedChain.name} to Deploy`
+                                                : !hasSelectedChainContractConfig
+                                                    ? "Chain Config Missing"
+                                                    : !hasHydrated
+                                                        ? "Loading draftÃ¢â‚¬Â¦"
+                                                        : isUploading
+                                                            ? "Uploading to IPFS..."
+                                                            : (isPending || isConfirming)
+                                                                ? "Confirming tx..."
+                                                                : isSuccess
+                                                                    ? (isPublishingDrop
+                                                                        ? "Finalizing drop..."
+                                                                        : (formError ? "Publish incomplete" : "Awaiting publish..."))
+                                                                    : (isAiDraftFlow ? "Approve & Deploy" : "Sign & Deploy")}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
+            </main>
+        </div>
+    );
+}
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-plus-jakarta);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-plus-jakarta), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+}
+
+.font-mono-brand {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes particleFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -10px, 0); }
+}
+
+@keyframes parallaxOrbA {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(14px, -18px, 0); }
+}
+
+@keyframes parallaxOrbB {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-16px, 14px, 0); }
+}
+
+@keyframes parallaxOrbC {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(10px, -12px, 0); }
+}
+
+@keyframes ctaGlowPulse {
+  0%, 100% { opacity: 0.72; filter: blur(10px); }
+  50% { opacity: 0.96; filter: blur(14px); }
+}
+
+.reveal-up {
+  opacity: 0;
+  transform: translateY(22px) scale(0.985);
+  animation: revealUp 760ms cubic-bezier(0.2, 0.75, 0.2, 1) forwards;
+}
+
+.reveal-delay-1 { animation-delay: 60ms; }
+.reveal-delay-2 { animation-delay: 120ms; }
+.reveal-delay-3 { animation-delay: 180ms; }
+.reveal-delay-4 { animation-delay: 240ms; }
+.reveal-delay-5 { animation-delay: 300ms; }
+.reveal-delay-6 { animation-delay: 360ms; }
+.reveal-delay-7 { animation-delay: 420ms; }
+.reveal-delay-8 { animation-delay: 480ms; }
+.reveal-delay-9 { animation-delay: 540ms; }
+
+.particle-float { animation: particleFloat 5.4s ease-in-out infinite; }
+.parallax-orb-a { animation: parallaxOrbA 7.6s ease-in-out infinite; }
+.parallax-orb-b { animation: parallaxOrbB 8.4s ease-in-out infinite; }
+.parallax-orb-c { animation: parallaxOrbC 9.2s ease-in-out infinite; }
+.cta-glow { animation: ctaGlowPulse 3.2s ease-in-out infinite; }
+
+.lift-hover {
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lift-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 46px rgba(2, 8, 23, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-up,
+  .particle-float,
+  .parallax-orb-a,
+  .parallax-orb-b,
+  .parallax-orb-c,
+  .cta-glow {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Hide number input spinners globally */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.3);
+}
+
+/* Firefox support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.02);
+}

@@ -1,0 +1,11 @@
+{
+  "chainId": 8453,
+  "defaultProtocolFeeWei": 100000000000000,
+  "deployedAtTimestamp": 1772612515,
+  "factoryAddress": "0x2D42cEd72a1babf630Fe6bFEB70B43491dB20608",
+  "implementationAddress": "0x36D14123b868E385dfA10754bE960215ca294EA6",
+  "network": "base",
+  "protocolFeeRecipient": "0xb3c37934BcBB61568a4218f94D6C0D52C6f7Dd1f",
+  "script": "script/Deploy.s.sol:DeployScript",
+  "version": "1"
+}

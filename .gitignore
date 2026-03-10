@@ -1,0 +1,10 @@
+AGENTS.md
+.DS_Store
+*.pem
+.env*
+/.vscode/
+/*.log
+/live-miniapp-og*.png
+/miniapp-*.png
+/minimal-og-repro.png
+/meta.txt
