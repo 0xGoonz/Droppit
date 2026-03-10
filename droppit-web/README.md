@@ -160,6 +160,12 @@ To keep the MVP minimal, secure, and highly focused, the following are explicitl
 | `GET` | `/api/og/draft/[draftId]` | OG image for draft drops |
 | `GET` | `/api/receipt/[txHash].png` | Receipt OG image with drop metadata + tx status |
 
+### Metadata & Crawlers
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/robots.txt` | Crawler policy endpoint; disallows `/create` and `/s/draft/` so creator workflow and draft-share pages are not indexed |
+
 ### Redirects
 
 | Method | Route | Description |
