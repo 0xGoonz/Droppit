@@ -16,6 +16,7 @@
 
 ## Official Links
 
+- Website: [https://droppitonbase.xyz](https://droppitonbase.xyz)
 - Farcaster: [https://farcaster.xyz/droppit](https://farcaster.xyz/droppit)
 - X: [https://x.com/droppitonbase](https://x.com/droppitonbase)
 - Email: `droppitonbase@gmail.com`
