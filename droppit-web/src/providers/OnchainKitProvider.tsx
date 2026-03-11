@@ -13,6 +13,7 @@ import { getChainContracts, hasChainContractConfig } from '@/lib/contracts';
 import { BRAND } from '@/lib/brand';
 import {
     FARCASTER_CONNECTOR_ID,
+    getMiniAppAutoConnectFallbackMessage,
     getSessionStorageSafe,
     hasMiniAppQueryHint,
     isMiniAppAutoConnectSuppressed,
@@ -29,6 +30,7 @@ type ChainPreferenceContextValue = {
     hasSelectedChainContractConfig: boolean;
     isMiniAppEnvironment: boolean;
     isMiniAppWalletBootstrapping: boolean;
+    miniAppAutoConnectErrorMessage: string | null;
 };
 
 const ChainPreferenceContext = createContext<ChainPreferenceContextValue | null>(null);
@@ -37,11 +39,13 @@ function MiniAppWalletBootstrap({
     isDetectionReady,
     enabled,
     targetChainId,
+    setAutoConnectErrorMessage,
     setIsBootstrapping,
 }: {
     isDetectionReady: boolean;
     enabled: boolean;
     targetChainId: SupportedChainId;
+    setAutoConnectErrorMessage: (value: string | null) => void;
     setIsBootstrapping: (value: boolean) => void;
 }) {
     const { address } = useAccount();
@@ -53,6 +57,7 @@ function MiniAppWalletBootstrap({
 
         if (!enabled) {
             attemptedRef.current = false;
+            setAutoConnectErrorMessage(null);
             setIsBootstrapping(false);
             return;
         }
@@ -63,6 +68,7 @@ function MiniAppWalletBootstrap({
         const isSuppressed = isMiniAppAutoConnectSuppressed(storage);
 
         if (hasConnectedWallet || isSuppressed) {
+            setAutoConnectErrorMessage(null);
             setIsBootstrapping(false);
             return;
         }
@@ -80,6 +86,7 @@ function MiniAppWalletBootstrap({
 
         let isCancelled = false;
         attemptedRef.current = true;
+        setAutoConnectErrorMessage(null);
         setIsBootstrapping(true);
 
         void (async () => {
@@ -88,6 +95,9 @@ function MiniAppWalletBootstrap({
                     connectAsync({ connector: farcasterConnector!, chainId: targetChainId })
                 );
             } catch (error) {
+                if (!isCancelled) {
+                    setAutoConnectErrorMessage(getMiniAppAutoConnectFallbackMessage(error));
+                }
                 console.warn('[Farcaster Mini App] Wallet auto-connect failed:', error);
             } finally {
                 if (!isCancelled) {
@@ -99,7 +109,7 @@ function MiniAppWalletBootstrap({
         return () => {
             isCancelled = true;
         };
-    }, [address, connectAsync, connectors, enabled, isDetectionReady, setIsBootstrapping, targetChainId]);
+    }, [address, connectAsync, connectors, enabled, isDetectionReady, setAutoConnectErrorMessage, setIsBootstrapping, targetChainId]);
 
     return null;
 }
@@ -125,6 +135,7 @@ export function Providers({ children }: { children: ReactNode }) {
     const [isMiniAppDetectionReady, setIsMiniAppDetectionReady] = useState(false);
     const [isMiniAppEnvironment, setIsMiniAppEnvironment] = useState(miniAppQueryHint);
     const [isMiniAppWalletBootstrapping, setIsMiniAppWalletBootstrapping] = useState(miniAppQueryHint);
+    const [miniAppAutoConnectErrorMessage, setMiniAppAutoConnectErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const preferredChainId = readPreferredChainId();
@@ -160,6 +171,7 @@ export function Providers({ children }: { children: ReactNode }) {
                 if (!isActive) return;
                 setIsMiniAppEnvironment(false);
                 setIsMiniAppWalletBootstrapping(false);
+                setMiniAppAutoConnectErrorMessage(null);
                 setIsMiniAppDetectionReady(true);
                 console.warn('[Farcaster Mini App] Failed to initialize SDK:', error);
             }
@@ -212,6 +224,7 @@ export function Providers({ children }: { children: ReactNode }) {
         hasSelectedChainContractConfig,
         isMiniAppEnvironment,
         isMiniAppWalletBootstrapping,
+        miniAppAutoConnectErrorMessage,
     }), [
         selectedChain,
         selectedChainId,
@@ -220,6 +233,7 @@ export function Providers({ children }: { children: ReactNode }) {
         hasSelectedChainContractConfig,
         isMiniAppEnvironment,
         isMiniAppWalletBootstrapping,
+        miniAppAutoConnectErrorMessage,
     ]);
 
     return (
@@ -229,6 +243,7 @@ export function Providers({ children }: { children: ReactNode }) {
                     isDetectionReady={isMiniAppDetectionReady}
                     enabled={isMiniAppDetectionReady && isMiniAppEnvironment}
                     targetChainId={selectedChainId}
+                    setAutoConnectErrorMessage={setMiniAppAutoConnectErrorMessage}
                     setIsBootstrapping={setIsMiniAppWalletBootstrapping}
                 />
                 <ChainPreferenceContext.Provider value={chainPreferenceValue}>

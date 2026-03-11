@@ -4,6 +4,8 @@ import {
     FARCASTER_CONNECTOR_ID,
     MINIAPP_AUTO_CONNECT_SUPPRESSION_KEY,
     MINIAPP_AUTO_CONNECT_TIMEOUT_MS,
+    MINIAPP_AUTO_CONNECT_TIMEOUT_MESSAGE,
+    getMiniAppAutoConnectFallbackMessage,
     hasMiniAppQueryHint,
     hasSelectedChainMismatch,
     isMiniAppAutoConnectSuppressed,
@@ -72,6 +74,22 @@ describe("miniapp-wallet", () => {
         })).toBe(false);
     });
 
+    it("allows slower desktop approvals to complete within the default timeout", async () => {
+        vi.useFakeTimers();
+
+        const autoConnect = withMiniAppAutoConnectTimeout(
+            new Promise<string>((resolve) => {
+                setTimeout(() => resolve("connected"), 5_000);
+            })
+        );
+        const autoConnectAssertion = expect(autoConnect).resolves.toBe("connected");
+
+        await vi.advanceTimersByTimeAsync(5_000);
+        await autoConnectAssertion;
+
+        vi.useRealTimers();
+    });
+
     it("lets successful miniapp auto-connects complete before the timeout", async () => {
         await expect(
             withMiniAppAutoConnectTimeout(Promise.resolve("connected"), MINIAPP_AUTO_CONNECT_TIMEOUT_MS)
@@ -85,12 +103,17 @@ describe("miniapp-wallet", () => {
             new Promise<never>(() => undefined),
             25
         );
-        const autoConnectAssertion = expect(autoConnect).rejects.toThrow("Mini app wallet auto-connect timed out.");
+        const autoConnectAssertion = expect(autoConnect).rejects.toThrow(MINIAPP_AUTO_CONNECT_TIMEOUT_MESSAGE);
 
         await vi.advanceTimersByTimeAsync(25);
         await autoConnectAssertion;
 
         vi.useRealTimers();
+    });
+
+    it("returns a manual-connect fallback message after timeout or other failures", () => {
+        expect(getMiniAppAutoConnectFallbackMessage(new Error(MINIAPP_AUTO_CONNECT_TIMEOUT_MESSAGE))).toContain("Connect manually");
+        expect(getMiniAppAutoConnectFallbackMessage(new Error("connect failed"))).toContain("Connect manually");
     });
 
     it("detects wrong-chain prompts only for connected wallets", () => {

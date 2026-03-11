@@ -62,12 +62,12 @@ describe("Draft Share Route", () => {
         expect(miniapp.imageUrl).toBe(shareImageUrl);
         expect(miniapp.button.title).toBe("Review & Deploy");
         expect(miniapp.button.action.type).toBe("launch_miniapp");
-        expect(miniapp.button.action.url).toBe("https://droppitonbase.xyz/create?draftId=draft-1&mode=review");
+        expect(miniapp.button.action.url).toBe("https://droppitonbase.xyz/create?draftId=draft-1&mode=review&miniApp=true");
 
         const frame = extractJsonMeta(html, "fc:frame");
         expect(frame.imageUrl).toBe(shareImageUrl);
         expect(frame.button.action.type).toBe("launch_frame");
-        expect(frame.button.action.url).toBe("https://droppitonbase.xyz/create?draftId=draft-1&mode=review");
+        expect(frame.button.action.url).toBe("https://droppitonbase.xyz/create?draftId=draft-1&mode=review&miniApp=true");
         expect(html).toContain(`<meta property="og:image" content="${shareImageUrl}" />`);
         expect(html).toContain('<meta property="og:image:height" content="800" />');
         expect(html).toContain(`<meta name="twitter:image" content="${shareImageUrl}" />`);
@@ -96,10 +96,10 @@ describe("Draft Share Route", () => {
         const miniapp = extractJsonMeta(html, "fc:miniapp");
         expect(miniapp.imageUrl).toBe(shareImageUrl);
         expect(miniapp.button.title).toBe("Upload High-Res");
-        expect(miniapp.button.action.url).toBe("https://droppitonbase.xyz/create?draftId=draft-1&mode=upload");
+        expect(miniapp.button.action.url).toBe("https://droppitonbase.xyz/create?draftId=draft-1&mode=upload&miniApp=true");
 
         const frame = extractJsonMeta(html, "fc:frame");
         expect(frame.imageUrl).toBe(shareImageUrl);
-        expect(frame.button.action.url).toBe("https://droppitonbase.xyz/create?draftId=draft-1&mode=upload");
+        expect(frame.button.action.url).toBe("https://droppitonbase.xyz/create?draftId=draft-1&mode=upload&miniApp=true");
     });
 });

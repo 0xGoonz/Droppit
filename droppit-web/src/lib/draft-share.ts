@@ -20,7 +20,7 @@ export function getDraftShareSpec(
     const mode = typeof options.hasReusableMedia === "boolean"
         ? (options.hasReusableMedia ? "review" : "upload")
         : null;
-    const reviewUrl = `${normalizedBaseUrl}/create?draftId=${encodedDraftId}${mode ? `&mode=${mode}` : ""}`;
+    const reviewUrl = `${normalizedBaseUrl}/create?draftId=${encodedDraftId}${mode ? `&mode=${mode}` : ""}&miniApp=true`;
     const ogImageUrl = `${normalizedBaseUrl}/api/og/draft/${encodedDraftId}`;
     const shareImageUrl = `${ogImageUrl}?variant=miniapp`;
     const shareUrl = `${normalizedBaseUrl}/s/draft/${encodedDraftId}`;

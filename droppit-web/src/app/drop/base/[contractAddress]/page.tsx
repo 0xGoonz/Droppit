@@ -77,6 +77,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
         hasSelectedChainContractConfig,
         isMiniAppEnvironment,
         isMiniAppWalletBootstrapping,
+        miniAppAutoConnectErrorMessage,
     } = useChainPreference();
     const explorerUrl = selectedChain.blockExplorers?.default.url || "https://basescan.org";
     const isMintEnabledForSelectedChain = hasSelectedChainContractConfig && hasChainContractConfig(selectedChain.id);
@@ -746,6 +747,11 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                     <p className="text-white font-bold text-lg mb-1">Connect to Mint</p>
                                     <p className="text-slate-400 text-sm">Connect your wallet to mint this drop on {selectedChain.name}.</p>
                                 </div>
+                                {isMiniAppEnvironment && miniAppAutoConnectErrorMessage && (
+                                    <div className="max-w-sm rounded-xl border border-[#22D3EE]/20 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+                                        {miniAppAutoConnectErrorMessage}
+                                    </div>
+                                )}
                                 <Wallet>
                                     <ConnectWallet className="w-full max-w-xs rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-3.5 text-white font-bold transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.35)]">
                                         <Avatar className="h-6 w-6" />

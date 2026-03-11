@@ -94,6 +94,7 @@ export default function CreateDrop() {
         chainContracts,
         isMiniAppEnvironment,
         isMiniAppWalletBootstrapping,
+        miniAppAutoConnectErrorMessage,
     } = useChainPreference();
     const selectedFactoryAddress = chainContracts?.factoryAddress || "";
     const publicClient = usePublicClient({ chainId: selectedChainId });
@@ -882,6 +883,11 @@ export default function CreateDrop() {
                         </div>
                         <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{showMiniAppWalletConnecting ? "Connecting wallet..." : draftId ? "Connect Creator Wallet" : "Connect your Wallet"}</h1>
                         <p className="mx-auto max-w-md text-sm text-slate-400 sm:text-base">{showMiniAppWalletConnecting ? `Attempting Farcaster wallet auto-connect for ${selectedChain.name}${draftId ? " to load your draft." : "."}` : draftId ? `Connect the creator wallet used to create this draft to review or deploy it on ${selectedChain.name}.` : `Connect your wallet to configure and deploy an ERC-1155 Drop on ${selectedChain.name}.`}</p>
+                        {!showMiniAppWalletConnecting && isMiniAppEnvironment && miniAppAutoConnectErrorMessage && (
+                            <div className="max-w-md rounded-2xl border border-[#22D3EE]/20 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+                                {miniAppAutoConnectErrorMessage}
+                            </div>
+                        )}
                         {showMiniAppWalletConnecting ? (
                             <div className="rounded-full border border-[#22D3EE]/25 bg-[#22D3EE]/10 px-5 py-3 text-sm font-semibold text-[#9FEAF8]">
                                 Please wait while Droppit connects your Farcaster wallet.
