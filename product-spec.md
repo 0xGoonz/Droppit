@@ -798,9 +798,16 @@ Note: See [roadmap.md](./roadmap.md) for current execution priorities and shippe
 ### V1 Roadmap
 
 1. **Token Standard Expansion:** Adding an **ERC-721 option** (MVP is strictly ERC-1155 editions).
-2. **Rich Media Support:** Allowing **GIF and Video** uploads (MVP is currently images only: PNG/JPG/WebP).
-3. **Flexible Supply Mechanics:** **Open editions "until time X"** (timed mints). (MVP is fixed hard-cap supply only).
+2. **Dynamic Supply:** Timed mints (e.g., 24-hour open editions) instead of strictly fixed edition sizes.
+3. **Enhanced Media Capabilities:** Support for high-resolution video and audio uploads (bypassing the current static image/GIF constraints).
 4. **Onchain Affiliate Payouts:** Real revenue splitting for referrals using withdraw accounting and guardrails. (MVP only tracks attribution).
+
+### Growth & Traction Engines (V1.1)
+To drive scale beyond creator-brought audiences, the following traction systems will be prioritized:
+1. **Platform Discoverability (The Explore Page):** While MVP is link-first (Section 2.1), V1.1 will introduce a public `/explore` gallery sorting `LIVE` drops by recent mint velocity. The Farcaster `@droppit` bot will also receive a "Trending Drops" daily broadcast module.
+2. **Gamification ("Drops of Fame"):** A `/fame` leaderboards page highlighting Top Creators (by mint volume/fees generated) and Top Collectors (by mints/spending). Automated profile badges (e.g., "The Midas Touch", "Base Whale") will be awarded based on milestone thresholds.
+3. **Viral "Recast-to-Mint" Loops:** Farcaster-native gatekeeping where collectors must recast the drop announcement to unlock free or discounted minting tiers via the Mini App.
+4. **Cold Start Subsidies (Gasless Onboarding):** A Droppit Treasury-funded Paymaster initiative to subsidize the first X mints for new, zero-audience creators to ignite early momentum.
 5. **Royalties (EIP-2981):** Adding royalty settings and recipients. (Deferred from MVP).
 6. **Verifiable Secret Immutability:** Adding an **onchain commitment hash (`lockedMessageCommitment`)** for the mint-to-unlock feature, so users can mathematically verify the secret wasn't changed post-publish, plus adding a **“Commitment onchain ✅”** badge on the UI.
 7. **Smarter Agent:** Expanding the AI persona modules (e.g., `soul.md`) for more advanced, style-safe autonomous posting controls.

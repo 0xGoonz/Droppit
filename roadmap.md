@@ -32,6 +32,10 @@ This document is the official execution roadmap for Droppit. It tracks current p
 - Expand verifiable secret immutability UX around the onchain commitment model.
 - Add smarter agent behavior and richer persona controls, including a possible `soul.md` layer.
 - Add theme or event modes for creator-facing drop presentation.
+- Implement "Drops of Fame" to drive user traction (e.g., dynamic leaderboards for top creators/collectors, "The Midas Touch", "Base Whale" titles).
+- Introduce milestone-based auto-drops (e.g., badges for 100/1000 mints, early backer genesis badges).
+- Add social-gated drops (e.g., Recast-to-Mint, follower-tiered pricing/access) to leverage the Farcaster viral loop.
+- Support Creator Season Passes and Top Collector Fee Rebates for active revenue sharing.
 
 ## Risks / dependencies
 - Farcaster and Neynar delivery quality directly affect mention-driven creation reliability.
