@@ -88,6 +88,7 @@ droppit/
 │   │   │       ├── identity/   # Identity and auth
 │   │   │       ├── og/         # Dynamic OG image generation
 │   │   │       ├── receipt/    # View receipt endpoints
+│   │   │       ├── referrals/  # Short-code referral redirects
 │   │   │       ├── stats/      # Creator analytics
 │   │   │       ├── upload/     # Artwork upload
 │   │   │       └── webhooks/   # Neynar webhook ingestion
@@ -118,7 +119,7 @@ droppit/
 | **Web3** | viem, Wagmi, Coinbase OnchainKit (Smart Wallet + Passkeys) |
 | **AI Agent** | CDP AgentKit, LangChain, Google Gemini 2.5 Flash |
 | **Farcaster** | Neynar (webhooks + HMAC verification), Farcaster Mini Apps, custom Frame builder |
-| **Database** | Supabase (PostgreSQL) — 7 tables, schema-checked in CI |
+| **Database** | Supabase (PostgreSQL) — 8 tables, schema-checked in CI |
 | **Storage** | Pinata (IPFS pinning for artwork + metadata) |
 | **Security** | AES-256-GCM locked content encryption, challenge nonces, commitment validation |
 | **Network** | Base (Mainnet + Sepolia) |
@@ -326,6 +327,7 @@ Creator casts: "@droppit deploy this. Midnight Run, 100 editions, 0.001 ETH"
 | `/api/identity/...` | GET/POST| Identity resolution and management |
 | `/api/og/drop/[dropIdOrAddress]` | GET | Dynamic OG image generation |
 | `/api/receipt/...` | GET  | View receipt rendering and logic |
+| `/api/referrals` | POST | Generate unique short-code for referrals |
 | `/api/stats/...` | GET  | Creator analytics and drop statistics |
 | `/api/upload/token` | POST | Generate temporary Pinata JWT for client-side IPFS upload |
 | `/api/webhooks/neynar` | POST | Ingest Farcaster casts (HMAC-verified) |
