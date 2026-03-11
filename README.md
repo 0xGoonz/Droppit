@@ -36,7 +36,7 @@ Every drop gets its own **sovereign smart contract address** on Base, a **canoni
 1. **Zero-UI Agent Builder**: We utilize the CDP AgentKit and Google Gemini to abstract away complex dashboards. Our Farcaster AI agent orchestrates deployments directly from social intent.
 2. **Gas-Optimized Base Architecture**: We don't use shared contracts. Every creator gets their own sovereign ERC-1155 contract. The entire execution layer lives entirely on Base to leverage its low fees using EIP-1167 Minimal Proxy Clones.
 3. **Native "Drop-in-Feed"**: We bypass the app store and wallet-connect friction. With Farcaster Mini Apps (Frames v2) and Coinbase Smart Wallet integration, drops are pushed directly to the social feed.
-4. **Encrypted Mint-to-Unlock**: We bridge onchain assets to offchain utility securely. Lock Shopify discount codes, secret links, or event barcodes behind an offchain AES-256 envelope that only unlocks for wallets holding the onchain NFT.
+4. **Encrypted Mint-to-Unlock**: We bridge onchain assets to offchain utility securely. Lock Shopify discount codes, exclusive alpha, or event barcodes behind an offchain AES-256 envelope that only unlocks for wallets holding the onchain NFT.
 
 ---
 

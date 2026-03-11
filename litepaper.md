@@ -19,7 +19,7 @@ Every drop generates a sovereign smart contract, robust Open Graph cards, and an
 Unlike platforms that pool assets into a shared contract, every Droppit launch is sovereign. Utilizing EIP-1167 minimal proxy clones, the platform deploys lightweight ERC-1155 contracts from a single master implementation. This cuts creator setup fees to the absolute minimum, ensuring scalable, high-volume issuance on Base. 
 
 ### Encrypted Mint-to-Unlock
-Droppit pioneers secure, onchain-verified token-gated text. Drop creators can attach secret messages (like event entry codes or private links). These secrets are envelope-encrypted offchain and exclusively decrypted when the platform verifies an active onchain ownership proof from a collector’s wallet.
+Droppit pioneers secure, onchain-verified token-gated text. Drop creators can attach secret messages (like event entry codes, exclusive alpha, or discount codes). These secrets are envelope-encrypted offchain and exclusively decrypted when the platform verifies an active onchain ownership proof from a collector’s wallet.
 
 ### Trust-First UX
 The platform prioritizes authenticity to protect consumers. Mint pages clearly display the creator’s wallet-linked identity (Farcaster handles or ENS), the specific per-drop contract address, and the immutable status of the verified metadata.
