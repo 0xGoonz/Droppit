@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
         const supabaseAdmin = getServiceRoleClient();
         const { data, error } = await supabaseAdmin
             .from("drops")
-            .select("id, title, status, contract_address, created_at, edition_size, mint_price")
+            .select("id, title, status, contract_address, created_at, edition_size, mint_price, image_url")
             .eq("creator_address", wallet)
             .order("created_at", { ascending: false });
 

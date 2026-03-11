@@ -4,6 +4,8 @@ import "./globals.css";
 import "@coinbase/onchainkit/styles.css";
 import { BRAND } from "@/lib/brand";
 import { Providers } from "@/providers/OnchainKitProvider";
+import { ToastProvider } from "@/components/Toast";
+import { MobileNav } from "@/components/MobileNav";
 
 const displayFont = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -67,7 +69,10 @@ export default function RootLayout({
         className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} antialiased`}
       >
         <Providers>
-          {children}
+          <ToastProvider>
+            {children}
+            <MobileNav />
+          </ToastProvider>
         </Providers>
       </body>
     </html>

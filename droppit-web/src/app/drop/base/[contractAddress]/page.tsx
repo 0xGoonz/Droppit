@@ -23,6 +23,9 @@ import { PROTOCOL_FEE_PER_MINT_WEI, hasChainContractConfig } from "@/lib/contrac
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import { formatMintPriceWei, normalizeIpfsToHttp } from "@/lib/og-utils";
 import { buildDropShareCaption, buildWarpcastComposeHref } from "@/lib/drop-sharing";
+import { useToast } from "@/components/Toast";
+import { MintPageSkeleton } from "@/components/Skeleton";
+import { ConfettiOverlay } from "@/components/ConfettiOverlay";
 import {
     type ReferralPayload,
     normalizeReferralPayloadFromSearchParams,
@@ -65,6 +68,7 @@ function shortAddress(raw: string): string {
 
 export default function MintPage({ params }: { params: Promise<{ contractAddress: string }> }) {
     const { contractAddress } = React.use(params);
+    const toast = useToast();
     const { address: userAddress, chainId } = useAccount();
     const {
         selectedChain,
@@ -126,7 +130,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
             await switchChainAsync({ chainId: selectedChain.id });
         } catch (error) {
             const message = error instanceof Error ? error.message : `Switch to ${selectedChain.name} to continue.`;
-            alert(message);
+            toast.error(message);
         } finally {
             setIsSwitchingChain(false);
         }
@@ -324,7 +328,14 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
             setIsContentUnlocked(true);
             setUnlockError(null);
         } catch (err) {
-            const message = err instanceof Error ? err.message : "Failed to unlock content.";
+            let message = "Failed to unlock content.";
+            if (err instanceof Error) {
+                if (err.message.includes("User rejected the request") || err.message.includes("User denied message signature")) {
+                    message = "Signature request cancelled by user.";
+                } else {
+                    message = err.message;
+                }
+            }
             setUnlockError(message);
             console.error("Failed to fetch locked content:", err);
         } finally {
@@ -464,9 +475,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
     });
 
     const handleMint = async () => {
-        if (isSoldOut) return alert("This drop is sold out.");
-        if (!userAddress) return alert("Please connect your wallet first.");
-        if (!isMintEnabledForSelectedChain) return alert(`Minting is disabled: ${selectedChain.name} contract configuration is missing.`);
+        if (isSoldOut) return toast.error("This drop is sold out.");
+        if (!userAddress) return toast.error("Please connect your wallet first.");
+        if (!isMintEnabledForSelectedChain) return toast.error(`Minting is disabled: ${selectedChain.name} contract configuration is missing.`);
 
         setRecipientError(null);
         let normalizedRecipient: `0x${string}` | null = null;
@@ -522,8 +533,17 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
 
         } catch (e: unknown) {
             console.error("Minting failed", e);
-            const message = e instanceof Error ? e.message : "Minting transaction failed";
-            alert(message);
+            let message = "Minting transaction failed";
+            if (e instanceof Error) {
+                if (e.message.includes("User rejected the request") || e.message.includes("User denied transaction signature")) {
+                    message = "Transaction cancelled by user.";
+                } else if (e.message.includes("insufficient funds")) {
+                    message = "Insufficient funds to cover gas fees.";
+                } else {
+                    message = e.message;
+                }
+            }
+            toast.error(message);
             setIsMinting(false);
         }
     };
@@ -614,6 +634,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                 </div>
             </nav>
 
+            {isLoading ? (
+                <MintPageSkeleton />
+            ) : (
             <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-12 grid grid-cols-1 lg:grid-cols-2 gap-12">
                 {/* Left: Artwork */}
                 <div
@@ -690,7 +713,50 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                             </div>
                         </div>
 
-                        {/* Quantity & Gifting Options */}
+                        {/* Edition Progress Bar */}
+                        {!isLoading && supplyNum > 0 && (
+                            <div className="mb-6">
+                                <div className="w-full bg-white/[0.06] rounded-full h-2 overflow-hidden">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] transition-all duration-700 ease-out"
+                                        style={{ width: `${Math.min((mintedNum / supplyNum) * 100, 100)}%` }}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between mt-2">
+                                    <span className="text-xs text-slate-500 font-mono">{Math.round((mintedNum / supplyNum) * 100)}% minted</span>
+                                    {(mintedNum / supplyNum) >= 0.8 && !isSoldOut && (
+                                        <span className="text-xs font-semibold text-amber-400 flex items-center gap-1">
+                                            🔥 Almost gone
+                                        </span>
+                                    )}
+                                    {isSoldOut && (
+                                        <span className="text-xs font-semibold text-red-400">Sold out</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Connect Wallet CTA — shown when wallet not connected */}
+                        {!userAddress && !isLoading && !showMiniAppWalletConnecting && (
+                            <div className="mb-6 flex flex-col items-center gap-4 rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/[0.06] p-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0052FF]/15 border border-[#0052FF]/25">
+                                    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                </div>
+                                <div>
+                                    <p className="text-white font-bold text-lg mb-1">Connect to Mint</p>
+                                    <p className="text-slate-400 text-sm">Connect your wallet to mint this drop on {selectedChain.name}.</p>
+                                </div>
+                                <Wallet>
+                                    <ConnectWallet className="w-full max-w-xs rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-8 py-3.5 text-white font-bold transition-all hover:scale-[1.03] active:scale-95 shadow-[0_0_30px_rgba(0,82,255,0.35)]">
+                                        <Avatar className="h-6 w-6" />
+                                        <Name />
+                                    </ConnectWallet>
+                                </Wallet>
+                            </div>
+                        )}
+
+                        {/* Quantity & Gifting Options — only shown when wallet is connected */}
+                        {userAddress && (
                         <div className="space-y-4 mb-6">
                             <div className="flex items-center justify-between rounded-2xl border border-white/[0.06] bg-white/[0.03] p-4">
                                 <span className="text-slate-300 font-medium">Quantity</span>
@@ -757,9 +823,10 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                 )}
                             </div>
                         </div>
+                        )}
 
                         {/* Price Breakdown (Before confirmation) */}
-                        {!isLoading && (
+                        {userAddress && !isLoading && (
                             <div className="mb-4 p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] space-y-2">
                                 <div className="flex justify-between text-slate-400 text-sm">
                                     <span>Mint price</span>
@@ -792,15 +859,17 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                         )}
 
                         {hasMinted && receiptHref && receipt ? (
+                            <>
+                            <ConfettiOverlay />
                             <div className="mb-4 p-5 rounded-3xl border border-green-500/30 bg-green-500/10 flex flex-col gap-4 animate-in fade-in slide-in-from-top-4">
                                 <div className="flex flex-col items-center text-center">
-                                    <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mb-3">
-                                        <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mb-3 animate-in zoom-in-75 duration-500">
+                                        <svg className="w-7 h-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-green-400 font-bold text-lg">Mint Successful!</h3>
-                                    <p className="text-green-400/80 text-sm mt-1">Your drop is now in your wallet.</p>
+                                    <h3 className="text-green-400 font-display font-extrabold text-xl">🎉 Mint Successful!</h3>
+                                    <p className="text-green-400/80 text-sm mt-1">Your drop is now in your wallet. Share it with the world!</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3 mt-2">
@@ -840,6 +909,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                     </a>
                                 </div>
                             </div>
+                            </>
                         ) : (
                             <div className="space-y-3">
                                 {showMiniAppWalletConnecting && (
@@ -1003,9 +1073,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         <button
                                             type="button"
                                             onClick={() => handleCopyTrustValue(creatorAddress, "creator")}
-                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20"
+                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-400 hover:text-[#22D3EE] hover:border-[#22D3EE]/30 hover:bg-[#22D3EE]/5 transition-all duration-200"
                                         >
-                                            {copiedTrustKey === "creator" ? "Copied" : "Copy"}
+                                            {copiedTrustKey === "creator" ? <span className="text-green-400">Copied ✓</span> : "Copy"}
                                         </button>
                                     )}
                                 </div>
@@ -1061,9 +1131,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                     <button
                                         type="button"
                                         onClick={() => handleCopyTrustValue(contractAddress, "drop-contract")}
-                                        className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20"
+                                        className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-400 hover:text-[#22D3EE] hover:border-[#22D3EE]/30 hover:bg-[#22D3EE]/5 transition-all duration-200"
                                     >
-                                        {copiedTrustKey === "drop-contract" ? "Copied" : "Copy"}
+                                        {copiedTrustKey === "drop-contract" ? <span className="text-green-400">Copied ✓</span> : "Copy"}
                                     </button>
                                 </div>
                             </div>
@@ -1085,9 +1155,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         <button
                                             type="button"
                                             onClick={() => handleCopyTrustValue(factoryAddress, "factory")}
-                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20"
+                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-400 hover:text-[#22D3EE] hover:border-[#22D3EE]/30 hover:bg-[#22D3EE]/5 transition-all duration-200"
                                         >
-                                            {copiedTrustKey === "factory" ? "Copied" : "Copy"}
+                                            {copiedTrustKey === "factory" ? <span className="text-green-400">Copied ✓</span> : "Copy"}
                                         </button>
                                     </div>
                                 ) : (
@@ -1112,9 +1182,9 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                                         <button
                                             type="button"
                                             onClick={() => handleCopyTrustValue(implementationAddress, "implementation")}
-                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20"
+                                            className="px-1.5 py-0.5 rounded border border-white/[0.08] text-slate-400 hover:text-[#22D3EE] hover:border-[#22D3EE]/30 hover:bg-[#22D3EE]/5 transition-all duration-200"
                                         >
-                                            {copiedTrustKey === "implementation" ? "Copied" : "Copy"}
+                                            {copiedTrustKey === "implementation" ? <span className="text-green-400">Copied ✓</span> : "Copy"}
                                         </button>
                                     </div>
                                 ) : (
@@ -1135,6 +1205,7 @@ export default function MintPage({ params }: { params: Promise<{ contractAddress
                     </div>
                 </div>
             </main >
+            )}
 
             {/* Lightbox Overlay */}
             {isLightboxOpen && drop.image && (

@@ -13,11 +13,11 @@ import {
 import {
     Avatar,
     Name,
-    Identity,
-    Address,
-    EthBalance,
 } from "@coinbase/onchainkit/identity";
-import { BrandLockup } from "@/components/brand/BrandLockup";
+import { CreatorDropCardSkeleton } from "@/components/Skeleton";
+import { normalizeIpfsToHttp } from "@/lib/og-utils";
+import { AppShell } from "@/components/layout/AppShell";
+import { AppNav } from "@/components/layout/AppNav";
 
 type CreatorDrop = {
     id: string;
@@ -27,6 +27,7 @@ type CreatorDrop = {
     created_at: string;
     edition_size: number;
     mint_price: string;
+    image_url: string | null;
 };
 
 export default function CreatorHubPage() {
@@ -71,37 +72,19 @@ export default function CreatorHubPage() {
     }, [address, isConnecting]);
 
     return (
-        <div className="relative min-h-screen bg-[#05070f] text-white overflow-hidden">
-            <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
-
-            <nav className="relative z-20 mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
-                <BrandLockup markSize={28} wordmarkClassName="text-xl font-bold tracking-tight" />
-                <div className="flex items-center gap-3">
+        <AppShell>
+            <AppNav 
+                actionButton={
                     <Link
                         href="/create"
                         className="lift-hover rounded-full border border-[#22D3EE]/40 bg-[#0052FF]/20 px-4 py-2 text-sm font-semibold text-blue-100 transition-colors hover:bg-[#0052FF]/35"
                     >
                         Start a Drop
                     </Link>
-                    <Wallet>
-                        <ConnectWallet className="rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 text-sm font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">
-                            <Avatar className="h-7 w-7 ring-2 ring-[#0052FF]/30" />
-                        </ConnectWallet>
-                        <WalletDropdown className="border border-white/[0.08] bg-[#0B1020] rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-                            <Identity className="px-4 pt-4 pb-2 text-white hover:bg-white/[0.03] transition-colors" hasCopyAddressOnClick>
-                                <Avatar className="h-10 w-10 ring-2 ring-[#0052FF]/40" />
-                                <Name className="text-white font-bold" />
-                                <Address className="text-slate-400 font-mono text-sm" />
-                                <EthBalance className="text-[#22D3EE] font-bold" />
-                            </Identity>
-                            <div className="h-px bg-white/[0.06] w-full" />
-                            <WalletDropdownDisconnect className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold" text="Disconnect" />
-                        </WalletDropdown>
-                    </Wallet>
-                </div>
-            </nav>
+                }
+            />
 
-            <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-20">
+            <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-28">
                 <div className="mb-10">
                     <div className="mb-3 inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/70">
                         Creator Hub
@@ -127,9 +110,10 @@ export default function CreatorHubPage() {
                 )}
 
                 {(loading || isConnecting) && (
-                    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 text-center">
-                        <div className="w-8 h-8 rounded-full border-2 border-[#22D3EE] border-t-transparent animate-spin mx-auto mb-3"></div>
-                        <p className="text-slate-400">Loading your drops...</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[1, 2, 3, 4].map((i) => (
+                            <CreatorDropCardSkeleton key={i} />
+                        ))}
                     </div>
                 )}
 
@@ -140,8 +124,8 @@ export default function CreatorHubPage() {
                 )}
 
                 {!loading && !error && address && drops.length === 0 && (
-                    <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent p-10 text-center">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/8 text-[#22D3EE] mx-auto mb-4">
+                    <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent p-10 text-center animate-in fade-in zoom-in-95 duration-500">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/8 text-[#22D3EE] mx-auto mb-4 animate-float shadow-[0_0_30px_rgba(0,82,255,0.15)]">
                             <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M12 5v14M5 12h14" /></svg>
                         </div>
                         <h2 className="font-display text-xl font-bold mb-2">No drops yet</h2>
@@ -165,7 +149,21 @@ export default function CreatorHubPage() {
                                     className="rounded-2xl border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent p-5 transition-all hover:border-white/[0.1] hover:shadow-[0_0_30px_rgba(0,82,255,0.08)]"
                                 >
                                     <div className="flex items-start justify-between gap-4 mb-3">
-                                        <h3 className="font-display font-bold text-lg truncate">{drop.title || `Drop ${drop.id.slice(0, 8)}`}</h3>
+                                        {/* Artwork thumbnail */}
+                                        {drop.image_url ? (
+                                            <img
+                                                src={normalizeIpfsToHttp(drop.image_url) || undefined}
+                                                alt={drop.title}
+                                                className="h-14 w-14 rounded-xl object-cover shrink-0 border border-white/[0.06]"
+                                            />
+                                        ) : (
+                                            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-[#0052FF]/20 to-[#22D3EE]/20 border border-white/[0.06] flex items-center justify-center shrink-0">
+                                                <span className="text-lg font-bold text-[#22D3EE]/60">{(drop.title || "D")[0].toUpperCase()}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                    <h3 className="font-display font-bold text-lg truncate">{drop.title || `Drop ${drop.id.slice(0, 8)}`}</h3>
+                                        </div>
                                         <span className={`shrink-0 text-xs px-2.5 py-1 rounded-full border font-medium ${drop.status === "LIVE"
                                             ? "border-green-500/30 text-green-300 bg-green-500/10"
                                             : "border-yellow-500/30 text-yellow-300 bg-yellow-500/10"
@@ -206,6 +204,6 @@ export default function CreatorHubPage() {
                     </div>
                 )}
             </main>
-        </div>
+        </AppShell>
     );
 }

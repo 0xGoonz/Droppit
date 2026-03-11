@@ -5,6 +5,7 @@ import { useAccount, useSignMessage } from 'wagmi';
 import Link from 'next/link';
 import { useChainPreference } from '@/providers/OnchainKitProvider';
 import { BrandLockup } from '@/components/brand/BrandLockup';
+import { useToast } from '@/components/Toast';
 
 interface StatsResponse {
     drop: {
@@ -38,6 +39,7 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
     const { address, isConnecting } = useAccount();
     const { signMessageAsync } = useSignMessage();
     const { selectedChain, selectedChainId, setSelectedChainId, hasSelectedChainContractConfig } = useChainPreference();
+    const toast = useToast();
 
     const [stats, setStats] = useState<StatsResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -61,10 +63,10 @@ export default function DropStatsPage({ params }: { params: Promise<{ contractAd
             if (data.code) {
                 setReferralCode(data.code);
             } else {
-                alert(data.error || "Failed to generate referral code.");
+                toast.error(data.error || "Failed to generate referral code.");
             }
         } catch (e) {
-            alert("Error generating referral link.");
+            toast.error("Error generating referral link.");
         } finally {
             setIsGeneratingRef(false);
         }

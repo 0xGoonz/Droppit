@@ -12,18 +12,15 @@ import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionRecei
 import {
     ConnectWallet,
     Wallet,
-    WalletDropdown,
 } from '@coinbase/onchainkit/wallet';
 import {
     Avatar,
     Name,
-    Identity,
-    Address,
-    EthBalance
 } from '@coinbase/onchainkit/identity';
 import { FACTORY_ABI } from "@/lib/contracts";
 import { useChainPreference } from "@/providers/OnchainKitProvider";
-import { BrandLockup } from "@/components/brand/BrandLockup";
+import { AppShell } from "@/components/layout/AppShell";
+import { AppNav } from "@/components/layout/AppNav";
 import { publishDropDraft } from "@/lib/publish-drop";
 import { normalizeIpfsToHttp } from "@/lib/og-utils";
 import { fitArtworkWithinBounds, MINIAPP_SHARE_CARD } from "@/lib/share-card-layout";
@@ -44,6 +41,10 @@ import {
     type DraftLaunchMode,
     type DraftLoadRequestStatus,
 } from "@/lib/draft-load";
+import { Step1Details } from "@/components/create/Step1Details";
+import { Step2Config } from "@/components/create/Step2Config";
+import { Step3Identity } from "@/components/create/Step3Identity";
+import { Step4Review } from "@/components/create/Step4Review";
 
 export default function CreateDrop() {
     const [step, setStep] = useState(1);
@@ -69,6 +70,10 @@ export default function CreateDrop() {
     const [formError, setFormError] = useState<string | null>(null);
     const [deployedState, setDeployedState] = useState<{ tokenUri: string, imageUri: string, draftId: string, salt: string, commitment: string } | null>(null);
     const [isPublishingDrop, setIsPublishingDrop] = useState(false);
+
+    // Auto-save specific states
+    const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
+    const hasRestoredDraftRef = useRef(false);
 
     // Pre-existing IPFS URIs hydrated from draft (skip re-upload when available)
     const [draftImageUrl, setDraftImageUrl] = useState<string | null>(null);
@@ -416,8 +421,89 @@ export default function CreateDrop() {
         return () => { isMounted = false; };
     }, [step, publicClient, address, formData, draftTokenUri, hasSelectedChainContractConfig, selectedFactoryAddress]);
 
-    const handleNext = () => setStep((s) => Math.min(s + 1, 4));
-    const handlePrev = () => setStep((s) => Math.max(s - 1, 1));
+    // ---------------------------------------------------------------------------
+    // Auto-save logic (Local Drafts)
+    // ---------------------------------------------------------------------------
+    const LOCAL_DRAFT_KEY = 'droppit_local_draft';
+
+    // 1. Restore local draft on mount (only if NOT an AI draft flow)
+    useEffect(() => {
+        if (hasRestoredDraftRef.current) return;
+        
+        // Wait until initial draft params have been parsed from URL
+        if (!hasResolvedDraftParams) return;
+        
+        // Don't interfere with AI drafts
+        if (draftId) return; 
+        
+        try {
+            const saved = sessionStorage.getItem(LOCAL_DRAFT_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && typeof parsed === 'object') {
+                    setFormData(prev => ({ ...prev, ...parsed }));
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to parse local draft", e);
+        }
+        hasRestoredDraftRef.current = true;
+    }, [hasResolvedDraftParams, draftId]);
+
+    // 2. Auto-save form data when it changes
+    useEffect(() => {
+        // Only save after initial hydration/restoration to avoid overwriting with empty
+        if (!hasHydrated && hasRestoredDraftRef.current === false) return;
+        // Don't auto save if we are deployed/publishing or reviewing
+        if (deployedState || isPublishingDrop || step === 4) return;
+        
+        const debounce = setTimeout(() => {
+            try {
+                sessionStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(formData));
+                setLastSavedTime(new Date());
+            } catch (e) {
+                console.warn("Failed to persist local draft", e);
+            }
+        }, 1000);
+        
+        return () => clearTimeout(debounce);
+    }, [formData, hasHydrated, deployedState, isPublishingDrop, step]);
+    // ---------------------------------------------------------------------------
+
+    const handleNext = useCallback(() => setStep((s) => Math.min(s + 1, 4)), []);
+    const handlePrev = useCallback(() => setStep((s) => Math.max(s - 1, 1)), []);
+
+    const handleNextStepWithValidation = useCallback(() => {
+        if (step === 1 && (!formData.title.trim() || !hasArtworkReady)) {
+            setFormError("Please provide a Drop Title and artwork media to proceed.");
+            return;
+        }
+
+        if (step === 2) {
+            if (formData.lockedContent) {
+                const check = validateLockedContent(formData.lockedContent);
+                if (!check.valid) {
+                    setFormError(check.error);
+                    return;
+                }
+            }
+
+            if (formData.payoutRecipient.trim()) {
+                if (!isAddress(formData.payoutRecipient.trim())) {
+                    setFormError("Payout Recipient is not a valid EVM address.");
+                    return;
+                }
+            }
+        }
+
+        if (step === 3 && formData.farcasterHandle && !identityVerified) {
+            setFormError("Please link your entered handle via signature, or clear the box completely to skip anonymously.");
+            return;
+        }
+
+        setFormError(null);
+        handleNext();
+    }, [step, formData, hasArtworkReady, identityVerified, handleNext]);
 
     const { signMessageAsync } = useSignMessage();
 
@@ -472,7 +558,14 @@ export default function CreateDrop() {
 
         } catch (e: unknown) {
             console.error("Identity Link Failed:", e);
-            const message = e instanceof Error ? e.message : "Failed to successfully verify identity.";
+            let message = "Failed to successfully verify identity.";
+            if (e instanceof Error) {
+                if (e.message.includes("User rejected the request") || e.message.includes("User denied message signature")) {
+                    message = "Signature request cancelled by user.";
+                } else {
+                    message = e.message;
+                }
+            }
             setFormError(message);
         } finally {
             setIsLinkingIdentity(false);
@@ -630,7 +723,16 @@ export default function CreateDrop() {
             });
         } catch (e: unknown) {
             console.error("Deploy error:", e);
-            const message = e instanceof Error ? e.message : "Deployment failed";
+            let message = "Deployment failed";
+            if (e instanceof Error) {
+                if (e.message.includes("User rejected the request") || e.message.includes("User denied transaction signature")) {
+                    message = "Transaction cancelled by user.";
+                } else if (e.message.includes("insufficient funds")) {
+                    message = "Insufficient funds to cover gas fees.";
+                } else {
+                    message = e.message;
+                }
+            }
             setFormError(message);
             // Reset the one-shot guard so user can retry after fixing the issue
             deployFiredRef.current = false;
@@ -651,6 +753,62 @@ export default function CreateDrop() {
             handleDeploy();
         }
     }, [autoDeploy, hasArtworkReady, hasHydrated, hydrationError, address, chainId, formError, isUploading, isPending, isConfirming, isSuccess, handleDeploy, hasSelectedChainContractConfig, selectedFactoryAddress, selectedChain]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Cmd+Enter or Ctrl+Enter to advance / deploy
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                if (step < 4) {
+                    handleNextStepWithValidation();
+                } else {
+                    if (
+                        !shouldPromptForChainSwitch &&
+                        hasSelectedChainContractConfig &&
+                        hasHydrated &&
+                        !hydrationError &&
+                        !isUploading &&
+                        !isPending &&
+                        !isConfirming &&
+                        !isSuccess &&
+                        !isPublishingDrop &&
+                        !isSwitchingChain
+                    ) {
+                        handleDeploy();
+                    }
+                }
+            }
+
+            // Esc to go back or close
+            if (e.key === "Escape") {
+                e.preventDefault();
+                if (step > 1) {
+                    handlePrev();
+                } else {
+                    router.push('/creator');
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [
+        step,
+        handleNextStepWithValidation,
+        handlePrev,
+        handleDeploy,
+        router,
+        shouldPromptForChainSwitch,
+        hasSelectedChainContractConfig,
+        hasHydrated,
+        hydrationError,
+        isUploading,
+        isPending,
+        isConfirming,
+        isSuccess,
+        isPublishingDrop,
+        isSwitchingChain
+    ]);
 
     const previewTitle = formData.title.trim() || "Untitled Drop";
     const previewGlyph = previewTitle.charAt(0).toUpperCase() || "D";
@@ -675,15 +833,9 @@ export default function CreateDrop() {
 
 
     return (
-        <div className="relative min-h-screen bg-[#05070f] text-white selection:bg-[#0052FF]/40 selection:text-white pb-20 overflow-hidden">
-            {/* Background gradient - matches all pages */}
-            <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_0%,rgba(0,82,255,0.16),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(34,211,238,0.14),transparent_32%),radial-gradient(circle_at_65%_85%,rgba(124,58,237,0.12),transparent_36%)]" />
-
-            {/* Nav */}
-            <nav className="relative z-30 mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
-                <BrandLockup markSize={28} wordmarkClassName="text-lg font-bold tracking-tight sm:text-xl" />
-
-                <div className="relative z-30 flex items-center gap-2 sm:gap-3">
+        <AppShell className="pb-20">
+            <AppNav
+                actionButton={
                     <button
                         type="button"
                         onClick={() => router.push('/creator')}
@@ -691,31 +843,17 @@ export default function CreateDrop() {
                     >
                         My Drops
                     </button>
+                }
+                rightContent={
                     <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-xs font-mono text-slate-400">
                         <div className="h-2 w-2 rounded-full bg-[#22D3EE] animate-pulse" />
                         {selectedChain.name}
                     </div>
-                    <Wallet>
-                        <ConnectWallet className="relative z-10 shrink-0 rounded-full border border-[#0052FF]/25 bg-gradient-to-r from-[#0052FF]/15 to-[#22D3EE]/10 px-3 py-2 text-white !min-w-0 font-medium transition-all hover:from-[#0052FF]/25 hover:to-[#22D3EE]/20 hover:border-[#0052FF]/40 hover:shadow-[0_0_20px_rgba(0,82,255,0.15)]">
-                            <Avatar className="h-7 w-7 ring-2 ring-[#0052FF]/30" />
-                        </ConnectWallet>
-                        <WalletDropdown className="border border-white/[0.08] bg-[#0B1020] rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-                            <Identity className="px-4 pt-4 pb-2 text-white hover:bg-white/[0.03] transition-colors" hasCopyAddressOnClick>
-                                <Avatar className="h-10 w-10 ring-2 ring-[#0052FF]/40" />
-                                <Name className="text-white font-bold" />
-                                <Address className="text-slate-400 font-mono text-sm" />
-                                <EthBalance className="text-[#22D3EE] font-bold" />
-                            </Identity>
-                            <div className="h-px bg-white/[0.06] w-full" />
-                            <button type="button" onClick={handleWalletDisconnect} className="text-red-400 hover:bg-red-500/10 transition-colors w-full flex items-center justify-center py-3 font-semibold">
-                                Disconnect
-                            </button>
-                        </WalletDropdown>
-                    </Wallet>
-                </div>
-            </nav>
+                }
+                onDisconnect={() => disconnect()}
+            />
 
-            <main className="relative z-10 mx-auto max-w-3xl px-4 pt-8 sm:px-6 sm:pt-12">
+            <main className="relative z-10 mx-auto max-w-3xl px-4 pt-8 pb-28 sm:px-6 sm:pt-12">
                                 {/* Hydration loading / error indicators */}
                 {isDraftLoading && address && (
                     <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-xl animate-in fade-in slide-in-from-top-2">
@@ -784,16 +922,30 @@ export default function CreateDrop() {
                     </div>
                 ) : (
                     <>
-                        <div className="mb-10 sm:mb-12">
-                            <div className="mb-3 inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/70">
-                                {isAiDraftFlow ? "AI Draft Review" : "Create Drop"}
+                        <div className="mb-10 flex items-start justify-between sm:mb-12">
+                            <div>
+                                <div className="mb-3 inline-flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-200/70">
+                                    {isAiDraftFlow ? "AI Draft Review" : "Create Drop"}
+                                </div>
+                                <h1 className="mb-3 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{isAiDraftFlow ? "Review AI Draft" : "Launch your Drop"}</h1>
+                                <p className="text-slate-400">
+                                    {isAiDraftFlow
+                                        ? `Review the AI-generated draft for ${selectedChain.name}. This draft is still editable before deployment.`
+                                        : `Configure your ${selectedChain.name} ERC-1155 contract and unlockable content.`}
+                                </p>
                             </div>
-                            <h1 className="mb-3 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">{isAiDraftFlow ? "Review AI Draft" : "Launch your Drop"}</h1>
-                            <p className="text-slate-400">
-                                {isAiDraftFlow
-                                    ? `Review the AI-generated draft for ${selectedChain.name}. This draft is still editable before deployment.`
-                                    : `Configure your ${selectedChain.name} ERC-1155 contract and unlockable content.`}
-                            </p>
+
+                            {/* Auto-save indicator */}
+                            <div className={`mt-2 hidden sm:flex items-center gap-1.5 rounded-full border border-[#22D3EE]/20 bg-[#22D3EE]/5 px-3 py-1.5 text-xs font-medium text-[#22D3EE] transition-opacity duration-1000 ${lastSavedTime ? 'opacity-100' : 'opacity-0'}`}>
+                                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                <span>Draft saved</span>
+                            </div>
+                        </div>
+
+                        {/* Mobile Auto-save indicator */}
+                        <div className={`mb-6 flex sm:hidden items-center justify-center gap-1.5 rounded-full border border-[#22D3EE]/20 bg-[#22D3EE]/5 px-3 py-1.5 text-xs font-medium text-[#22D3EE] transition-opacity duration-1000 ${lastSavedTime ? 'opacity-100' : 'opacity-0'}`}>
+                            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            <span>Draft saved locally</span>
                         </div>
 
                         {/* Stepper */}
@@ -806,13 +958,13 @@ export default function CreateDrop() {
                                             : step === i - 1
                                                 ? "border border-[#0052FF]/30 bg-[#0052FF]/10 text-[#22D3EE]"
                                                 : "border border-white/[0.06] bg-white/[0.02] text-slate-600"
-                                            }`}
+                                            } ${step > i ? "step-complete-bounce" : ""}`}
                                     >
                                         {step > i ? (
                                             <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" /></svg>
                                         ) : i}
                                     </div>
-                                    {i !== 4 && <div className={`h-px w-full rounded-full transition-all duration-300 sm:h-[2px] ${step > i ? "bg-gradient-to-r from-[#0052FF] to-[#22D3EE]/50" : "bg-white/[0.04]"}`} />}
+                                    {i !== 4 && <div className={`h-px w-full rounded-full transition-all duration-500 ease-out sm:h-[2px] ${step > i ? "bg-gradient-to-r from-[#0052FF] to-[#22D3EE]/50" : "bg-white/[0.04]"}`} />}
                                 </div>
                             ))}
                         </div>
@@ -829,385 +981,57 @@ export default function CreateDrop() {
                             )}
 
                             {step === 1 && (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="mb-2">
-                                        <h3 className="font-display text-lg font-bold text-white">{isAiDraftFlow ? "AI Draft Details" : "Drop Details"}</h3>
-                                        <p className="text-sm text-slate-500">
-                                            {isAiDraftFlow
-                                                ? (hasReusableMedia
-                                                    ? "Review the saved AI artwork below. Upload a replacement only if you want to override it."
-                                                    : "This AI draft needs a high-resolution artwork upload before deployment.")
-                                                : "Give your drop a name, tell its story, and upload the artwork."}
-                                        </p>
-                                    </div>
-                                    {showMissingArtworkBanner && (
-                                        <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-sm text-amber-100">
-                                            This AI draft does not have reusable artwork yet. Upload a high-resolution image to continue to deployment.
-                                        </div>
-                                    )}
-                                    {isAiDraftFlow && hasReusableMedia && !file && (
-                                        <div className="rounded-2xl border border-sky-400/20 bg-sky-500/10 p-4 text-sm text-sky-100">
-                                            Saved AI artwork is ready. Upload a replacement only if you want to override the current image.
-                                        </div>
-                                    )}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Drop Title</label>
-                                        <input
-                                            type="text"
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
-                                            placeholder="e.g. The Farcaster Genesis"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
-                                        <textarea
-                                            value={formData.description}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all h-32 resize-none"
-                                            placeholder="Tell the story behind this drop..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Artwork Image</label>
-                                        <p className="text-xs text-slate-500 mb-3">
-                                            {isAiDraftFlow && !hasReusableMedia
-                                                ? `Upload a high-resolution PNG, JPG, or WebP. Max ${MAX_UPLOAD_SIZE_LABEL}`
-                                                : `PNG, JPG, or WebP. Max ${MAX_UPLOAD_SIZE_LABEL}`}
-                                        </p>
-                                        <div className="group relative rounded-2xl border-2 border-dashed border-white/[0.08] p-8 text-center transition-all hover:border-[#0052FF]/30 hover:bg-[#0052FF]/[0.02] cursor-pointer">
-                                            <input
-                                                type="file"
-                                                accept={ALLOWED_MIME_ACCEPT}
-                                                className="hidden"
-                                                id="file-upload"
-                                                onChange={async (e) => {
-                                                    const selectedFile = e.target.files?.[0] || null;
-                                                    setFormError(null);
-
-                                                    if (!selectedFile) {
-                                                        setFile(null);
-                                                        setFileImageDimensions(null);
-                                                        return;
-                                                    }
-
-                                                    if (selectedFile.size > MAX_UPLOAD_SIZE_BYTES) {
-                                                        setFormError(`Artwork media exceeds the ${MAX_UPLOAD_SIZE_LABEL} size limit.`);
-                                                        setFile(null);
-                                                        setFileImageDimensions(null);
-                                                        return;
-                                                    }
-
-                                                    try {
-                                                        // Convert file to Uint8Array for validation
-                                                        const buffer = await selectedFile.arrayBuffer();
-                                                        const bytes = new Uint8Array(buffer);
-
-                                                        // 1. Validate Media Type (Magic Bytes Sniffing)
-                                                        const mediaValidation = validateImageMedia(bytes, selectedFile.type);
-                                                        if (!mediaValidation.ok) {
-                                                            setFormError(mediaValidation.error);
-                                                            setFile(null);
-                                                            setFileImageDimensions(null);
-                                                            return;
-                                                        }
-
-                                                        // 2. Validate Image Dimensions (Decompression Bomb Protection)
-                                                        const dimensions = extractImageDimensions(mediaValidation.normalizedMime, bytes);
-                                                        if (!dimensions) {
-                                                            setFormError("Could not read image dimensions from uploaded file.");
-                                                            setFile(null);
-                                                            setFileImageDimensions(null);
-                                                            return;
-                                                        }
-
-                                                        if (dimensions.width > MAX_IMAGE_WIDTH || dimensions.height > MAX_IMAGE_HEIGHT) {
-                                                            setFormError(`Image dimensions exceed limit (${MAX_IMAGE_WIDTH}x${MAX_IMAGE_HEIGHT} max).`);
-                                                            setFile(null);
-                                                            setFileImageDimensions(null);
-                                                            return;
-                                                        }
-
-                                                        const totalPixels = dimensions.width * dimensions.height;
-                                                        if (totalPixels > MAX_IMAGE_PIXELS) {
-                                                            setFormError("Image is too large to process safely.");
-                                                            setFile(null);
-                                                            setFileImageDimensions(null);
-                                                            return;
-                                                        }
-
-                                                        // Validation passed
-                                                        setFile(selectedFile);
-                                                        setFileImageDimensions(dimensions);
-                                                    } catch (err) {
-                                                        console.error("Client-side validation failed:", err);
-                                                        setFormError("Failed to validate artwork file.");
-                                                        setFile(null);
-                                                        setFileImageDimensions(null);
-                                                    }
-                                                }}
-                                            />
-                                            <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center w-full">
-                                                {(filePreviewUrl || normalizedDraftImageUrl) ? (
-                                                    <div className="relative flex justify-center w-full mb-4">
-                                                        <img
-                                                            src={filePreviewUrl || normalizedDraftImageUrl || undefined}
-                                                            alt={file ? "Preview" : "Draft artwork preview"}
-                                                            className="max-h-[250px] max-w-full object-contain rounded-xl border border-white/[0.08] shadow-[0_0_30px_rgba(0,82,255,0.15)]"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#0052FF]/20 bg-[#0052FF]/8 text-[#22D3EE] transition-transform group-hover:scale-110">
-                                                        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 16V7" /><path d="M8.5 10.5L12 7l3.5 3.5" /><rect x="4" y="16" width="16" height="4" rx="1.5" /></svg>
-                                                    </div>
-                                                )}
-                                                <span className="text-sm font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
-                                                    {file
-                                                        ? file.name
-                                                        : hasReusableMedia
-                                                            ? "Saved draft artwork preview. Click to upload a replacement."
-                                                            : isAiDraftFlow
-                                                                ? "Click to upload high-resolution artwork"
-                                                                : "Click to upload artwork"}
-                                                </span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
+                                <Step1Details
+                                    isAiDraftFlow={isAiDraftFlow}
+                                    hasReusableMedia={hasReusableMedia}
+                                    showMissingArtworkBanner={showMissingArtworkBanner}
+                                    formData={formData}
+                                    setFormData={setFormData}
+                                    file={file}
+                                    setFile={setFile}
+                                    setFileImageDimensions={setFileImageDimensions}
+                                    setFormError={setFormError}
+                                    filePreviewUrl={filePreviewUrl}
+                                    normalizedDraftImageUrl={normalizedDraftImageUrl}
+                                />
                             )}
 
                             {step === 2 && (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="mb-2">
-                                        <h3 className="font-display text-lg font-bold text-white">Pricing & Config</h3>
-                                        <p className="text-sm text-slate-500">Set your edition size, mint price, and optional locked content.</p>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-300 mb-2">Edition Size</label>
-                                            <input
-                                                type="number"
-                                                min="1" max="10000"
-                                                value={formData.editionSize}
-                                                onChange={(e) => {
-                                                    let val = e.target.value;
-                                                    if (val !== "" && parseInt(val, 10) > 10000) {
-                                                        val = "10000";
-                                                    }
-                                                    setFormData({ ...formData, editionSize: val });
-                                                }}
-                                                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
-                                            />
-                                            <p className="text-xs text-slate-600 mt-2">Between 1 and 10,000</p>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-300 mb-2">Mint Price (ETH)</label>
-                                            <input
-                                                type="number"
-                                                step="0.0001"
-                                                min="0"
-                                                value={formData.mintPrice}
-                                                onChange={(e) => setFormData({ ...formData, mintPrice: e.target.value })}
-                                                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all"
-                                            />
-                                            <p className="text-xs text-slate-600 mt-2">Set to 0 for Free Mints</p>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Payout Recipient</label>
-                                        <input
-                                            type="text"
-                                            value={formData.payoutRecipient}
-                                            onChange={(e) => setFormData({ ...formData, payoutRecipient: e.target.value })}
-                                            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all font-mono disabled:opacity-50"
-                                            placeholder={address ? address : "0x..."}
-                                        />
-                                        <p className="text-xs text-slate-600 mt-2">Defaults to your connected wallet.</p>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-[#7C3AED]/15 bg-gradient-to-b from-[#7C3AED]/[0.06] to-transparent p-4 sm:p-5">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#7C3AED]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></svg>
-                                            <h4 className="font-semibold text-[#7C3AED] text-sm">Locked Content (Mint-to-Unlock)</h4>
-                                        </div>
-                                        <p className="text-xs text-slate-500 mb-4">Secret message only visible to wallets that own the NFT. Text only - no URLs.</p>
-                                        <textarea
-                                            value={formData.lockedContent}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                const check = validateLockedContent(val);
-                                                if (!check.valid) {
-                                                    setFormError(check.error);
-                                                } else {
-                                                    setFormError(null);
-                                                }
-                                                setFormData({ ...formData, lockedContent: val });
-                                            }}
-                                            maxLength={1000}
-                                            className="w-full rounded-xl border border-[#7C3AED]/20 bg-[#0B1020]/80 px-4 py-3 text-[#22D3EE] font-mono text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#7C3AED]/40 focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)] transition-all h-32 resize-none"
-                                            placeholder="e.g. The secret password for the event is 'BASE'"
-                                        />
-                                    </div>
-                                </div>
+                                <Step2Config
+                                    formData={formData}
+                                    setFormData={setFormData}
+                                    setFormError={setFormError}
+                                    address={address}
+                                />
                             )}
 
                             {step === 3 && (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="text-center mb-8">
-                                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#0052FF]/25 bg-[#0052FF]/10">
-                                            <svg viewBox="0 0 24 24" className="h-7 w-7 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                                        </div>
-                                        <h3 className="font-display text-xl font-bold mb-2">Creator Identity</h3>
-                                        <p className="text-sm text-slate-400 max-w-md mx-auto">Link a Farcaster handle via wallet signature. This is optional - not KYC.</p>
-                                    </div>
-
-                                    <div className="rounded-2xl border border-[#0052FF]/15 bg-gradient-to-b from-[#0052FF]/[0.05] to-transparent p-6 space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-[#22D3EE]/80 mb-2">Handle / Username</label>
-                                            <div className="relative">
-                                                <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-[#0052FF]/50 font-mono">@</span>
-                                                <input
-                                                    type="text"
-                                                    value={formData.farcasterHandle}
-                                                    onChange={(e) => setFormData({ ...formData, farcasterHandle: e.target.value.replace(/[^a-zA-Z0-9_.-]/g, '') })}
-                                                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] pl-10 pr-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:border-[#0052FF]/50 focus:shadow-[0_0_0_3px_rgba(0,82,255,0.1)] transition-all font-mono disabled:opacity-50"
-                                                    placeholder="e.g. jesse.base"
-                                                    disabled={identityVerified}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-2">
-                                            {identityVerified ? (
-                                                <div className="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/[0.06] p-4 text-green-400">
-                                                    <svg viewBox="0 0 16 16" className="h-5 w-5 shrink-0" fill="currentColor"><path d="M8 1a7 7 0 110 14A7 7 0 018 1zm3.22 4.72a.75.75 0 00-1.06.02L7.4 8.78 5.84 7.22a.75.75 0 00-1.08 1.04l2.1 2.1a.75.75 0 001.07-.01l3.3-3.55a.75.75 0 00-.01-1.08z" /></svg>
-                                                    <span className="font-semibold text-sm">Linked to @{formData.farcasterHandle}</span>
-                                                </div>
-                                            ) : (
-                                                <button
-                                                    onClick={handleLinkIdentity}
-                                                    disabled={!formData.farcasterHandle || isLinkingIdentity}
-                                                    className="w-full rounded-xl border border-[#0052FF]/25 bg-[#0052FF]/10 py-3 font-bold text-[#22D3EE] transition-all hover:bg-[#0052FF]/20 hover:border-[#0052FF]/40 disabled:opacity-30 disabled:pointer-events-none"
-                                                >
-                                                    {isLinkingIdentity ? "Signing..." : "Link handle via signature"}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <p className="text-[11px] text-slate-600 text-center leading-relaxed mt-4">
-                                            Wallet-signature proof only. Not official Farcaster verification and not KYC.
-                                        </p>
-                                    </div>
-
-                                    {!identityVerified && (
-                                        <div className="text-center mt-4">
-                                            <button onClick={handleNext} className="text-sm text-slate-500 hover:text-white underline decoration-white/20 transition-colors">Skip and Continue Anonymously</button>
-                                        </div>
-                                    )}
-                                </div>
+                                <Step3Identity
+                                    formData={formData}
+                                    setFormData={setFormData}
+                                    identityVerified={identityVerified}
+                                    isLinkingIdentity={isLinkingIdentity}
+                                    handleLinkIdentity={handleLinkIdentity}
+                                    handleNext={handleNext}
+                                />
                             )}
 
                             {step === 4 && (
-                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="text-center">
-                                        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0052FF]/20 to-[#22D3EE]/15 border border-[#22D3EE]/20">
-                                            <svg viewBox="0 0 24 24" className="h-9 w-9 text-[#22D3EE]" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                        </div>
-                                        <h2 className="font-display text-2xl font-bold mb-2">{isAiDraftFlow ? "Review Before Deploy" : "Ready to Deploy"}</h2>
-                                        <p className="text-slate-400">
-                                            {isAiDraftFlow
-                                                ? `Review the AI draft details below. You can still go back and edit steps 1-3 before signing the ${selectedChain.name} transaction.`
-                                                : `Review your drop details before signing the ${selectedChain.name} transaction.`}
-                                        </p>
-                                    </div>
-
-                                    {!hasSelectedChainContractConfig && (
-                                        <div className="p-4 bg-yellow-500/10 border border-yellow-500/40 rounded-xl text-yellow-200 text-sm">
-                                            Deployment is disabled: missing factory/implementation configuration for {selectedChain.name}.
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-0 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 font-mono text-sm sm:p-6">
-                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-                                            <span className="text-slate-500">Title</span>
-                                            <span className="w-full break-words text-left font-medium text-white sm:w-auto sm:max-w-xs sm:text-right">{formData.title || "Untitled"}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-                                            <span className="text-slate-500">Supply</span>
-                                            <span className="w-full break-words text-left text-white sm:w-auto sm:text-right">{formData.editionSize}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-                                            <span className="text-slate-500">Price</span>
-                                            <span className={`w-full break-words text-left sm:w-auto sm:text-right ${Number(formData.mintPrice) === 0 ? "font-bold text-[#22D3EE]" : "text-white"}`}>{Number(formData.mintPrice) === 0 ? "Free mint" : `${formData.mintPrice} ETH`}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 border-b border-white/[0.06] py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-                                            <span className="text-slate-500">Recipient</span>
-                                            <span className="w-full break-all text-left text-white sm:w-auto sm:max-w-xs sm:text-right">{formData.payoutRecipient.trim() ? formData.payoutRecipient.trim() : address}</span>
-                                        </div>
-                                        <div className="flex flex-col gap-1.5 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-                                            <span className="text-slate-500">Est. Deploy Gas</span>
-                                            <span className="w-full break-words text-left font-medium text-[#22D3EE] sm:w-auto sm:text-right">{deployGasEstimate ? (deployGasEstimate === "Unknown" ? "Unknown" : `~${parseFloat(deployGasEstimate).toFixed(4)} ETH`) : "Estimating..."}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Share-Card Preview */}
-                                    <div className="overflow-hidden rounded-2xl border border-white/[0.06] bg-[#05070f]">
-                                        <div className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-4 sm:px-6">
-                                            <h3 className="text-sm font-semibold text-white">Share Card Preview</h3>
-                                            <p className="text-xs text-slate-500">This previews the real 3:2 miniapp share image used in Warpcast.</p>
-                                        </div>
-                                        <div className="bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.15),transparent_40%),radial-gradient(circle_at_top_left,rgba(124,58,237,0.15),transparent_40%)] p-4 sm:p-6">
-                                            <div className="mx-auto w-full" style={{ maxWidth: MINIAPP_SHARE_CARD.previewMaxWidth }}>
-                                                <div className="rounded-[28px] border border-white/[0.08] bg-[#040916]/92 shadow-[0_20px_52px_rgba(0,0,0,0.30)]" style={{ padding: previewFrameInset }}>
-                                                    <div
-                                                        className="relative overflow-hidden rounded-[26px] border border-white/[0.04] bg-[#020617] shadow-[0_18px_44px_rgba(0,0,0,0.30)]"
-                                                        style={{ aspectRatio: "3 / 2" }}
-                                                    >
-                                                        {previewImageUrl && (
-                                                            <img
-                                                                src={previewImageUrl}
-                                                                alt=""
-                                                                className="absolute inset-0 h-full w-full object-cover opacity-30"
-                                                                style={{ filter: "blur(28px)", transform: "scale(1.18)" }}
-                                                            />
-                                                        )}
-                                                        <div
-                                                            className="absolute inset-0"
-                                                            style={{
-                                                                backgroundColor: "rgba(2,6,23,0.46)",
-                                                                backgroundImage: "radial-gradient(circle at 50% 15%, rgba(124,58,237,0.18), transparent 36%), radial-gradient(circle at 50% 85%, rgba(0,82,255,0.16), transparent 40%)",
-                                                            }}
-                                                        />
-                                                        <div
-                                                            className="relative flex h-full w-full items-center justify-center"
-                                                            style={{ padding: `${previewArtPaddingTop} ${previewArtPaddingX} ${previewArtPaddingBottom}` }}
-                                                        >
-                                                            <div className="relative flex items-center justify-center rounded-[24px]" style={{ width: previewArtworkFrameStyle?.width || "100%", height: previewArtworkFrameStyle?.height || "100%" }}>
-                                                                {previewImageUrl ? (
-                                                                    <img src={previewImageUrl} alt="" className="relative z-10 h-full w-full object-contain object-center" />
-                                                                ) : (
-                                                                    <div className="text-6xl font-bold text-white/50 sm:text-7xl">{previewGlyph}</div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="mt-3 flex flex-col gap-3 rounded-[20px] border border-white/10 bg-[#07101f]/92 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                                                        <div>
-                                                            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Warpcast Post</div>
-                                                            <div className="mt-1 text-sm text-slate-300">The launch button renders outside the share image. The caption stays compact while the miniapp page holds the full details.</div>
-                                                        </div>
-                                                        <div className="inline-flex shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#0052FF] to-[#22D3EE] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_24px_rgba(0,82,255,0.28)]">
-                                                            Mint
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <Step4Review
+                                    isAiDraftFlow={isAiDraftFlow}
+                                    selectedChain={selectedChain}
+                                    formData={formData}
+                                    address={address}
+                                    hasSelectedChainContractConfig={hasSelectedChainContractConfig}
+                                    deployGasEstimate={deployGasEstimate}
+                                    previewImageUrl={previewImageUrl}
+                                    previewGlyph={previewGlyph}
+                                    previewFrameInset={previewFrameInset}
+                                    previewArtPaddingTop={previewArtPaddingTop}
+                                    previewArtPaddingX={previewArtPaddingX}
+                                    previewArtPaddingBottom={previewArtPaddingBottom}
+                                    previewArtworkFrameStyle={previewArtworkFrameStyle}
+                                />
                             )}
 
 
@@ -1310,7 +1134,7 @@ export default function CreateDrop() {
                     </>
                 )}
             </main>
-        </div>
+        </AppShell>
     );
 }
 

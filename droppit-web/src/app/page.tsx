@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { BelowTheFold } from "@/components/landing/BelowTheFold";
+import { StatsStrip } from "@/components/landing/StatsStrip";
 import { BRAND } from "@/lib/brand";
 import { getHomeMiniAppEmbeds } from "@/lib/miniapp-embed";
 
@@ -24,6 +25,7 @@ export default function Home() {
 
       <main className="relative z-10">
         <HeroSection />
+        <StatsStrip />
         <BelowTheFold />
       </main>
     </div>

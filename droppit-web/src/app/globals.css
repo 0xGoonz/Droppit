@@ -91,6 +91,37 @@ body {
 .parallax-orb-c { animation: parallaxOrbC 9.2s ease-in-out infinite; }
 .cta-glow { animation: ctaGlowPulse 3.2s ease-in-out infinite; }
 
+@keyframes stepCompleteBounce {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  70% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+.step-complete-bounce {
+  animation: stepCompleteBounce 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.confetti-particle {
+  animation: confettiFall 2.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
 .lift-hover {
   transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
